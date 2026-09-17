@@ -21,8 +21,8 @@ class ChargingStation(Base):
     addr = Column(String(300))  # 주소
     sido = Column(String(50))  # 시도
     gugun = Column(String(50))  # 군구
-    lat = Column(Float)  # API에 없음 - addr 지오코딩(네이버지도 API)으로 추후 채움
-    lng = Column(Float)  # 위와 동일
+    lat = Column(Float)  # getChargerInfo 응답에 포함됨
+    lng = Column(Float)  # getChargerInfo 응답에 포함됨
     operator = Column(String(100))  # 운영기관
 
     chargers = relationship("Charger", back_populates="station")
@@ -34,7 +34,7 @@ class Charger(Base):
     station_id = Column(String(20), primary_key=True)
     charger_id = Column(String(10), primary_key=True)
     charger_type = Column(String(50))  # chrgrFrm 값 (예: DC콤보) - 급속/완속 라벨 아님
-    capacity = Column(String(50))  # chrgrCpct
+    capacity = Column(String(50))  # output (kW) - 급속 판정에도 쓰는 필드
     is_limited = Column(Boolean, default=False)  # limitYn - 수집 단계에서 이미 이용제한(limitYn=Y) 충전기를 제외하므로 항상 False
 
     station = relationship("ChargingStation", back_populates="chargers")
