@@ -1,0 +1,18 @@
+# 로컬 개발 전용 - Compose가 docker-compose.yml과 함께 자동으로 읽음
+# EC2 배포는 이 파일을 빼고 실행함: docker compose -f docker-compose.yml up -d
+services:
+  postgres:
+    ports:
+      - "5433:5432"  # 호스트에 이미 깔린 postgres(5432)와 충돌 피함
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    ports:
+      - "8000:8000"
+
+  ml:
+    ports:
+      - "8001:8001"  # 예측 응답 직접 확인용

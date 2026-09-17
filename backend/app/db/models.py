@@ -54,11 +54,12 @@ class ChargerStatusLog(Base):
     station_id = Column(String(20), nullable=False)
     charger_id = Column(String(10), nullable=False)
     stat = Column(String(5))  # 충전기 상태 코드 (API 원본)
-    stat_upd_dt = Column(DateTime)  # statUpdDt - API 기준 상태 갱신 시각
-    last_charge_start_dt = Column(DateTime)  # lastTsdt - 마지막 충전 시작
-    last_charge_end_dt = Column(DateTime)  # lastTedt - 마지막 충전 종료
-    current_charge_start_dt = Column(DateTime)  # nowTsdt - 현재충전중이면 시작시각, 아니면 NULL
-    collected_at = Column(DateTime, nullable=False)  # 실제 수집(호출) 시각
+    # 전부 timestamptz - UTC로 저장하고 피처 생성 시 KST로 변환함 (BE-09)
+    stat_upd_dt = Column(DateTime(timezone=True))  # statUpdDt - API 기준 상태 갱신 시각
+    last_charge_start_dt = Column(DateTime(timezone=True))  # lastTsdt - 마지막 충전 시작
+    last_charge_end_dt = Column(DateTime(timezone=True))  # lastTedt - 마지막 충전 종료
+    current_charge_start_dt = Column(DateTime(timezone=True))  # nowTsdt - 현재충전중이면 시작시각, 아니면 NULL
+    collected_at = Column(DateTime(timezone=True), nullable=False)  # 실제 수집(호출) 시각
 
     __table_args__ = (
         ForeignKeyConstraint(

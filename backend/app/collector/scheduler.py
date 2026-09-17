@@ -1,5 +1,6 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
@@ -9,17 +10,22 @@ from app.db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+# httpx가 INFO에서 요청 URL 전체를 찍어 serviceKey가 평문 노출됨 - 경고 이상만 남김
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # getChargerStatus는 상태 데이터가 있는 충전소가 극히 일부(전국 등록 대비)라 실사용 불가로 확인됨.
 # getChargerInfo 응답 자체에 stat/statUpdDt 등 상태 필드가 실시간으로 들어있어서 이걸로 대체.
 COLLECT_ZSCODE = "11215"  # 광진구 - 여기서 바로 필터되니 서울 전체를 받을 필요 없음
 PAGE_SIZE = 2000  # 현재 광진구 전체 1,492건, 페이지네이션으로 향후 증가에도 안전하게 대응
 
+# 공공 API 응답 시각은 KST 기준 - UTC로 변환해 timestamptz에 저장함 (BE-09)
+KST = ZoneInfo("Asia/Seoul")
+
 
 def parse_dt(value: str | None) -> datetime | None:
     if not value:
         return None
-    return datetime.strptime(value, "%Y%m%d%H%M%S")
+    return datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=KST).astimezone(timezone.utc)
 
 
 def fetch_all_gwangjin_info() -> list[dict]:
@@ -42,7 +48,7 @@ def collect_status():
         target_ids = {(c.station_id, c.charger_id) for c in db.query(Charger).all()}
 
         items = fetch_all_gwangjin_info()
-        collected_at = datetime.now()
+        collected_at = datetime.now(timezone.utc)
 
         saved = 0
         for item in items:

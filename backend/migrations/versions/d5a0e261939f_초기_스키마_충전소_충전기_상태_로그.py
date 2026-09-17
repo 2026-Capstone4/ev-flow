@@ -45,11 +45,11 @@ def upgrade() -> None:
     sa.Column('station_id', sa.String(length=20), nullable=False),
     sa.Column('charger_id', sa.String(length=10), nullable=False),
     sa.Column('stat', sa.String(length=5), nullable=True),
-    sa.Column('stat_upd_dt', sa.DateTime(), nullable=True),
-    sa.Column('last_charge_start_dt', sa.DateTime(), nullable=True),
-    sa.Column('last_charge_end_dt', sa.DateTime(), nullable=True),
-    sa.Column('current_charge_start_dt', sa.DateTime(), nullable=True),
-    sa.Column('collected_at', sa.DateTime(), nullable=False),
+    sa.Column('stat_upd_dt', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('last_charge_start_dt', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('last_charge_end_dt', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('current_charge_start_dt', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('collected_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['station_id', 'charger_id'], ['chargers.station_id', 'chargers.charger_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
