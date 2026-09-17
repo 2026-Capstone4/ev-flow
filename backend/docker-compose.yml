@@ -1,21 +1,41 @@
+name: ev-flow
+
+# EC2 디스크가 컨테이너 로그로 차는 것 방지 - 서비스당 최대 30MB
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16
     container_name: evflow-postgres
     environment:
-      POSTGRES_USER: evflow
-      POSTGRES_PASSWORD: evflow
-      POSTGRES_DB: evflow
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER 필요}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 필요}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB 필요}
+    # 포트 미개방 - 로컬 접속은 docker-compose.override.yml에서만 열림
     volumes:
       - evflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *default-logging
 
   redis:
     image: redis:7
     container_name: evflow-redis
-    ports:
-      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *default-logging
 
   api:
     build:
@@ -24,11 +44,18 @@ services:
     container_name: evflow-api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     env_file: .env
-    ports:
-      - "8000:8000"
+    environment:
+      # .env 값은 호스트 직접 실행용이라 컨테이너 내부 주소로 덮어씀
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    expose:
+      - "8000"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
 
   collector:
     build:
@@ -37,8 +64,25 @@ services:
     container_name: evflow-collector
     command: python -m app.collector.scheduler
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
+  ml:
+    build:
+      context: ../ml
+      dockerfile: Dockerfile
+    container_name: evflow-ml
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1
+    expose:
+      - "8001"
+    mem_limit: 512m
+    restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   evflow_pgdata:
