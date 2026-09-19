@@ -10,7 +10,7 @@ INFO_URL = "https://apis.data.go.kr/B552584/EvCharger/getChargerInfo"
 
 def get_charger_status(page_no: int = 1, num_of_rows: int = 100, zcode: str | None = None) -> list[dict]:
     params = {
-        "serviceKey": settings.ev_service_key,
+        "serviceKey": settings.ev_service_key.get_secret_value(),
         "pageNo": page_no,
         "numOfRows": num_of_rows,
     }
@@ -34,7 +34,7 @@ def get_charger_info(
     zscode: str | None = None,
 ) -> list[dict]:
     params = {
-        "serviceKey": settings.ev_service_key,
+        "serviceKey": settings.ev_service_key.get_secret_value(),
         "pageNo": page_no,
         "numOfRows": num_of_rows,
         "dataType": "JSON",
