@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from app.collector.api_client import get_charger_info
-from app.db.models import Charger, ChargerStatusLog
+from app.db.models import CityCharger, CityStatusLog, ServiceAreaCharger, ServiceAreaStatusLog
 from app.db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -15,13 +15,13 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # getChargerStatus는 상태 데이터가 있는 충전소가 극히 일부(전국 등록 대비)라 실사용 불가로 확인됨.
 # getChargerInfo 응답 자체에 stat/statUpdDt 등 상태 필드가 실시간으로 들어있어서 이걸로 대체.
-PAGE_SIZE = 9999  # 천안 7,295건 - 2000이면 잘림. 광진구 1,492 / 이천 2,292건은 여유
+PAGE_SIZE = 9999  # 천안 7,295건 - 2000이면 잘림. 마포구 3,523건은 여유
 
-# (주기 분, zscode 목록) - 광진구는 예측·추천 대상이라 5분, 휴게소는 대조군이라 10분.
-# 하루 호출 수 = 1콜×288 + 2콜×144 = 576건으로 한도(1,000) 안에 들어감.
+# (주기 분, zscode 목록, 충전기 모델, 로그 모델) - 마포구는 예측·추천 대상, 천안 휴게소는 대조군이라 테이블이 분리돼 있음.
+# 하루 호출 수 = 1콜×288 + 1콜×288 = 576건으로 한도(1,000) 안에 들어감.
 JOBS = [
-    (5, ["11215"]),  # 광진구 급속 전체
-    (10, ["41500", "44130"]),  # 이천 · 천안 휴게소
+    (5, ["11440"], CityCharger, CityStatusLog),  # 마포구 급속 전체
+    (5, ["44130"], ServiceAreaCharger, ServiceAreaStatusLog),  # 천안 휴게소
 ]
 
 # 공공 API 응답 시각은 KST 기준 - UTC로 변환해 timestamptz에 저장함 (BE-09)
@@ -53,11 +53,11 @@ def fetch_info(zscodes: list[str]) -> list[dict]:
     return all_items
 
 
-def collect_status(zscodes: list[str]):
+def collect_status(zscodes: list[str], charger_model, log_model):
     label = ",".join(zscodes)
     db = SessionLocal()
     try:
-        target_ids = {(c.station_id, c.charger_id) for c in db.query(Charger).all()}
+        target_ids = {(c.station_id, c.charger_id) for c in db.query(charger_model).all()}
 
         items = fetch_info(zscodes)
         collected_at = datetime.now(timezone.utc)
@@ -69,7 +69,7 @@ def collect_status(zscodes: list[str]):
                 continue
 
             db.add(
-                ChargerStatusLog(
+                log_model(
                     station_id=item.get("statId"),
                     charger_id=item.get("chgerId"),
                     stat=item.get("stat"),
@@ -83,7 +83,6 @@ def collect_status(zscodes: list[str]):
             saved += 1
 
         db.commit()
-        # target_ids는 전 지역 합계라 잡별 저장 수와 다른 게 정상 - 잡 구분을 위해 zscode를 같이 찍음
         logger.info("수집 완료 [%s] - %d기 저장", label, saved)
     except Exception:
         db.rollback()
@@ -94,12 +93,12 @@ def collect_status(zscodes: list[str]):
 
 def main():
     scheduler = BlockingScheduler()
-    for minutes, zscodes in JOBS:
+    for minutes, zscodes, charger_model, log_model in JOBS:
         scheduler.add_job(
             collect_status,
             "interval",
             minutes=minutes,
-            args=[zscodes],
+            args=[zscodes, charger_model, log_model],
             next_run_time=datetime.now(),
         )
     scheduler.start()

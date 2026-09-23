@@ -6,7 +6,14 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.config import settings
-from app.db.models import ChargingStation, Charger, ChargerStatusLog  # noqa: F401 - Base.metadata 등록용
+from app.db.models import (  # noqa: F401 - Base.metadata 등록용
+    CityCharger,
+    CityStation,
+    CityStatusLog,
+    ServiceAreaCharger,
+    ServiceAreaStation,
+    ServiceAreaStatusLog,
+)
 from app.db.session import Base
 
 # this is the Alembic Config object, which provides

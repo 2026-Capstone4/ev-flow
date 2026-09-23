@@ -14,7 +14,7 @@ COPY app ./app
 COPY migrations ./migrations
 COPY scripts ./scripts
 COPY alembic.ini .
-# 수집 대상 고정 목록 - 광진구 46개소·116기 / 이천·천안 휴게소 18 statId
-COPY data/gwangjin_fast_chargers.csv data/rest_area_mapping.csv ./data/
+# 수집 대상 고정 목록 - 마포구 69개소·190기 / 천안 휴게소 9 statId
+COPY data/mapo_fast_chargers.csv data/rest_area_mapping.csv ./data/
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
