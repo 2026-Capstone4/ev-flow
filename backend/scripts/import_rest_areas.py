@@ -5,11 +5,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.collector.api_client import get_charger_info
-from app.db.models import Charger, ChargingStation
+from app.db.models import ServiceAreaCharger, ServiceAreaStation
 from app.db.session import SessionLocal
 
 MAPPING_PATH = Path(__file__).resolve().parent.parent / "data" / "rest_area_mapping.csv"
-ZSCODES = ["41500", "44130"]  # 이천시, 천안시
+ZSCODES = ["44130"]  # 천안시
 PAGE_SIZE = 9999  # 천안 7,295건 - 2000이면 잘림
 MIN_OUTPUT_KW = 50
 
@@ -43,7 +43,8 @@ def is_target(item: dict, target_ids: set[str]) -> bool:
 
 def import_rest_areas():
     with open(MAPPING_PATH, encoding="utf-8-sig") as f:
-        target_ids = {row["statId"] for row in csv.DictReader(f)}
+        mapping = {row["statId"]: row for row in csv.DictReader(f)}
+    target_ids = set(mapping)
 
     items = []
     for zscode in ZSCODES:
@@ -58,21 +59,23 @@ def import_rest_areas():
             station_id = item["statId"]
             if station_id not in seen_stations:
                 seen_stations.add(station_id)
-                station = db.get(ChargingStation, station_id) or ChargingStation(station_id=station_id)
+                station = db.get(ServiceAreaStation, station_id) or ServiceAreaStation(station_id=station_id)
                 station.name = item.get("statNm")
                 station.addr = item.get("addr")
-                # 광진구용 import_stations.py는 settings 고정값을 쓰지만
-                # 여기는 시·도가 둘(경기도/충청남도)이라 주소 앞 두 토큰에서 뽑음
+                # 주소 앞 두 토큰에서 뽑음 - import_stations.py와 같은 방식
                 parts = (item.get("addr") or "").split()
                 station.sido = parts[0] if parts else None
                 station.gugun = parts[1] if len(parts) > 1 else None
                 station.lat = float(item["lat"]) if item.get("lat") else None
                 station.lng = float(item["lng"]) if item.get("lng") else None
                 station.operator = item.get("busiNm")
+                station.service_area_name = mapping[station_id]["rest_area"]
+                station.route = mapping[station_id]["route"]
+                station.direction = mapping[station_id]["direction"]
                 db.add(station)
 
             charger_id = item["chgerId"]
-            charger = db.get(Charger, (station_id, charger_id)) or Charger(
+            charger = db.get(ServiceAreaCharger, (station_id, charger_id)) or ServiceAreaCharger(
                 station_id=station_id, charger_id=charger_id
             )
             charger.charger_type = item.get("chgerType")

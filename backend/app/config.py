@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     # SecretStr - 설정 객체를 통째로 출력해도 마스킹됨, 실제 값은 get_secret_value()로 꺼냄
     database_url: SecretStr
     ev_service_key: SecretStr  # data.go.kr 15076352 - getChargerStatus/getChargerInfo 공통
-    target_sido: str = "서울특별시"
-    target_gugun: str = "광진구"
 
 
 settings = Settings()

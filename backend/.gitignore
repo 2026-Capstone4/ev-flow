@@ -5,7 +5,7 @@ __pycache__/
 venv/
 data/*.csv
 # 수집 대상 고정 목록(46개소·116기)은 이미지 빌드에 필요해 예외로 커밋함
-!data/gwangjin_fast_chargers.csv
+!data/mapo_fast_chargers.csv
 # 휴게소 statId -> 휴게소명·노선·방향 매핑도 적재·분석에 필요해 예외로 커밋함
 !data/rest_area_mapping.csv
 *.log
