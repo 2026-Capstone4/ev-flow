@@ -6,6 +6,7 @@ from sqlalchemy import (
     Float,
     ForeignKeyConstraint,
     Index,
+    Integer,
     String,
 )
 from sqlalchemy.orm import relationship
@@ -23,6 +24,9 @@ class StationColumns:
     lat = Column(Float)  # getChargerInfo 응답에 포함됨
     lng = Column(Float)  # getChargerInfo 응답에 포함됨
     operator = Column(String(100))  # 운영기관
+    # 추천 화면 표시용 - 수집 대상(급속)이 아니라 개수만 저장함. scripts/update_charger_counts.py로 채움
+    slow_charger_count = Column(Integer, nullable=False, default=0, server_default="0")  # output <= 11kW
+    mid_charger_count = Column(Integer, nullable=False, default=0, server_default="0")  # 11kW < output < 50kW
 
 
 class ChargerColumns:
