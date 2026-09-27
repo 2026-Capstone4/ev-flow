@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 배포 - develop 최신 코드로 api·ml 갱신
+# 배포 - main 최신 코드로 api·ml 갱신 (develop → main 병합 후 실행)
 # 사용: bash infra/deploy.sh [--with-collector]
 set -euo pipefail
 
@@ -10,7 +10,7 @@ cd "$REPO/backend"
 dc() { docker compose -f docker-compose.yml "$@"; }
 
 echo "[1/3] 코드 최신화"
-git -C "$REPO" pull --ff-only origin develop
+git -C "$REPO" pull --ff-only origin main
 
 echo "[2/3] 이미지 빌드"
 dc build
