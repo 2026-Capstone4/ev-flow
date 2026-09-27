@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.log
+.DS_Store
+
+# 수집 대상 목록·휴게소 매핑만 이미지에 넣고 나머지 작업용 CSV는 제외
+data/*.csv
+!data/mapo_fast_chargers.csv
+!data/rest_area_mapping.csv

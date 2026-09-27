@@ -1,0 +1,10 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+data/
+models/
+*.pkl
+*.ubj
