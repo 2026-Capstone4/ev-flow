@@ -32,7 +32,7 @@ class StationColumns:
 class ChargerColumns:
     station_id = Column(String(20), primary_key=True)
     charger_id = Column(String(10), primary_key=True)
-    charger_type = Column(String(50))  # chrgrFrm 값 (예: DC콤보) - 급속/완속 라벨 아님
+    charger_type = Column(String(50))  # chgerType 코드 (예: 04 = DC콤보, 11 = 버스전용) - 코드표는 docs/database.md
     capacity = Column(String(50))  # output (kW) - 급속 판정에도 쓰는 필드
     is_limited = Column(Boolean, default=False)  # limitYn - 수집 단계에서 이미 이용제한(limitYn=Y) 충전기를 제외하므로 항상 False
 

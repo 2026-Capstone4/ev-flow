@@ -8,6 +8,7 @@
 |---|---|---|
 | [decisions.md](decisions.md) | 확정된 결정과 이유, 결정 변경 이력 | 김무겸 (각 파트 결정은 담당자 추가) |
 | [open-questions.md](open-questions.md) | 미확정 사항 — 우선순위 · 담당 · 선택지 | 전원 |
+| [database.md](database.md) | DB 테이블 · 컬럼 · 코드표 · 데이터 사용 시 주의 | 장승민 |
 | [setup/repository.md](setup/repository.md) | 저장소 초기 세팅 순서 | 장승민 |
 | [conventions/git.md](conventions/git.md) | 브랜치 · 커밋 · PR · 이슈 규칙 | 김무겸 |
 | [conventions/code-common.md](conventions/code-common.md) | 주석 · 이름 짓기 · 에디터 · 비밀값 공통 규칙 | 김무겸 |
@@ -24,6 +25,7 @@ docs/
 ├── README.md            # 이 문서
 ├── decisions.md         # 무엇을 왜 정했는지
 ├── open-questions.md    # 아직 정해야 할 것
+├── database.md          # DB 구조 · 코드표
 ├── setup/               # 환경 · 저장소 세팅 가이드
 ├── conventions/         # 코드 · 협업 규칙
 ├── api/                 # (추가 예정) API 명세 링크 · 연동 메모
