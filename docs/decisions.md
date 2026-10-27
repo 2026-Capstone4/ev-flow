@@ -32,7 +32,7 @@
 | 결정 | 이유 | 세부 |
 |---|---|---|
 | ✅ **모노레포** (`frontend/` `backend/` `ml/` `infra/` `docs/`) | API 명세 · Docker Compose · CI 설정을 한 저장소에서 관리하고 파트 간 변경을 한 PR에서 추적 | [README](../README.md) |
-| ✅ **장승민 개인 계정(GitHub Free) 소유, public 저장소**, 나머지 팀원 Collaborator | 무료 계정 private 저장소는 브랜치 보호가 적용되지 않음. public이면 무료로 `main` · `develop` 직접 push 금지를 강제 가능. 소유자를 인프라 · CI 담당으로 두어 설정 · Secrets를 직접 처리 | [setup/repository.md](setup/repository.md) |
+| ✅ **GitHub Organization [`2026-Capstone4`](https://github.com/2026-Capstone4) 소유, public 저장소 [`ev-flow`](https://github.com/2026-Capstone4/ev-flow)**, 팀원 4명 Organization 멤버 | 특정 개인 계정에 묶이지 않고 팀 단위로 저장소 · 권한 · Secrets · GHCR 이미지를 관리. 무료 플랜 private 저장소는 브랜치 보호가 적용되지 않으므로 public으로 `main` · `develop` 직접 push 금지를 강제. 저장소 설정 · Secrets는 Organization Owner가 처리 (인프라 · CI 담당 장승민) | [setup/repository.md](setup/repository.md) |
 | ✅ **public 저장소 보안 규칙** — 비밀값 · 데이터 · 모델 파일 커밋 금지, Secret scanning · Push protection 사용 | 코드와 커밋 이력이 모두 공개됨 | [code-common.md 비밀값](conventions/code-common.md#비밀값--환경-변수) |
 | ✅ **브랜치**: `main` / `develop` / `feature/*` / `fix/*` / `hotfix/*`, 파트 접두어 사용 | 인원 4명 규모에 맞는 단순한 흐름, 브랜치 이름만으로 파트 구분 | [git.md 브랜치](conventions/git.md#브랜치) |
 | ✅ **커밋**: Conventional Commits, 한글 요약 | 변경 종류 · 파트를 한눈에 구분 | [git.md 커밋](conventions/git.md#커밋) |
@@ -62,14 +62,14 @@
 | 항목 | 결정 |
 |---|---|
 | Node.js / 패키지 매니저 | Node.js 24 LTS / pnpm, `.nvmrc`(`24`) 포함 |
-| 프레임워크 | React 18, Vite 5, TypeScript 5 (strict 모드) |
+| 프레임워크 | React 18, Vite 8, TypeScript 5 (strict 모드) |
 | 스타일 | Tailwind CSS v4 |
 | 라우팅 | React Router v7 라이브러리 모드 — 사용자 화면과 운영자 대시보드를 한 프로젝트에서 분리 |
 | 서버 상태 | TanStack Query 5 |
 | 클라이언트 상태 | 별도 라이브러리 없음 (필요 시 Zustand 재검토) |
 | HTTP | Axios |
 | 차트 | Recharts |
-| 지도 | 네이버 지도 JavaScript API v3 (Web Dynamic Map 월 600만 건 무료). npm 래퍼 없이 script 태그로 로드 후 자체 훅으로 감쌈 |
+| 지도 | 네이버 지도 JavaScript API v3 (NCP Application Services > Maps). npm 래퍼 없이 script 태그로 로드 후 자체 훅으로 감쌈. 한도 · 길찾기는 [지도 · 길찾기](#지도--길찾기--) |
 | API Mock | MSW |
 | 린트 · 포맷 | ESLint + Prettier, 설정 파일 저장소에 커밋 |
 | 테스트 | Vitest + Testing Library, 로직 중심 (추천 결과 가공, 혼잡도 3단계 판정, 폴링 · 실패 처리). UI 스냅샷 테스트 없음 |
@@ -81,6 +81,20 @@
 - 폴링 주기 60초, 화면 비활성(백그라운드) 시 중단
 - 캐시 5분 유지
 - 갱신 실패 시 마지막 정상값 유지 + 경고 표시
+
+### 지도 · 길찾기 — ✅
+
+| 결정 | 이유 |
+|---|---|
+| **NCP Maps Application `ev-flow` 등록 완료** — 사용 API: Dynamic Map, Directions 5 | 경유지 없는 "현재 위치 → 충전소" 경로라 Directions 15(경유지 15개, 단가 4배)는 불필요 |
+| **월 한도**: Dynamic Map 6,000,000회, Directions 5 60,000회 (2026-09-14 콘솔 확인) | 프로젝트 규모(개발 + 시연)에서는 한도의 수 % 수준으로 예상 |
+| **지도 스크립트 인증은 Client ID(`ncpKeyId`)만 사용**, 프론트 환경 변수로 관리 | Client ID는 브라우저에 노출되는 값이며, 보안은 콘솔의 Web 서비스 URL 제한으로 처리 |
+| **Directions 5는 백엔드(FastAPI)에서 호출** (구 `MAP-01`) — 추천 점수의 이동시간 계산과 선택한 충전소 경로 표시 모두 서버에서 처리. 프론트는 `/api`로 받은 경로 좌표로 지도에 선만 그림 | Client Secret이 필요해 브라우저에서 호출 불가 (비밀값 노출 · CORS). 추천 점수 계산에 이동시간이 필요하고, 서버에서 캐시 · 호출 제한 가능 |
+| **프론트는 60초 폴링에 경로 요청을 포함하지 않음** — 사용자가 충전소를 선택할 때만 요청 | 반복 호출로 인한 한도 소진 · 과금 방지 |
+
+- 경로 API 요청 · 응답 형식은 백엔드 API 명세에 포함한다.
+- 추천 1회당 호출량 · 캐싱 방안은 미확정 (`MAP-02`).
+- Client Secret은 백엔드 환경 변수로만 관리하며 커밋 금지 ([code-common.md 비밀값](conventions/code-common.md#비밀값--환경-변수)).
 
 ### 배포 — ✅
 
@@ -129,6 +143,7 @@
 | 날짜 | 내용 | 작성 |
 |---|---|---|
 | 2026-09-13 | 문서 작성 — 프로젝트 시작 전 확정 · 미확정 사항 정리 | 김무겸 |
+| 2026-09-14 | 프론트엔드 **지도 · 길찾기** 추가 — NCP Maps 신청 완료, 콘솔 한도 기록, Directions 5 백엔드 호출 결정 | 김무겸 |
 | 2026-09-16 | 시스템 개요도 · 배포 구성도 반영 — 수집 범위를 실제 수집 대상(46개소 · 116기)으로 정정, 예측 지평 15 · 30 · 60분 확정, `AI-07` · `BE-09` · `INF-05` · `MAP-01` 이관, Compose 서비스에 `nginx` · `ml` 추가 | 장승민 |
 | 2026-09-17 | EC2 인스턴스 생성 — 서버 OS를 22.04 → 24.04 LTS로 변경(빠른 시작 AMI 목록에서 22.04 제외), t3.small · 30GiB gp3(암호화) · 서울 리전 · 탄력적 IP 연결 · 종료/중지 방지 활성화 · 크레딧 사양 표준 | 장승민 |
 | 2026-09-17 | EC2 배포 대비 결함 수정 반영 — compose prod/local 분리, `INF-02`(30GiB gp3) · `INF-10`(컨테이너 로그 로테이션) 이관, `BE-09` API 시간대 KST 검증 완료, DB 백업 압축 포맷 명시 | 장승민 |
