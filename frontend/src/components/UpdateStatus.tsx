@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { formatClock, formatElapsed } from '@/lib/formatUpdatedAt'
+import { getUpdateStatusText } from '@/lib/formatUpdatedAt'
 
 type UpdateStatusProps = {
   /** 마지막 정상 데이터 기준 시각 */
@@ -7,7 +7,6 @@ type UpdateStatusProps = {
   isError: boolean
 }
 
-/** 갱신 실패 시에도 마지막 정상값 기준 시각을 함께 표시 */
 export function UpdateStatus({ updatedAt, isError }: UpdateStatusProps) {
   const [now, setNow] = useState(() => new Date())
 
@@ -16,9 +15,9 @@ export function UpdateStatus({ updatedAt, isError }: UpdateStatusProps) {
     return () => window.clearInterval(timer)
   }, [])
 
-  if (!updatedAt) return null
+  const text = getUpdateStatusText(updatedAt, isError, now)
+  if (!text) return null
 
-  const clock = formatClock(updatedAt)
   return (
     <span
       role="status"
@@ -26,9 +25,7 @@ export function UpdateStatus({ updatedAt, isError }: UpdateStatusProps) {
         isError ? 'bg-status-warning-bg text-status-warning' : 'bg-bg-subtle text-text-secondary'
       }`}
     >
-      {isError
-        ? `갱신 실패 · ${clock} 데이터 표시 중`
-        : `${clock} 기준 · ${formatElapsed(updatedAt, now)} 갱신`}
+      {text}
     </span>
   )
 }

@@ -10,3 +10,12 @@ export function formatElapsed(from: Date, now: Date) {
   if (minutes < 60) return `${minutes}분 전`
   return `${Math.floor(minutes / 60)}시간 전`
 }
+
+/** 갱신 상태 문구. 실패해도 마지막 정상값이 있으면 그 시각을 함께 표시 */
+export function getUpdateStatusText(updatedAt: Date | null, isError: boolean, now: Date) {
+  if (!updatedAt) return isError ? '충전소 정보를 불러오지 못했습니다' : null
+  const clock = formatClock(updatedAt)
+  return isError
+    ? `갱신 실패 · ${clock} 데이터 표시 중`
+    : `${clock} 기준 · ${formatElapsed(updatedAt, now)} 갱신`
+}
