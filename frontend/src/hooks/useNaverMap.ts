@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { loadNaverMapScript } from '@/lib/loadNaverMapScript'
+import { loadNaverMapScript, onNaverMapAuthFailure } from '@/lib/loadNaverMapScript'
 import type { LatLng } from '@/types/geo'
 
 type NaverMapStatus = 'loading' | 'ready' | 'error' | 'no-client-id'
@@ -22,10 +22,20 @@ export function useNaverMap({ center, zoom = 14 }: UseNaverMapOptions) {
     if (!clientId) return
     let instance: naver.maps.Map | null = null
     let isCancelled = false
+    let isAuthFailed = false
+
+    // 인증 실패는 지도가 이미 만들어진 뒤에 올 수 있으므로 안내 화면으로 전환.
+    // SDK가 naver.maps를 null로 비워서 destroy()도 실패하므로 참조만 버림
+    const unsubscribe = onNaverMapAuthFailure(() => {
+      isAuthFailed = true
+      instance = null
+      setMap(null)
+      setStatus('error')
+    })
 
     loadNaverMapScript(clientId)
       .then((maps) => {
-        if (isCancelled || !containerRef.current) return
+        if (isCancelled || isAuthFailed || !containerRef.current) return
         const { center, zoom } = initialRef.current
         instance = new maps.Map(containerRef.current, {
           center: new maps.LatLng(center.lat, center.lng),
@@ -44,6 +54,7 @@ export function useNaverMap({ center, zoom = 14 }: UseNaverMapOptions) {
 
     return () => {
       isCancelled = true
+      unsubscribe()
       instance?.destroy()
       setMap(null)
     }

@@ -10,7 +10,7 @@ const MESSAGE = {
 
 export function MapFallback({ status }: MapFallbackProps) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-xs font-medium text-text-secondary">
+    <div className="absolute inset-0 flex items-center justify-center bg-bg-map px-8 text-center text-xs font-medium text-text-secondary">
       {MESSAGE[status]}
     </div>
   )
