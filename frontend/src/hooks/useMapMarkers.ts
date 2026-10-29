@@ -17,6 +17,11 @@ function toMarkerHtml(station: Station) {
   )
 }
 
+// 인증 실패 시 SDK가 naver.maps를 null로 비워 마커 정리 호출도 예외를 던짐 (지도는 안내 화면으로 가려짐)
+function isSdkDisabled() {
+  return !window.naver.maps
+}
+
 export function useStationMarkers(
   map: naver.maps.Map | null,
   stations: Station[] | undefined,
@@ -40,6 +45,7 @@ export function useStationMarkers(
     })
 
     return () => {
+      if (isSdkDisabled()) return
       markers.forEach(({ marker, listener }) => {
         maps.Event.removeListener(listener)
         marker.setMap(null)
@@ -63,6 +69,8 @@ export function useMyLocationMarker(map: naver.maps.Map | null, location: LatLng
         anchor: new maps.Point(17, 15),
       },
     })
-    return () => marker.setMap(null)
+    return () => {
+      if (!isSdkDisabled()) marker.setMap(null)
+    }
   }, [map, location])
 }
