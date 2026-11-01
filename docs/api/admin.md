@@ -47,7 +47,7 @@
 
 **에러**: 401 `INVALID_CREDENTIALS` · 429 `LOGIN_LOCKED`(`Retry-After`) · 422 `VALIDATION_ERROR`
 
-⏳ 쿠키 `Secure` 속성은 HTTPS 적용(`CI-06`) 후. 같은 출처라 `SameSite=Strict`.
+쿠키: `HttpOnly` · `SameSite=Strict` · `Path=/api`, `Domain`은 지정하지 않는다 — Vite 개발 프록시를 거쳐도 저장되게 함. ⏳ `Secure`는 HTTPS 적용(`CI-06`) 후 운영 환경에만.
 
 ### 8. 로그아웃 — `POST /auth/logout`
 
@@ -66,7 +66,8 @@
 | `region` | `all` · `city`(마포구) · `service_area`(휴게소) | `all` |
 | `period` | `day` · `week` | `day` |
 
-- 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지
+- 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지. 시연 스냅샷에서는 "지금" = 스냅샷 시각 ([README 시연 기준 시각](README.md#기본))
+- 응답의 `from` · `to`는 실제 집계 기간 — `week`가 이용률(최근 4주)과 결측(최근 7일)에서 기간이 달라 화면에 함께 표시
 - 버스전용 충전기는 모든 집계에서 뺀다
 - 사용자 API와 달리 `dataQuality`는 없다 — 수집 상태는 12번에서 직접 보여 준다
 
@@ -175,6 +176,8 @@
 {
   "region": "city",
   "period": "week",
+  "from": "2026-10-24T00:00:00+09:00",
+  "to": "2026-10-30T14:05:00+09:00",
   "series": [
     { "bucket": "2026-10-24", "label": "10/24", "expectedCount": 54720, "matchedCount": 54100, "missingCount": 620, "missingRate": 0.011, "failedRuns": 1 }
   ]
@@ -191,7 +194,7 @@
 
 ## 14. 결측 대체 예측 건수 — `GET /admin/imputed-count`
 
-결측 대체가 적용된 예측 건수 (ADM-006). 예측은 도심만이라 `region`이 없다. ⏳ `prediction_log` 테이블 · Q5(결측 구간 예측 방식) 결정 후.
+결측 대체가 적용된 예측 건수 (ADM-006). 예측은 도심만이라 `region`이 없다. ⏳ `prediction_log` 테이블 추가 후. 결측 구간은 ml이 대체값을 채워 예측한다 (UC-S02 2a).
 
 **응답 200**
 

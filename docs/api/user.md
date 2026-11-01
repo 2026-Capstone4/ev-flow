@@ -46,7 +46,6 @@
 | `source` | string \| null | `model` · `baseline`. 값이 없으면 `null` |
 
 `dataQuality`가 `baseline`이면 `source`는 `baseline` 또는 `null`이다.
-⏳ 혼잡 확률 · 예상 가용 대수를 넣을지는 Q1에서 결정.
 
 ---
 
@@ -157,7 +156,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `lat` · `lng` | number | 출발 위치. 위치 권한이 없으면 지도 중심 좌표 (REC-005) |
-| `filters` | object | 화면에 적용 중인 필터를 그대로 보냄 (REC-004). 생략하면 전체 |
+| `filters` | object | 화면에 적용 중인 필터를 그대로 보냄 (REC-004). 생략하면 전체. 판정은 [필터 판정 규칙](README.md#필터-판정-규칙) — 지도 필터와 같음 |
 | `filters.connectorTypes` | string[] | 하나라도 맞으면 후보 (FLT-001). 빈 배열이면 전체 |
 | `filters.minCapacityKw` | number \| null | 100 · 200, `null`이면 전체 (FLT-002) |
 | `filters.statusFilter` | string | `all` · `available_only`(사용 가능만) · `exclude_high`(혼잡 제외) (FLT-003) |
