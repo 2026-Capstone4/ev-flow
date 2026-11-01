@@ -2,8 +2,6 @@
 
 `frontend/` 코드 규칙. 담당: 김무겸. 스택 결정은 [decisions.md 프론트엔드](../decisions.md#4-프론트엔드), 공통 규칙은 [code-common.md](code-common.md).
 
-> ⏳ 폴더 구조와 스크립트는 프로젝트 스캐폴딩 시 실제 구조에 맞춰 작성한다.
-
 ## 목차
 
 - [도구](#도구)
@@ -27,8 +25,6 @@
 
 ## 파일 · 이름
 
-🟡 제안 — 스캐폴딩 시 확정
-
 | 대상 | 규칙 | 예 |
 |---|---|---|
 | 컴포넌트 파일 | `PascalCase.tsx` | `StationMarker.tsx` |
@@ -46,10 +42,41 @@
 
 ## 폴더 구조
 
-⏳ 스캐폴딩 시 작성
+```
+frontend/
+├── public/mockServiceWorker.js  # MSW가 생성 (직접 수정 금지)
+├── src/
+│   ├── api/          # Axios 인스턴스 · API 호출 함수
+│   ├── app/          # App, 라우터, QueryClient 설정
+│   ├── assets/       # 아이콘 · 이미지 (Figma에서 받은 원본)
+│   ├── components/   # 공통 UI 컴포넌트 (Figma 컴포넌트 단위)
+│   ├── hooks/        # 커스텀 훅 (useNaverMap, 쿼리 훅)
+│   ├── lib/          # 순수 함수 · 상수 (테스트 대상)
+│   ├── mocks/        # MSW 핸들러 · Mock 데이터
+│   ├── pages/        # 라우트 화면 (`*Page.tsx`)
+│   ├── styles/       # 전역 CSS, Tailwind 테마 토큰
+│   └── types/        # API 응답 · 도메인 타입
+└── .env.example
+```
+
+- 색 · 간격 토큰은 `src/styles/index.css`의 `@theme`에 Figma Variables와 같은 이름으로 둔다 (예: `bg-congestion-free`).
+- API 명세 확정 전에는 `VITE_USE_MOCK=true`로 MSW Mock API를 사용한다. 실제 API로 바꿀 때는 `src/types`와 `src/mocks`만 명세에 맞춰 고친다.
+
+### 로컬 실행
+
+```bash
+cd frontend
+cp .env.example .env.local   # VITE_NAVER_MAP_CLIENT_ID 입력
+pnpm install
+pnpm dev
+```
 
 ---
 
 ## PR 전 확인 명령어
 
-⏳ 스캐폴딩 시 `package.json` 스크립트에 맞춰 작성 (예정: 린트 → 타입 검사 → 테스트 → 빌드)
+```bash
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
+```
+
+포맷은 `pnpm format`으로 맞춘다.

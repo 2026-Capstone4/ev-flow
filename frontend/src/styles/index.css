@@ -1,0 +1,44 @@
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import 'tailwindcss';
+
+/* Figma Variables(Color · Size)와 같은 이름으로 맞춤 */
+@theme {
+  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+
+  --color-brand-primary: #2563eb;
+  --color-brand-primary-bg: #eff6ff;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-on-brand: #ffffff;
+  --color-bg-page: #ffffff;
+  --color-bg-subtle: #f3f4f6;
+  --color-bg-map: #e8ece4;
+  --color-border-default: #e5e7eb;
+  --color-status-warning: #b45309;
+  --color-status-warning-bg: #fffbeb;
+
+  --color-congestion-free: #16a34a;
+  --color-congestion-free-bg: #dcfce7;
+  --color-congestion-normal: #d97706;
+  --color-congestion-normal-bg: #fef3c7;
+  --color-congestion-busy: #dc2626;
+  --color-congestion-busy-bg: #fee2e2;
+  --color-congestion-unknown: #9ca3af;
+  --color-congestion-unknown-bg: #f3f4f6;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}

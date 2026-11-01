@@ -1,0 +1,315 @@
+<mxfile host="Electron" pages="2">
+  <diagram id="로그인" name="로그인">
+    <mxGraphModel dx="1885" dy="1340" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1306" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="45" parent="1" style="text;html=1;fontStyle=1;fontSize=18;fontFamily=Pretendard;align=left;" value="운영자 로그인 (AUTH-002, SER-001)" vertex="1">
+          <mxGeometry height="30" width="600" x="20" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="46" parent="1" style="shape=note;whiteSpace=wrap;html=1;size=14;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Pretendard;fontSize=12;fontSize=11;" value="가정: 인증 방식 JWT + HttpOnly 쿠키 (SER-001 미확정)&lt;br&gt;N(실패 제한 횟수) · 제한 시간 · 토큰 만료 시간 미정&lt;br&gt;Nginx 프록시(/api)는 생략" vertex="1">
+          <mxGeometry height="56" width="440" x="660" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="47" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;participant=umlActor;verticalAlign=top;spacingTop=36;container=0;collapsible=0;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" value="운영자" vertex="1">
+          <mxGeometry height="1186" width="40" x="70" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="48" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" value="운영자 대시보드&lt;br&gt;(React)" vertex="1">
+          <mxGeometry height="1186" width="120" x="240" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="49" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" value="API 서버&lt;br&gt;(FastAPI)" vertex="1">
+          <mxGeometry height="1186" width="120" x="500" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="50" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" value="Redis" vertex="1">
+          <mxGeometry height="1186" width="120" x="740" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="51" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" value="PostgreSQL" vertex="1">
+          <mxGeometry height="1186" width="120" x="950" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="2" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="/admin 접속">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="190" as="sourcePoint" />
+            <mxPoint x="300" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="GET /api/admin/me (쿠키)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="230" as="sourcePoint" />
+            <mxPoint x="560" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="4" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="401 Unauthorized (토큰 없음 · 만료)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="270" as="sourcePoint" />
+            <mxPoint x="300" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="/admin/login 으로 이동">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="310" />
+              <mxPoint x="340" y="332" />
+            </Array>
+            <mxPoint x="300" y="310" as="sourcePoint" />
+            <mxPoint x="300" y="332" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="아이디 · 비밀번호 입력 후 로그인 클릭">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="382" as="sourcePoint" />
+            <mxPoint x="300" y="382" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="POST /api/admin/auth/login {username, password}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="422" as="sourcePoint" />
+            <mxPoint x="560" y="422" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="GET login_fail:{username}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="462" as="sourcePoint" />
+            <mxPoint x="800" y="462" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="실패 횟수">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="502" as="sourcePoint" />
+            <mxPoint x="560" y="502" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="429 Too Many Requests (남은 제한 시간)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="582" as="sourcePoint" />
+            <mxPoint x="300" y="582" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="로그인 제한 안내">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="622" as="sourcePoint" />
+            <mxPoint x="90" y="622" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="SELECT 운영자 계정 WHERE username = ?">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="692" as="sourcePoint" />
+            <mxPoint x="1010" y="692" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="계정 (password_hash) 또는 없음">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1010" y="732" as="sourcePoint" />
+            <mxPoint x="560" y="732" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="bcrypt 비밀번호 검증">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="772" />
+              <mxPoint x="600" y="794" />
+            </Array>
+            <mxPoint x="560" y="772" as="sourcePoint" />
+            <mxPoint x="560" y="794" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="INCR login_fail:{username} (TTL 설정)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="874" as="sourcePoint" />
+            <mxPoint x="800" y="874" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="401 Unauthorized">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="914" as="sourcePoint" />
+            <mxPoint x="300" y="914" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="오류 메시지 표시">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="954" as="sourcePoint" />
+            <mxPoint x="90" y="954" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="DEL login_fail:{username}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="1024" as="sourcePoint" />
+            <mxPoint x="800" y="1024" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="JWT 발급 (sub, exp)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="1064" />
+              <mxPoint x="600" y="1086" />
+            </Array>
+            <mxPoint x="560" y="1064" as="sourcePoint" />
+            <mxPoint x="560" y="1086" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="200 OK + Set-Cookie (HttpOnly, Secure, SameSite)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="1126" as="sourcePoint" />
+            <mxPoint x="300" y="1126" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="대시보드 화면으로 이동">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="1166" as="sourcePoint" />
+            <mxPoint x="90" y="1166" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;width=50;height=22;fillColor=none;fontStyle=1;fontFamily=Pretendard;fontSize=12;" value="alt" vertex="1">
+          <mxGeometry height="362" width="1020" x="50" y="824" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[계정 없음 또는 비밀번호 불일치]" vertex="1">
+          <mxGeometry height="20" width="320" x="106" y="826" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[일치]" vertex="1">
+          <mxGeometry height="20" width="320" x="58" y="976" as="geometry" />
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="50" y="974" as="sourcePoint" />
+            <mxPoint x="1070" y="974" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="26" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;width=50;height=22;fillColor=none;fontStyle=1;fontFamily=Pretendard;fontSize=12;" value="alt" vertex="1">
+          <mxGeometry height="674" width="1060" x="30" y="532" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[실패 횟수 ≥ N : 로그인 제한]" vertex="1">
+          <mxGeometry height="20" width="320" x="86" y="534" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[제한 아님]" vertex="1">
+          <mxGeometry height="20" width="320" x="38" y="644" as="geometry" />
+        </mxCell>
+        <mxCell id="29" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="30" y="642" as="sourcePoint" />
+            <mxPoint x="1090" y="642" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="로그아웃" name="로그아웃">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="846" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="52" value="운영자 로그아웃 · 로그인 만료 (AUTH-003)" style="text;html=1;fontStyle=1;fontSize=18;fontFamily=Pretendard;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="가정: 인증 방식 JWT + HttpOnly 쿠키 (SER-001 미확정)&lt;br&gt;N(실패 제한 횟수) · 제한 시간 · 토큰 만료 시간 미정&lt;br&gt;Nginx 프록시(/api)는 생략" style="shape=note;whiteSpace=wrap;html=1;size=14;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Pretendard;fontSize=12;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="10" width="440" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="운영자" style="shape=umlLifeline;perimeter=lifelinePerimeter;participant=umlActor;verticalAlign=top;spacingTop=36;container=0;collapsible=0;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="80" width="40" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="운영자 대시보드&lt;br&gt;(React)" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="80" width="120" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="56" value="API 서버&lt;br&gt;(FastAPI)" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="120" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="57" value="Redis" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="740" y="80" width="120" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="58" value="PostgreSQL" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=0;collapsible=0;size=44;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="950" y="80" width="120" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="로그아웃 버튼 클릭" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="230" as="sourcePoint" />
+            <mxPoint x="300" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="31" value="POST /api/admin/auth/logout (쿠키)" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="270" as="sourcePoint" />
+            <mxPoint x="560" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="32" value="204 No Content + Set-Cookie (Max-Age=0, 쿠키 삭제)" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="310" as="sourcePoint" />
+            <mxPoint x="300" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="33" value="서버 상태 캐시 초기화 (TanStack Query)" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="350" as="sourcePoint" />
+            <mxPoint x="300" y="372" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="340" y="350" />
+              <mxPoint x="340" y="372" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="34" value="로그인 화면으로 이동" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="412" as="sourcePoint" />
+            <mxPoint x="90" y="412" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="35" value="대시보드 사용 중 (60초 폴링)" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="482" as="sourcePoint" />
+            <mxPoint x="300" y="482" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="36" value="GET /api/admin/... (만료된 쿠키)" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="522" as="sourcePoint" />
+            <mxPoint x="560" y="522" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="37" value="JWT 검증 실패 (exp 경과)" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="562" as="sourcePoint" />
+            <mxPoint x="560" y="584" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="600" y="562" />
+              <mxPoint x="600" y="584" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="38" value="401 Unauthorized" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="624" as="sourcePoint" />
+            <mxPoint x="300" y="624" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="39" value="폴링 중단 · 캐시 초기화" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="664" as="sourcePoint" />
+            <mxPoint x="300" y="686" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="340" y="664" />
+              <mxPoint x="340" y="686" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="40" value="만료 안내 후 로그인 화면 이동" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="726" as="sourcePoint" />
+            <mxPoint x="90" y="726" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=50;height=22;fillColor=none;fontStyle=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="30" y="180" width="1060" height="566" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="[직접 로그아웃]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="86" y="182" width="320" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="[로그인 만료 : 토큰 exp 경과]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="38" y="434" width="320" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="44" style="endArrow=none;dashed=1;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="30" y="432" as="sourcePoint" />
+            <mxPoint x="1090" y="432" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

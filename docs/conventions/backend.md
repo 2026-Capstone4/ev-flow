@@ -63,7 +63,11 @@ backend/
 
 ## API 작성 규칙
 
-⏳ 작성 예정 — 경로 이름, 응답 · 에러 형식(`API-04`), JSON 필드 표기(`API-05`), 시간 표기(`BE-09`)
+경로 · 응답 · 에러 형식(`API-04`), JSON 필드 표기(`API-05`), 시간 표기(`BE-09`)는 [API 명세](../api/README.md)를 따른다.
+
+- 요청 · 응답 스키마는 모두 공통 기본 클래스(`alias_generator=to_camel`)를 상속한다
+- 예외 핸들러로 모든 에러를 `{"error": {"code", "message"}}` 형식에 맞춘다
+- `datetime`은 응답 직전에 KST로 바꾼다. `response_model_exclude_none`은 쓰지 않는다
 
 ---
 
