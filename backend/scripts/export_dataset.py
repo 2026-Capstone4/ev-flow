@@ -9,7 +9,7 @@ from scripts.restore_pre_switch import SWITCH_AT, get_engine
 
 # AI 팀 전달용 데이터 추출 - 테이블별 CSV(상태 기록은 gzip)로 저장함 (AI-05)
 # 도심은 예측·추천 대상만(버스 전용 chgerType 11 제외), 휴게소는 대조군이라 그대로 내보냄.
-# 원래 컬럼에 is_restored(상태 기록)·data_flag(충전기)만 추가 - 컬럼 설명은 docs/database.md
+# 원래 컬럼에 is_restored·is_failed_cycle(상태 기록)·data_flag(충전기)만 추가 - 컬럼 설명은 docs/database.md
 # 시각은 모두 UTC(+00) - 피처 생성 시 KST로 변환 (BE-09)
 BUS_ONLY_TYPE = "11"
 # 원천 데이터 문제로 30분마다 2↔9를 반복하는 충전기 (2026-10-22 확인)
@@ -50,11 +50,17 @@ def queries(prefix: str) -> dict[str, str]:
             order by c.station_id, c.charger_id
         """,
         f"{prefix}_status_log.csv.gz": f"""
-            select l.*, l.collected_at < %(switch_at)s as is_restored
+            select l.*, l.collected_at < %(switch_at)s as is_restored,
+                   coalesce(r.status = 'FAILED', false) as is_failed_cycle
             from {prefix}_status_log l
             join {prefix}_chargers c using (station_id, charger_id)
+            left join collection_runs r on r.id = l.collection_run_id
             where {where}
             order by l.station_id, l.charger_id, l.collected_at
+        """,
+        # 상태 기록이 없는 회차(Status 호출 실패)도 여기엔 남음 - 5분 격자의 빈칸이 결측인지 구분용
+        f"{prefix}_collection_runs.csv": f"""
+            select * from collection_runs where target = '{prefix}' order by started_at
         """,
     }
 

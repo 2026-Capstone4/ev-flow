@@ -106,7 +106,7 @@
 
 ### 데이터 상태 `dataQuality` · 기준 시각 `updatedAt`
 
-사용자 응답에 들어간다 (DATA-001 · 002, 용어 정의 p.10). `updatedAt`은 **마지막으로 수집에 성공한 시각**이다 — `collection_runs`의 최근 `SUCCESS` 실행 (⏳ 테이블 추가 후). 상태 로그의 `collected_at`은 API 호출이 실패해도 매 사이클 기록되므로 경과 판단에 쓰지 않는다. 캐시에 저장한 시각도 아니다 (PER-002).
+사용자 응답에 들어간다 (DATA-001 · 002, 용어 정의 p.10). `updatedAt`은 **마지막으로 수집에 성공한 시각**이다 — `collection_runs`에서 상태 로그를 저장한 최근 실행(`SUCCESS` · `PARTIAL`)의 `started_at`. `PARTIAL`도 Status는 성공해 상태가 최신이다(Info 보정만 실패). `collection_runs` 도입 이전 상태 로그는 API 호출이 실패해도 매 사이클 기록됐으므로 `collected_at`을 경과 판단에 쓰지 않는다. 캐시에 저장한 시각도 아니다 (PER-002).
 
 | 값 | 조건 | 화면 |
 |---|---|---|

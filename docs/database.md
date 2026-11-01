@@ -19,6 +19,7 @@
 |---|---|---|---|
 | 도심 | `city_stations` · `city_chargers` · `city_status_log` | 서울 마포구 급속 69개소 · 190기 | 예측 · 추천 대상 (버스 전용 14기 제외 — [주의](#데이터-사용-시-주의)) |
 | 휴게소 | `service_area_stations` · `service_area_chargers` · `service_area_status_log` | 천안 경부선 휴게소 4곳 · 9 statId · 27기 | 대조군 — **학습 · 추천 대상 아님** |
+| 공통 | `collection_runs` | 도심 · 휴게소 수집 회차마다 1행 | 수집 성공 · 실패 · 결측 기록 (운영자 대시보드, 사용자 응답 `updatedAt`) |
 
 - 두 묶음은 컬럼이 같고, `service_area_stations`에만 `service_area_name` · `route` · `direction`이 더 있다.
 - 테이블명에 지역명을 넣지 않음 — 수집 지역이 바뀌어도 스키마를 유지하기 위함.
@@ -34,6 +35,8 @@ erDiagram
     city_chargers ||--o{ city_status_log : "station_id + charger_id"
     service_area_stations ||--o{ service_area_chargers : "station_id"
     service_area_chargers ||--o{ service_area_status_log : "station_id + charger_id"
+    collection_runs |o--o{ city_status_log : "collection_run_id"
+    collection_runs |o--o{ service_area_status_log : "collection_run_id"
 ```
 
 충전기는 `(station_id, charger_id)` 두 컬럼으로 식별한다. `charger_id`만으로는 겹친다 (예: 여러 충전소에 `01`이 있음).
@@ -80,8 +83,34 @@ erDiagram
 | `last_charge_end_dt` | timestamptz | 마지막 충전 종료 (`lastTedt`) |
 | `current_charge_start_dt` | timestamptz | 현재 충전 시작 (`nowTsdt`) — 충전중이 아니면 NULL |
 | `collected_at` | timestamptz | 수집 시각 — 같은 회차의 행은 같은 분(minute) |
+| `collection_run_id` | int FK · NULL 허용 | 이 행을 저장한 수집 실행 (`collection_runs.id`). `collection_runs` 도입 이전 행은 소급으로 채움 |
 
 인덱스: `(station_id, charger_id, collected_at)` — 충전기별 시계열 조회용.
+
+### `collection_runs` — 수집 실행 이력 (지역별 5분마다 1행)
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `id` | int PK | 일련번호 |
+| `target` | varchar(20) | `city` · `service_area` — 상태 로그 테이블 접두어 |
+| `zscode` | varchar(50) | 조회 지역 코드 (`11440` · `44130`) |
+| `started_at` | timestamptz | 수집 시작 시각. 소급 행은 그 회차의 `collected_at` |
+| `finished_at` | timestamptz | 수집 종료 시각 — 실행 중이거나 소급 행이면 NULL |
+| `status` | varchar(10) | `RUNNING` · `SUCCESS` · `PARTIAL` · `FAILED` (아래 표) |
+| `api_latency_ms` | int | `getChargerStatus` 응답 지연 — 소급 행은 NULL |
+| `expected_count` | int | 수집 대상 충전기 수 |
+| `matched_count` | int | 상태 로그에 저장한 충전기 수. **결측 = `expected_count − matched_count`** |
+| `error_message` | text | 실패 내용 (엔드포인트 · 지역 · HTTP 코드) — 소급 행은 NULL |
+| `is_backfilled` | boolean | 기존 상태 로그로 만든 소급 행 — 실제 호출 기록이 아님 |
+
+| `status` | 조건 | 상태 로그 |
+|---|---|---|
+| `RUNNING` | 수집 중 (끝나지 않고 남아 있으면 프로세스가 도중에 죽은 것) | — |
+| `SUCCESS` | Status 성공, (Info 회차면) Info 성공, 대상 전부 저장 | 저장 |
+| `PARTIAL` | Status 성공, Info 보정 실패 또는 상태를 모르는 충전기 있음 | 저장 |
+| `FAILED` | Status 호출 실패 또는 DB 저장 오류 | **저장 안 함** |
+
+인덱스: `(target, started_at)`.
 
 ---
 
@@ -124,6 +153,7 @@ erDiagram
 
 - **대상 선정**: `getChargerInfo`를 지역코드(`zscode`)로 조회 → 출력 50kW 이상 · 삭제 제외 · 이용제한 제외. 도심은 마포구(`11440`), 휴게소는 천안(`44130`) 중 `backend/data/rest_area_mapping.csv`에 매핑한 statId만.
 - **주기**: 5분마다 대상 충전기 전체를 한 회차로 저장 (도심 190행 + 휴게소 27행).
+- **실패 처리**: 회차마다 `collection_runs`에 1행. `getChargerStatus` 호출이 실패하면 `FAILED`로 남기고 그 회차 상태 로그는 쓰지 않는다 — 다음 회차 `period=10`이 빠진 구간의 변화를 받아옴 (UC-S01 E1 · ECR-004). 성공한 회차에서 응답에 없는 충전기는 "변화 없음"이라 직전 상태를 이어 쓴다.
 - **API**: 2026-10-03 19:16:03 KST부터 `getChargerStatus`(5분, 최근 변화분) + `getChargerInfo`(30분, 보정). 이전은 `getChargerInfo`만 사용 — [decisions.md](decisions.md) 참고.
 - **시작**: 2026-09-23 15:09 KST.
 
@@ -138,3 +168,5 @@ erDiagram
 - **휴게소 테이블은 대조군**이므로 학습 · 추천에 섞지 않는다.
 - **상태가 불안정한 충전기**: 기후에너지환경부 14기(`ME19A245-21·22`, `ME19A246-21·22`, `ME19A265-22`, `ME19A601-23~26`, `ME21B180-01`, `ME21B412-01~04`)는 원천 데이터 문제로 30분마다 `2`↔`9`를 반복한다.
 - **버스 전용 충전기**: `charger_type = '11'`인 도심 14기(`PK000186` 12기, `JA110208-01`, `JA110211-01`)는 버스 차고지 충전기라 **예측 · 추천 · 학습 대상에서 제외**한다(수집은 계속함 — [decisions.md](decisions.md) 2026-10-25 항목). 대상 충전기는 `city_chargers` 중 `charger_type <> '11'`인 66개소 · 176기.
+- **결측 회차 (`collection_runs` 도입 이후)**: Status 호출이 실패한 회차는 상태 로그가 없어 5분 격자에 빈칸이 생긴다. 빈칸이 결측인지는 `collection_runs.status = 'FAILED'`로 확인한다. 도입 시점은 `is_backfilled = false`인 첫 행의 `started_at`.
+- **결측 회차 (그 이전, 소급 추정)**: 이전 collector는 Status 호출이 실패해도 직전 상태를 새 `collected_at`으로 저장했다. 소급 스크립트(`scripts/backfill_collection_runs.py`)가 전환 이후 회차 중 `max(stat_upd_dt)`가 직전 회차보다 늘지 않은 회차를 실패로 추정해 `FAILED` · `is_backfilled = true` · `matched_count = 0`으로 표시했다. 그 회차의 행은 남아 있고 `collection_run_id`로 연결된다 (추출본 `is_failed_cycle = true`). 2026-10-24까지 도심 165회차(2.7%) — **10/7 1회를 빼면 전부 10/23 이후**. 전환 이전 회차는 추정할 수 없어 모두 `SUCCESS`로 두었다.
