@@ -8,6 +8,9 @@ from app.config import settings
 BASE_URL = "https://apis.data.go.kr/B552584/EvCharger"
 INFO_URL = f"{BASE_URL}/getChargerInfo"
 STATUS_URL = f"{BASE_URL}/getChargerStatus"
+# 2026-10-23부터 getChargerStatus 응답이 10초를 넘는 회차가 약 30% (11/1까지 ReadTimeout 1,582건) -
+# 수집 주기(5분)에 비해 짧아 30초로 늘림. 페이지마다 적용되며, Status · Info를 모두 기다려도 1분 안에 끝남
+REQUEST_TIMEOUT_SEC = 30
 
 
 def _fetch_items(url: str, params: dict) -> list[dict]:
@@ -20,7 +23,7 @@ def _fetch_items(url: str, params: dict) -> list[dict]:
     # 로그에 남지 않도록 원래 예외를 버리고(from None) 엔드포인트 이름 · 상태 코드만 남김
     name = url.rsplit("/", 1)[-1]
     try:
-        resp = httpx.get(url, params=params, timeout=10)
+        resp = httpx.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
         raise RuntimeError(f"{name} HTTP {e.response.status_code}") from None
