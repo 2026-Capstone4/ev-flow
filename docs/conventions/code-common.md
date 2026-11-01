@@ -84,7 +84,7 @@
 | 혼잡 확률 | `congestion_probability` | |
 | 예측 | `prediction` | |
 | 예측 지평 | `horizon` | 예: `horizon_minutes: 30` |
-| 예상 대기 시간 | `wait_time` | 구간: `wait_time_p50`, `wait_time_p90` |
+| 예상 대기 시간 | `wait_time` | 구간: `wait_time_p50`, `wait_time_p90`. API 필드는 단위를 붙임 (`waitTimeP50Minutes`) — [api/README.md](../api/README.md#표기-규칙) |
 | 추천 | `recommendation` | |
 | 추천 점수 | `score` | |
 | 이동 시간 | `travel_time` | |
