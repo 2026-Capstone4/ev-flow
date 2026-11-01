@@ -222,7 +222,7 @@
 | 11 | `GET /admin/chargers?region=` | 운영자 | ADM-002 | `get_charger_statuses` | |
 | 12 | `GET /admin/collection-status?region=` | 운영자 | ADM-003 | `get_collection_status` | ⏳ `collection_runs` |
 | 13 | `GET /admin/missing-stats?region=&period=` | 운영자 | ADM-004 | `get_missing_stats` | ⏳ `collection_runs` |
-| 14 | `GET /admin/imputed-count?period=` | 운영자 | ADM-006 | `get_imputed_count` | ⏳ `prediction_log` · Q5 |
+| 14 | `GET /admin/imputed-count?period=` | 운영자 | ADM-006 | `get_imputed_count` | ⏳ `prediction_log` |
 
 운영자 API의 `region`은 `all` · `city` · `service_area`, `period`는 `day` · `week` (ADM-005).
 
