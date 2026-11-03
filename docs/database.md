@@ -169,4 +169,8 @@ erDiagram
 - **상태가 불안정한 충전기**: 기후에너지환경부 14기(`ME19A245-21·22`, `ME19A246-21·22`, `ME19A265-22`, `ME19A601-23~26`, `ME21B180-01`, `ME21B412-01~04`)는 원천 데이터 문제로 30분마다 `2`↔`9`를 반복한다.
 - **버스 전용 충전기**: `charger_type = '11'`인 도심 14기(`PK000186` 12기, `JA110208-01`, `JA110211-01`)는 버스 차고지 충전기라 **예측 · 추천 · 학습 대상에서 제외**한다(수집은 계속함 — [decisions.md](decisions.md) 2026-10-25 항목). 대상 충전기는 `city_chargers` 중 `charger_type <> '11'`인 66개소 · 176기.
 - **결측 회차 (`collection_runs` 도입 이후)**: Status 호출이 실패한 회차는 상태 로그가 없어 5분 격자에 빈칸이 생긴다. 빈칸이 결측인지는 `collection_runs.status = 'FAILED'`로 확인한다. 도입 시점은 `is_backfilled = false`인 첫 행의 `started_at`.
-- **결측 회차 (그 이전, 소급 추정)**: 이전 collector는 Status 호출이 실패해도 직전 상태를 새 `collected_at`으로 저장했다. 소급 스크립트(`scripts/backfill_collection_runs.py`)가 전환 이후 회차 중 `max(stat_upd_dt)`가 직전 회차보다 늘지 않은 회차를 실패로 추정해 `FAILED` · `is_backfilled = true` · `matched_count = 0`으로 표시했다. 그 회차의 행은 남아 있고 `collection_run_id`로 연결된다 (추출본 `is_failed_cycle = true`). 2026-10-24까지 도심 165회차(2.7%) — **10/7 1회를 빼면 전부 10/23 이후**. 전환 이전 회차는 추정할 수 없어 모두 `SUCCESS`로 두었다.
+- **결측 회차 (그 이전, 소급 추정)**: 이전 collector는 Status 호출이 실패해도 직전 상태를 새 `collected_at`으로 저장했다. 소급 스크립트(`scripts/backfill_collection_runs.py`)가 전환 이후 회차 중 `max(stat_upd_dt)`가 직전 회차보다 늘지 않은 회차를 실패로 추정해 `FAILED` · `is_backfilled = true` · `matched_count = 0`으로 표시했다. 그 회차의 행은 남아 있고 `collection_run_id`로 연결된다 (추출본 `is_failed_cycle = true`). 전환 이전 회차는 추정할 수 없어 모두 `SUCCESS`로 두었다.
+  - 결과 (2026-11-01 17:41 KST까지): 전환 이후 8,334회차 중 도심 748회차(9.0%) · 휴게소 780회차(9.4%). **10/7 2회를 빼면 전부 10/23 이후** — 공공 API 응답이 10초 타임아웃을 넘긴 것(`ReadTimeout`)이 원인 ([decisions.md](decisions.md) 2026-11-01)
+  - collector 로그(10/3 19:16 ~ 11/1 17:31)와 대조: 두 지역 모두 **정밀도 0.94 · 재현율 0.96**
+  - 놓친 실패는 대부분 Status 실패 + 같은 회차 Info 보정 성공 — 그 행은 직전 상태가 아니라 Info 값(최대 30분 지연)이다
+  - 로그에 실패가 없는데 `FAILED`로 잡힌 회차(도심 42 · 휴게소 45)는 API가 새 값 없이 응답한 회차라 데이터로는 실패와 같다

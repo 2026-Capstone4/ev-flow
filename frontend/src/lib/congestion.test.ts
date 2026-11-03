@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatWaitTime, getCongestionLabel } from '@/lib/congestion'
+import { formatWaitRange, formatWaitTime, getCongestionLabel } from '@/lib/congestion'
 
 describe('getCongestionLabel', () => {
   it('3단계 혼잡도를 한국어로 표기함', () => {
@@ -8,8 +8,21 @@ describe('getCongestionLabel', () => {
     expect(getCongestionLabel('high')).toBe('혼잡')
   })
 
-  it('예측값이 없으면 예측 없음으로 표기함', () => {
-    expect(getCongestionLabel(null)).toBe('예측 없음')
+  it('현재 혼잡도의 예외 상태를 구분해 표기함', () => {
+    expect(getCongestionLabel('unknown')).toBe('확인 불가')
+    expect(getCongestionLabel('unavailable')).toBe('운영 불가')
+  })
+
+  it('예측값이 없으면 조회 불가로 표기함', () => {
+    expect(getCongestionLabel(null)).toBe('조회 불가')
+  })
+})
+
+describe('formatWaitRange', () => {
+  it('상세 화면용으로 접두어 없이 표기함', () => {
+    expect(formatWaitRange(5, 15)).toBe('5~15분')
+    expect(formatWaitRange(0, 0)).toBe('대기 없음')
+    expect(formatWaitRange(null, null)).toBeNull()
   })
 })
 

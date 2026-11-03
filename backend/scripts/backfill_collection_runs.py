@@ -29,7 +29,8 @@ TARGETS = {log.__tablename__.removesuffix("_status_log"): (",".join(z), log.__ta
 UPDATE_BATCH = 100_000  # 상태 로그 id 범위 단위로 나눠 커밋 - 수백만 행을 한 트랜잭션에 묶지 않음
 LOG_MATCH_SEC = 120  # 실패 로그 → 같은 회차 collected_at까지 최대 간격 (호출 timeout 10초 × 재시도 없음)
 KST = ZoneInfo("Asia/Seoul")
-LOG_TS = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?Z")
+# 초 이하까지 읽어야 함 - '수집 완료'는 collected_at 몇 ms 뒤에 찍혀 초 단위로 자르면 회차보다 앞선 시각이 됨
+LOG_TS = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z")
 LOG_FAIL = re.compile(r"(?:get_charger_status|getChargerStatus) 조회 실패 \[([\d,]+)\]")
 LOG_DONE = re.compile(r"수집 완료 \[([\d,]+)\]")
 
@@ -84,7 +85,8 @@ def parse_log(path: str) -> tuple[dict, dict, datetime, datetime]:
             m = LOG_TS.search(line)
             if not m:
                 continue
-            ts = datetime.fromisoformat(m.group(1) + "+00:00")
+            micro = (m.group(2) or "0")[:6].ljust(6, "0")  # docker는 나노초 9자리 - 마이크로초까지만
+            ts = datetime.fromisoformat(f"{m.group(1)}.{micro}+00:00")
             first, last = first or ts, ts
             for pattern, out in ((LOG_FAIL, fails), (LOG_DONE, dones)):
                 hit = pattern.search(line)

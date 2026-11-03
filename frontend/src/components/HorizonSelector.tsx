@@ -1,6 +1,5 @@
+import { HORIZONS } from '@/lib/horizon'
 import type { HorizonMinutes } from '@/types/station'
-
-const OPTIONS: HorizonMinutes[] = [15, 30, 60]
 
 type HorizonSelectorProps = {
   value: HorizonMinutes
@@ -14,7 +13,7 @@ export function HorizonSelector({ value, onChange }: HorizonSelectorProps) {
       aria-label="예측 시점"
       className="flex h-8 items-center gap-1 rounded-md bg-bg-subtle p-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]"
     >
-      {OPTIONS.map((option) => {
+      {HORIZONS.map((option) => {
         const isSelected = option === value
         return (
           <button

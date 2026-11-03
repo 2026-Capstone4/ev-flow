@@ -234,6 +234,8 @@
 
 같은 출발지(반올림) · 목적지는 캐시 결과를 쓴다 (⏳ 반올림 단위 · TTL `MAP-02`).
 
+길찾기 화면의 "네이버 지도로 안내받기"는 프론트가 목적지(이름 · 좌표)를 네이버 지도 앱으로 넘긴다 — 출발지는 넘기지 않아 앱이 실제 현재 위치에서 안내한다. 서버 요청은 없다.
+
 **에러**: 404 `STATION_NOT_FOUND` · 404 `ROUTE_NOT_FOUND` · 429 `RATE_LIMITED` · 502 `ROUTE_PROVIDER_ERROR` · 503 `ROUTE_QUOTA_EXCEEDED`
 
 ---
@@ -255,6 +257,9 @@
       "name": "망향휴게소",
       "route": "경부",
       "direction": "down",
+      "address": "충청남도 천안시 서북구 성거읍 돌다리길 23-37",
+      "lat": 36.8541795,
+      "lng": 127.1804275,
       "totalChargers": 7,
       "availableChargers": 3,
       "statusCounts": { "available": 3, "charging": 3, "stopped": 0, "maintenance": 1, "unknown": 0 },
@@ -268,6 +273,7 @@
 |---|---|---|
 | `name` | string | 휴게소명 — 6번 요청의 `name` |
 | `direction` | string | `up`(상행 · 서울 방향) · `down`(하행 · 부산 방향) |
+| `address` · `lat` · `lng` | string · number | 대표 statId의 주소 · 좌표 — 네이버 지도 안내 목적지. 급속 충전기가 가장 많은 statId, 같으면 `stationId` 순 |
 | `statusCounts` | object | 상태별 충전기 수 — "충전 중 · 점검 중" 표시용 |
 
 **에러**: 503 `DATA_UNAVAILABLE`
@@ -286,7 +292,9 @@
 {
   "updatedAt": "2026-10-30T14:05:00+09:00",
   "dataQuality": "normal",
-  "serviceArea": { "name": "망향휴게소", "route": "경부", "direction": "down", "totalChargers": 7, "availableChargers": 3 },
+  "serviceArea": { "name": "망향휴게소", "route": "경부", "direction": "down",
+                   "address": "충청남도 천안시 서북구 성거읍 돌다리길 23-37", "lat": 36.8541795, "lng": 127.1804275,
+                   "totalChargers": 7, "availableChargers": 3 },
   "chargers": [
     { "stationId": "ST441324", "operator": "SK일렉링크", "chargerId": "01", "status": "charging",
       "connectorTypes": ["dc_combo"], "capacityKw": 100, "chargingStartedAt": "2026-10-30T13:50:00+09:00" }
