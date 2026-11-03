@@ -1,4 +1,5 @@
 import { getDistanceMeters } from '@/lib/distance'
+import { DEFAULT_FILTERS, matchesFilters } from '@/lib/stationFilter'
 import { STATIONS } from '@/mocks/data/stations'
 import type { LatLng } from '@/types/geo'
 import type {
@@ -6,11 +7,11 @@ import type {
   HorizonRecommendations,
   PredictedCongestion,
   Recommendation,
+  RecommendationFilters,
   Station,
 } from '@/types/station'
 
 // 실제 추천 점수 계산식은 미정이라 혼잡도 → 이동시간 순으로만 정렬
-// TODO(fe): 검색 · 필터 작업 때 요청 filters를 필터 판정 규칙대로 적용
 
 const CONGESTION_ORDER: Record<PredictedCongestion, number> = { low: 0, medium: 1, high: 2 }
 const METERS_PER_MINUTE = 350
@@ -68,11 +69,13 @@ function toRecommendation(candidate: Candidate, index: number, nearest: Candidat
 export function buildRecommendations(
   origin: LatLng,
   horizon: HorizonMinutes,
+  filters: RecommendationFilters = DEFAULT_FILTERS,
 ): HorizonRecommendations {
   // 운영 불가 충전소는 필터와 상관없이 후보에서 뺌 (필터 판정 규칙)
-  const candidates = STATIONS.filter((station) => station.congestion !== 'unavailable').map(
-    (station) => toCandidate(station, horizon, origin),
-  )
+  const candidates = STATIONS.filter(
+    (station) => station.congestion !== 'unavailable' && matchesFilters(station, filters),
+  ).map((station) => toCandidate(station, horizon, origin))
+  if (candidates.length === 0) return { horizonMinutes: horizon, recommendations: [] }
   const nearest = candidates.reduce((a, b) => (a.distanceMeters <= b.distanceMeters ? a : b))
   const ranked = candidates
     .filter((c) => c.prediction.congestion !== null)

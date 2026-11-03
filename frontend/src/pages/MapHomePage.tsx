@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { MapFallback } from '@/components/MapFallback'
@@ -11,9 +11,10 @@ import { useMyLocationMarker, useStationMarkers } from '@/hooks/useMapMarkers'
 import { useNaverMap } from '@/hooks/useNaverMap'
 import { useSheetCollapsedOffset } from '@/hooks/useSheetCollapsedOffset'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { useMapView } from '@/hooks/useMapView'
 import { DEMO_USER_LOCATION, MAPO_CENTER } from '@/lib/constants'
-import { parseHorizon } from '@/lib/horizon'
-import type { HorizonMinutes, Station } from '@/types/station'
+import { countActiveFilters } from '@/lib/stationFilter'
+import type { Station } from '@/types/station'
 
 const RECOMMEND_MESSAGE = {
   error: '추천 충전소를 불러오지 못했습니다',
@@ -22,15 +23,15 @@ const RECOMMEND_MESSAGE = {
 
 export function MapHomePage() {
   const navigate = useNavigate()
-  // 상세에서 뒤로 돌아와도 고른 예측 시점이 유지되도록 URL에 둠
-  const [searchParams, setSearchParams] = useSearchParams()
-  const horizon = parseHorizon(searchParams.get('horizon'))
+  // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
+  const { horizon, setHorizon, filters } = useMapView()
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 13 })
   const { stations, updatedAt, isStationsError, recommendations, recommendState } = useMapHomeData(
     DEMO_USER_LOCATION,
     horizon,
+    filters,
   )
 
   // 마커는 시점이 바뀔 때마다 다시 만들지 않도록 최신 시점만 ref로 읽음
@@ -49,9 +50,6 @@ export function MapHomePage() {
 
   useStationMarkers(map, stations, handleMarkerSelect)
   useMyLocationMarker(map, DEMO_USER_LOCATION)
-
-  const changeHorizon = (value: HorizonMinutes) =>
-    setSearchParams({ horizon: String(value) }, { replace: true })
 
   // 펼침 · 접힘 · 손 뗐을 때만 애니메이션. 데이터가 와서 높이를 처음 잴 때 시트가 미끄러져 내려오지 않게 함
   const [isSheetAnimating, setIsSheetAnimating] = useState(false)
@@ -87,8 +85,10 @@ export function MapHomePage() {
 
         {/* 상단 검색창 · 갱신 상태 */}
         <div className="absolute inset-x-4 top-[52px] flex flex-col items-start gap-2">
-          {/* TODO(fe): 검색 · 필터 화면(04) 연결 */}
-          <SearchBar />
+          <SearchBar
+            activeFilterCount={countActiveFilters(filters)}
+            onClick={() => navigate('/search')}
+          />
           <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
         </div>
 
@@ -132,7 +132,7 @@ export function MapHomePage() {
             </button>
             <div className="flex w-full items-center justify-between">
               <h2 className="text-[17px] font-bold">추천 충전소</h2>
-              <HorizonSelector value={horizon} onChange={changeHorizon} />
+              <HorizonSelector value={horizon} onChange={setHorizon} />
             </div>
           </div>
           {recommendations?.length ? (

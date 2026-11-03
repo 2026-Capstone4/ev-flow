@@ -37,12 +37,12 @@ export const handlers = [
   }),
 
   http.post<never, RecommendationsRequest>('/api/v1/recommendations', async ({ request }) => {
-    const { lat, lng } = await request.json()
+    const { lat, lng, filters } = await request.json()
     await delay(300)
     return HttpResponse.json<RecommendationsResponse>({
       updatedAt: toKstIso(new Date()),
       dataQuality: 'normal',
-      results: HORIZONS.map((horizon) => buildRecommendations({ lat, lng }, horizon)),
+      results: HORIZONS.map((horizon) => buildRecommendations({ lat, lng }, horizon, filters)),
     })
   }),
 ]

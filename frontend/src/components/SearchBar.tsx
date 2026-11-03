@@ -2,10 +2,12 @@ import { Search } from 'lucide-react'
 
 type SearchBarProps = {
   onClick?: () => void
+  /** 적용 중인 필터 조건 수. 0이면 숫자를 숨김 */
+  activeFilterCount?: number
 }
 
 /** 지도 홈 상단 검색창. 누르면 검색 · 필터 화면(04)으로 이동 */
-export function SearchBar({ onClick }: SearchBarProps) {
+export function SearchBar({ onClick, activeFilterCount = 0 }: SearchBarProps) {
   return (
     <button
       type="button"
@@ -14,7 +16,9 @@ export function SearchBar({ onClick }: SearchBarProps) {
     >
       <Search aria-hidden size={20} strokeWidth={2} className="shrink-0 text-text-secondary" />
       <span className="flex-1 text-[15px] text-text-secondary">충전소·장소 검색 (예: 합정역)</span>
-      <span className="text-sm font-bold text-brand-primary">필터</span>
+      <span className="text-sm font-bold text-brand-primary">
+        필터{activeFilterCount > 0 && ` ${activeFilterCount}`}
+      </span>
     </button>
   )
 }
