@@ -1,18 +1,17 @@
 import { api } from '@/api/client'
-import type { LatLng } from '@/types/geo'
-import type { HorizonMinutes, RecommendationsResponse, StationsResponse } from '@/types/station'
+import type {
+  RecommendationsRequest,
+  RecommendationsResponse,
+  StationsResponse,
+} from '@/types/station'
 
-// TODO(fe): 백엔드 명세 확정 후 경로 · 파라미터 교체 (API-01)
-export async function fetchStations(horizonMinutes: HorizonMinutes) {
-  const { data } = await api.get<StationsResponse>('/stations', {
-    params: { horizon: horizonMinutes },
-  })
+export async function fetchStations() {
+  const { data } = await api.get<StationsResponse>('/stations')
   return data
 }
 
-export async function fetchRecommendations(horizonMinutes: HorizonMinutes, origin: LatLng) {
-  const { data } = await api.get<RecommendationsResponse>('/recommendations', {
-    params: { horizon: horizonMinutes, lat: origin.lat, lng: origin.lng },
-  })
+// 위치 좌표가 접근 로그에 남지 않도록 POST 본문으로 보냄 (SER-002)
+export async function fetchRecommendations(request: RecommendationsRequest) {
+  const { data } = await api.post<RecommendationsResponse>('/recommendations', request)
   return data
 }

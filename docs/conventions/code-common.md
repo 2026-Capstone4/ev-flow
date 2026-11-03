@@ -63,7 +63,7 @@
 | TypeScript 컴포넌트 · 타입 | `PascalCase` |
 | Python 변수 · 함수 · 모듈 | `snake_case` |
 | Python 클래스 | `PascalCase` |
-| JSON API 필드 | ⏳ `API-05`에서 결정 |
+| JSON API 필드 | `camelCase` — 백엔드가 변환 ([api/README.md 표기 규칙](../api/README.md#표기-규칙)) |
 
 ---
 
