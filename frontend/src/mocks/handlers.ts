@@ -1,8 +1,10 @@
-import { delay, http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse, type DefaultBodyType, type PathParams } from 'msw'
 import { HORIZONS } from '@/lib/horizon'
 import { buildRecommendations } from '@/mocks/data/recommendations'
+import { findServiceAreaChargers, SERVICE_AREAS } from '@/mocks/data/serviceAreas'
 import { findStationDetail, STATIONS, toKstIso } from '@/mocks/data/stations'
 import type { ApiErrorBody } from '@/types/api'
+import type { ServiceAreaChargersResponse, ServiceAreasResponse } from '@/types/serviceArea'
 import type {
   RecommendationsRequest,
   RecommendationsResponse,
@@ -45,4 +47,41 @@ export const handlers = [
       results: HORIZONS.map((horizon) => buildRecommendations({ lat, lng }, horizon, filters)),
     })
   }),
+
+  http.get('/api/v1/service-areas', async () => {
+    await delay(300)
+    return HttpResponse.json<ServiceAreasResponse>({
+      updatedAt: toKstIso(new Date()),
+      dataQuality: 'normal',
+      serviceAreas: SERVICE_AREAS,
+    })
+  }),
+
+  http.get<PathParams, DefaultBodyType, ApiErrorBody | ServiceAreaChargersResponse>(
+    '/api/v1/service-areas/chargers',
+    async ({ request }) => {
+      await delay(300)
+      const url = new URL(request.url)
+      const name = url.searchParams.get('name')
+      const direction = url.searchParams.get('direction')
+      if (!name || (direction !== 'up' && direction !== 'down')) {
+        return HttpResponse.json<ApiErrorBody>(
+          { error: { code: 'VALIDATION_ERROR', message: '요청 형식이 올바르지 않습니다.' } },
+          { status: 422 },
+        )
+      }
+      const found = findServiceAreaChargers(name, direction, new Date())
+      if (!found) {
+        return HttpResponse.json<ApiErrorBody>(
+          { error: { code: 'SERVICE_AREA_NOT_FOUND', message: '휴게소를 찾을 수 없습니다.' } },
+          { status: 404 },
+        )
+      }
+      return HttpResponse.json<ServiceAreaChargersResponse>({
+        updatedAt: toKstIso(new Date()),
+        dataQuality: 'normal',
+        ...found,
+      })
+    },
+  ),
 ]
