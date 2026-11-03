@@ -27,7 +27,7 @@
 | 형식 | JSON, UTF-8 |
 | 인증 | 사용자 API는 로그인 없음 (AUTH-001). 운영자 API는 로그인 쿠키 — [인증](#인증) |
 | 위치 좌표 | URL에 넣지 않고 POST 본문으로 받음 — 접근 로그에 남지 않게 (SER-002) |
-| 갱신 주기 | 프론트가 60초마다 다시 요청하고, 화면이 비활성이면 멈춤 (PER-002) |
+| 갱신 주기 | 프론트가 60초마다 다시 요청하고, 화면이 비활성이면 멈춤 (PER-002). 길찾기는 주기 갱신에 넣지 않음 |
 | 캐시 | 서버는 조회 결과를 최대 5분 캐시할 수 있음. 이때도 `updatedAt`은 마지막 수집 성공 시각 (PER-002) |
 | 시연 기준 시각 | 시연 스냅샷에서는 스냅샷 시각을 "지금"으로 본다. 20분 규칙, 오늘, 최근 4주 · 7일, 오늘 이용률 등 상대 시간은 모두 이 시각 기준 |
 | 헬스체크 | `GET /health` (Base URL 밖) |
@@ -44,8 +44,8 @@
 | 필터 (FLT-001~004, MAP-006) | `GET /stations`의 충전기 타입 · 용량 · 상태로 거름. 추천과 같은 [판정 규칙](#필터-판정-규칙) | 시퀀스 "충전소 필터링" |
 | 예측 시점 전환 (PRED-003, REC-006) | 15 · 30 · 60분을 한 번에 받아 화면만 바꿈. 추천도 같음 | 시퀀스 "충전소 상세 조회" · "혼잡도 예측 조회" |
 | 대시보드 목록 정렬 (ADM-002) | 받은 목록을 정렬 | 시퀀스 "운영자 대시보드 조회" |
-| 직선거리 (MAP-004, SRCH-002) | 좌표로 계산. 실제 이동시간은 추천(`POST /recommendations`)에서만 | INR-002 (Directions는 선택 · 추천 때만) |
-| 길안내 (UC-U07) | 네이버 지도로 목적지(이름 · 좌표)를 넘겨 연결. 도심은 `GET /stations`, 휴게소는 `GET /service-areas` 좌표 | 2026-11-03 변경 — 앱 안 경로 표시(`POST /routes`) 삭제 |
+| 직선거리 (MAP-004, SRCH-002) | 좌표로 계산. 실제 경로 · 이동시간은 `POST /routes` | INR-002 (Directions는 선택 · 추천 때만) |
+| 네이버 지도 안내 (UC-U07) | 길찾기 화면에서 목적지(이름 · 좌표)를 네이버 지도 앱으로 넘김. 휴게소는 `GET /service-areas` 좌표 | 실제 길 안내는 네이버 지도 앱이 함 |
 
 분석서 시퀀스 "충전소 추천"은 시점을 바꾸면 다시 요청하지만, 이 명세는 세 시점을 한 번에 내려준다. 이동시간은 시점과 상관없어 Directions 호출 수는 같고, 화면에 보이는 결과도 같다.
 
@@ -185,10 +185,13 @@
 | 404 | `NOT_FOUND` | 없는 경로 |
 | 404 | `STATION_NOT_FOUND` | 없는 도심 충전소 `stationId` |
 | 404 | `SERVICE_AREA_NOT_FOUND` | 없는 휴게소 · 방향 |
+| 404 | `ROUTE_NOT_FOUND` | 경로를 찾지 못함 (UC-U07 E2) |
 | 405 | `METHOD_NOT_ALLOWED` | 지원하지 않는 메서드 |
 | 422 | `VALIDATION_ERROR` | 파라미터 · 본문 형식 오류 |
 | 429 | `LOGIN_LOCKED` | 로그인 실패가 반복돼 일정 시간 제한됨 (SER-001) |
-| 429 | `RATE_LIMITED` | 추천 호출 제한 초과 (SER-003) |
+| 429 | `RATE_LIMITED` | 추천 · 길찾기 호출 제한 초과 (SER-003) |
+| 502 | `ROUTE_PROVIDER_ERROR` | 길찾기에서 네이버 Directions 오류 · 타임아웃 (UC-U07 E2) |
+| 503 | `ROUTE_QUOTA_EXCEEDED` | 길찾기에서 Directions 월 한도 초과 |
 | 503 | `DATA_UNAVAILABLE` | DB 장애 등으로 상태 데이터를 아예 읽을 수 없음 |
 | 500 | `INTERNAL_ERROR` | 그 외 서버 오류 |
 
@@ -212,7 +215,7 @@
 | 1 | `GET /stations` | — | UC-U01 · U02 | `get_stations` | 예측 필드 ⏳ `AI-07` |
 | 2 | `GET /stations/{stationId}` | — | UC-U03 · U04 · U05 | `get_station` | 도심만 (휴게소는 6번). 예측 필드 ⏳ `AI-07` |
 | 3 | `POST /recommendations` | — | UC-U06 | `recommend` | 15 · 30 · 60분 추천을 한 번에 응답 (🟡 잠정). 점수는 api가 요청 때 계산 — 혼잡도 · 대기는 Redis, 이동거리 · 이동시간은 Directions. ⏳ 계산식 |
-| 4 | ~~`POST /routes`~~ | — | UC-U07 | — | 삭제 — 네이버 지도 연결로 대체 (2026-11-03) |
+| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (출발 좌표 반올림, SER-002). ⏳ 반올림 단위 · TTL `MAP-02` |
 | 5 | `GET /service-areas` | — | UC-U08 | `get_service_areas` | |
 | 6 | `GET /service-areas/chargers?name=&direction=` | — | UC-U08 | `get_service_area_chargers` | |
 | 7 | `POST /auth/login` | — | UC-O01 | `login` | ⏳ `admin_users` |
@@ -233,6 +236,6 @@
 | 항목 | 영향 | 담당 |
 |---|---|---|
 | 추천점수 계산식 | 3번 순위 | 전원 |
-| 이동거리 · 이동시간 처리 (`MAP-02`) — 호출할 후보 수, 실패 시 추정, 호출 제한 | 3번, `RATE_LIMITED` 기준 | 전원 |
+| 이동거리 · 이동시간 처리 (`MAP-02`) — 호출할 후보 수, 실패 시 추정, 호출 제한 | 3 · 4번, `RATE_LIMITED` 기준 | 전원 |
 | 도착 시점 vs 예측 시점 (REC-006) | 3번 응답 구조 | 전원 |
 | 운영자 인증 세부 (SER-001) | 7~9번 | 장승민 |
