@@ -1,54 +1,38 @@
 import { delay, http, HttpResponse } from 'msw'
-import { MOCK_STATIONS, toStation } from '@/mocks/data/stations'
-import type { HorizonMinutes, RecommendationsResponse, StationsResponse } from '@/types/station'
+import { buildRecommendations } from '@/mocks/data/recommendations'
+import { STATIONS } from '@/mocks/data/stations'
+import type {
+  HorizonMinutes,
+  RecommendationsRequest,
+  RecommendationsResponse,
+  StationsResponse,
+} from '@/types/station'
 
-function parseHorizon(url: URL): HorizonMinutes {
-  const value = Number(url.searchParams.get('horizon'))
-  return value === 15 || value === 60 ? value : 30
+const HORIZONS: HorizonMinutes[] = [15, 30, 60]
+
+// 서버는 +09:00 오프셋을 붙여 보냄 (BE-09)
+function nowKst() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return kst.toISOString().replace(/\.\d{3}Z$/, '+09:00')
 }
 
 export const handlers = [
-  http.get('/api/stations', async ({ request }) => {
-    const horizonMinutes = parseHorizon(new URL(request.url))
+  http.get('/api/v1/stations', async () => {
     await delay(300)
     return HttpResponse.json<StationsResponse>({
-      horizonMinutes,
-      updatedAt: new Date().toISOString(),
-      stations: MOCK_STATIONS.map((station) => toStation(station, horizonMinutes)),
+      updatedAt: nowKst(),
+      dataQuality: 'normal',
+      stations: STATIONS,
     })
   }),
 
-  http.get('/api/recommendations', async ({ request }) => {
-    const horizonMinutes = parseHorizon(new URL(request.url))
-    const pick = (stationId: string) =>
-      toStation(
-        MOCK_STATIONS.find((station) => station.stationId === stationId)!,
-        horizonMinutes,
-      )
+  http.post<never, RecommendationsRequest>('/api/v1/recommendations', async ({ request }) => {
+    const { lat, lng } = await request.json()
     await delay(300)
     return HttpResponse.json<RecommendationsResponse>({
-      horizonMinutes,
-      updatedAt: new Date().toISOString(),
-      recommendations: [
-        {
-          rank: 1,
-          station: pick('MOCK0001'),
-          travelTimeMinutes: 8,
-          reason: '가장 가까운 곳보다 4분 더 이동, 대기 12분 감소',
-        },
-        {
-          rank: 2,
-          station: pick('MOCK0005'),
-          travelTimeMinutes: 9,
-          reason: '이동 시간은 비슷하고 대기가 짧음',
-        },
-        {
-          rank: 3,
-          station: pick('MOCK0002'),
-          travelTimeMinutes: 4,
-          reason: '가장 가까운 충전소',
-        },
-      ],
+      updatedAt: nowKst(),
+      dataQuality: 'normal',
+      results: HORIZONS.map((horizon) => buildRecommendations({ lat, lng }, horizon)),
     })
   }),
 ]

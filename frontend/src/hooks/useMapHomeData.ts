@@ -8,9 +8,12 @@ import type { HorizonMinutes } from '@/types/station'
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
 export function useMapHomeData(origin: LatLng) {
   const [horizon, setHorizon] = useState<HorizonMinutes>(DEFAULT_HORIZON)
-  const stationsQuery = useStationsQuery(horizon)
-  const recommendationsQuery = useRecommendationsQuery(horizon, origin)
-  const recommendations = recommendationsQuery.data?.recommendations
+  const stationsQuery = useStationsQuery()
+  const recommendationsQuery = useRecommendationsQuery(origin)
+  // 시점을 바꿔도 다시 요청하지 않고 받은 결과에서 고름
+  const recommendations = recommendationsQuery.data?.results.find(
+    (result) => result.horizonMinutes === horizon,
+  )?.recommendations
 
   return {
     horizon,
