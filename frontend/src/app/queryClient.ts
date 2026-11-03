@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
+import { isRetryableError } from '@/api/errors'
 import { CACHE_TIME_MS, POLLING_INTERVAL_MS } from '@/lib/constants'
 
 export const queryClient = new QueryClient({
@@ -9,7 +10,7 @@ export const queryClient = new QueryClient({
       refetchInterval: POLLING_INTERVAL_MS,
       // 백그라운드 탭에서는 폴링 중단 (API 호출 수 절약)
       refetchIntervalInBackground: false,
-      retry: 1,
+      retry: (failureCount, error) => failureCount < 1 && isRetryableError(error),
     },
   },
 })

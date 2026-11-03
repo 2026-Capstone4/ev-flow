@@ -2,11 +2,19 @@ import { api } from '@/api/client'
 import type {
   RecommendationsRequest,
   RecommendationsResponse,
+  StationDetailResponse,
   StationsResponse,
 } from '@/types/station'
 
 export async function fetchStations() {
   const { data } = await api.get<StationsResponse>('/stations')
+  return data
+}
+
+export async function fetchStation(stationId: string) {
+  const { data } = await api.get<StationDetailResponse>(
+    `/stations/${encodeURIComponent(stationId)}`,
+  )
   return data
 }
 

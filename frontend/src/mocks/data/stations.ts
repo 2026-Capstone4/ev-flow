@@ -1,3 +1,4 @@
+import { HORIZONS } from '@/lib/horizon'
 import type {
   Charger,
   ChargerStatus,
@@ -8,6 +9,7 @@ import type {
   PredictedCongestion,
   Prediction,
   Station,
+  StationDetail,
 } from '@/types/station'
 
 type MockStation = Omit<
@@ -192,8 +194,6 @@ const MOCK_STATIONS: MockStation[] = [
   },
 ]
 
-const HORIZONS: HorizonMinutes[] = [15, 30, 60]
-
 const WAIT_TIME_RANGE: Record<PredictedCongestion, [number, number]> = {
   low: [0, 5],
   medium: [5, 15],
@@ -237,3 +237,25 @@ function toStation({ forecast, ...station }: MockStation): Station {
 }
 
 export const STATIONS: Station[] = MOCK_STATIONS.map(toStation)
+
+/** 충전 중인 충전기마다 시작 시각을 몇 분씩 다르게 둠 */
+export function findStationDetail(stationId: string, now: Date): StationDetail | null {
+  const station = STATIONS.find((s) => s.stationId === stationId)
+  if (!station) return null
+  return {
+    ...station,
+    chargers: station.chargers.map((c, index) => ({
+      ...c,
+      chargingStartedAt:
+        c.status === 'charging'
+          ? toKstIso(new Date(now.getTime() - (index * 11 + 7) * 60_000))
+          : null,
+    })),
+  }
+}
+
+/** 서버는 +09:00 오프셋을 붙여 보냄 (BE-09) */
+export function toKstIso(date: Date) {
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000)
+  return kst.toISOString().replace(/\.\d{3}Z$/, '+09:00')
+}

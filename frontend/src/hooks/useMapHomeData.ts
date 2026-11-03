@@ -1,13 +1,10 @@
-import { useState } from 'react'
 import { useRecommendationsQuery, useStationsQuery } from '@/hooks/useStationsQuery'
-import { DEFAULT_HORIZON } from '@/lib/constants'
 import { getListLoadState } from '@/lib/loadState'
 import type { LatLng } from '@/types/geo'
 import type { HorizonMinutes } from '@/types/station'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
-export function useMapHomeData(origin: LatLng) {
-  const [horizon, setHorizon] = useState<HorizonMinutes>(DEFAULT_HORIZON)
+export function useMapHomeData(origin: LatLng, horizon: HorizonMinutes) {
   const stationsQuery = useStationsQuery()
   const recommendationsQuery = useRecommendationsQuery(origin)
   // 시점을 바꿔도 다시 요청하지 않고 받은 결과에서 고름
@@ -16,12 +13,10 @@ export function useMapHomeData(origin: LatLng) {
   )?.recommendations
 
   return {
-    horizon,
-    setHorizon,
     stations: stationsQuery.data?.stations,
     updatedAt: stationsQuery.data ? new Date(stationsQuery.data.updatedAt) : null,
     isStationsError: stationsQuery.isError,
-    topRecommendation: recommendations?.[0],
+    recommendations,
     recommendState: getListLoadState(recommendations, recommendationsQuery.isError),
   }
 }
