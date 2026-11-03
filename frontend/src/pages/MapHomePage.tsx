@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { MapFallback } from '@/components/MapFallback'
@@ -25,7 +25,11 @@ export function MapHomePage() {
   const navigate = useNavigate()
   // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
   const { horizon, setHorizon, filters } = useMapView()
-  const [isSheetExpanded, setIsSheetExpanded] = useState(false)
+  // 길찾기 화면의 "다른 추천 충전소 보기"로 오면 추천 시트를 펼친 채로 시작
+  const location = useLocation()
+  const [isSheetExpanded, setIsSheetExpanded] = useState(
+    () => (location.state as { expandSheet?: boolean } | null)?.expandSheet === true,
+  )
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 13 })
   const { stations, updatedAt, isStationsError, recommendations, recommendState } = useMapHomeData(

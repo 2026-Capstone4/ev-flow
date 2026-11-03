@@ -119,3 +119,16 @@ export type RecommendationsResponse = {
   /** 15 · 30 · 60분 순서로 3개 (잠정) */
   results: HorizonRecommendations[]
 }
+
+export type RouteRequest = {
+  origin: { lat: number; lng: number }
+  stationId: string
+}
+
+export type RouteResponse = {
+  stationId: string
+  travelTimeMinutes: number
+  distanceMeters: number
+  /** 경로 좌표 [위도, 경도] 배열 — 서버가 Directions 원본([경도, 위도])에서 순서를 바꿔 보냄 */
+  path: [number, number][]
+}
