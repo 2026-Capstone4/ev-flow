@@ -19,6 +19,10 @@ class ServiceAreaSummary(CamelModel):
     name: str
     route: str
     direction: Direction
+    # 대표 statId의 주소 · 좌표 - 네이버 지도 길안내 목적지
+    address: str
+    lat: float
+    lng: float
     total_chargers: int
     available_chargers: int
 
