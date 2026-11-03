@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { fetchRecommendations, fetchStation, fetchStations } from '@/api/stations'
+import { fetchRecommendations, fetchRoute, fetchStation, fetchStations } from '@/api/stations'
 import { isDefaultFilters } from '@/lib/stationFilter'
 import type { LatLng } from '@/types/geo'
 import type { RecommendationFilters } from '@/types/station'
@@ -31,5 +31,15 @@ export function useRecommendationsQuery(origin: LatLng, filters: RecommendationF
         ...(isDefaultFilters(filters) ? {} : { filters }),
       }),
     placeholderData: keepPreviousData,
+  })
+}
+
+// 길찾기는 화면 주기 갱신에 넣지 않음 (docs/api/README.md, Directions 호출량)
+export function useRouteQuery(origin: LatLng, stationId: string) {
+  return useQuery({
+    queryKey: ['routes', origin.lat, origin.lng, stationId],
+    queryFn: () => fetchRoute({ origin, stationId }),
+    refetchInterval: false,
+    staleTime: Infinity,
   })
 }

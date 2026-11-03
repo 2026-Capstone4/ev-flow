@@ -1,6 +1,7 @@
 import { delay, http, HttpResponse, type DefaultBodyType, type PathParams } from 'msw'
 import { HORIZONS } from '@/lib/horizon'
 import { buildRecommendations } from '@/mocks/data/recommendations'
+import { buildMockRoute } from '@/mocks/data/routes'
 import { findServiceAreaChargers, SERVICE_AREAS } from '@/mocks/data/serviceAreas'
 import { findStationDetail, STATIONS, toKstIso } from '@/mocks/data/stations'
 import type { ApiErrorBody } from '@/types/api'
@@ -8,6 +9,8 @@ import type { ServiceAreaChargersResponse, ServiceAreasResponse } from '@/types/
 import type {
   RecommendationsRequest,
   RecommendationsResponse,
+  RouteRequest,
+  RouteResponse,
   StationDetailResponse,
   StationsResponse,
 } from '@/types/station'
@@ -47,6 +50,29 @@ export const handlers = [
       results: HORIZONS.map((horizon) => buildRecommendations({ lat, lng }, horizon, filters)),
     })
   }),
+
+  http.post<never, RouteRequest, ApiErrorBody | RouteResponse>(
+    '/api/v1/routes',
+    async ({ request }) => {
+      const { origin, stationId } = await request.json()
+      await delay(400)
+      const station = STATIONS.find((s) => s.stationId === stationId)
+      if (!station) {
+        return HttpResponse.json<ApiErrorBody>(
+          { error: { code: 'STATION_NOT_FOUND', message: '충전소를 찾을 수 없습니다.' } },
+          { status: 404 },
+        )
+      }
+      const route = buildMockRoute(origin, station)
+      if (!route) {
+        return HttpResponse.json<ApiErrorBody>(
+          { error: { code: 'ROUTE_NOT_FOUND', message: '경로를 찾을 수 없습니다.' } },
+          { status: 404 },
+        )
+      }
+      return HttpResponse.json<RouteResponse>(route)
+    },
+  ),
 
   http.get('/api/v1/service-areas', async () => {
     await delay(300)

@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { BackButton } from '@/components/BackButton'
 import { Button } from '@/components/Button'
 import { ChargerRow } from '@/components/ChargerRow'
@@ -13,6 +13,7 @@ import { parseHorizon } from '@/lib/horizon'
 import type { HorizonMinutes } from '@/types/station'
 
 export function StationDetailPage() {
+  const navigate = useNavigate()
   const { stationId = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const horizon = parseHorizon(searchParams.get('horizon'))
@@ -91,8 +92,12 @@ export function StationDetailPage() {
           </main>
 
           <footer className="shrink-0 border-t border-border-default px-4 pt-3 pb-7">
-            {/* TODO(fe): 길찾기 화면(05) 연결 — POST /routes */}
-            <Button className="w-full">길찾기 (네이버 지도)</Button>
+            <Button
+              className="w-full"
+              onClick={() => navigate(`/stations/${stationId}/route?horizon=${horizon}`)}
+            >
+              길찾기
+            </Button>
           </footer>
         </>
       ) : isNotFound || isError ? (
