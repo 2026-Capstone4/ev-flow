@@ -8,8 +8,13 @@ describe('getCongestionLabel', () => {
     expect(getCongestionLabel('high')).toBe('혼잡')
   })
 
-  it('예측값이 없으면 예측 없음으로 표기함', () => {
-    expect(getCongestionLabel(null)).toBe('예측 없음')
+  it('현재 혼잡도의 예외 상태를 구분해 표기함', () => {
+    expect(getCongestionLabel('unknown')).toBe('확인 불가')
+    expect(getCongestionLabel('unavailable')).toBe('운영 불가')
+  })
+
+  it('예측값이 없으면 조회 불가로 표기함', () => {
+    expect(getCongestionLabel(null)).toBe('조회 불가')
   })
 })
 
