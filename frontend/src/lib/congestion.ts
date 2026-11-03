@@ -16,9 +16,16 @@ export function getCongestionLabel(congestion: CurrentCongestion | null) {
   return congestion ? CONGESTION_LABEL[congestion] : NO_PREDICTION_LABEL
 }
 
-/** 대기 구간 표기 (P50~P90). 값이 없으면 null */
-export function formatWaitTime(p50: number | null, p90: number | null) {
+/** 대기 구간 (예: 5~15분, 대기 없음). 값이 없으면 null */
+export function formatWaitRange(p50: number | null, p90: number | null) {
   if (p50 === null || p90 === null) return null
   if (p90 === 0) return '대기 없음'
-  return `대기 ${p50}~${p90}분`
+  return `${p50}~${p90}분`
+}
+
+/** 카드 요약용 대기 구간 (예: 대기 5~15분) */
+export function formatWaitTime(p50: number | null, p90: number | null) {
+  const range = formatWaitRange(p50, p90)
+  if (range === null || p90 === 0) return range
+  return `대기 ${range}`
 }

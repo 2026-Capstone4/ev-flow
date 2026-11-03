@@ -59,6 +59,21 @@ export type StationsResponse = {
   stations: Station[]
 }
 
+export type ChargerDetail = Charger & {
+  /** 현재 충전 시작 시각. 충전 중이 아니면 null (STN-003) */
+  chargingStartedAt: string | null
+}
+
+export type StationDetail = Omit<Station, 'chargers'> & {
+  chargers: ChargerDetail[]
+}
+
+export type StationDetailResponse = {
+  updatedAt: string
+  dataQuality: ResponseDataQuality
+  station: StationDetail
+}
+
 export type StatusFilter = 'all' | 'available_only' | 'exclude_high'
 
 export type RecommendationFilters = {

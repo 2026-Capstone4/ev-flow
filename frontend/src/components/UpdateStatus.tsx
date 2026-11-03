@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useNow } from '@/hooks/useNow'
 import { getUpdateStatusText } from '@/lib/formatUpdatedAt'
 
 type UpdateStatusProps = {
@@ -8,13 +8,7 @@ type UpdateStatusProps = {
 }
 
 export function UpdateStatus({ updatedAt, isError }: UpdateStatusProps) {
-  const [now, setNow] = useState(() => new Date())
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 30_000)
-    return () => window.clearInterval(timer)
-  }, [])
-
+  const now = useNow()
   const text = getUpdateStatusText(updatedAt, isError, now)
   if (!text) return null
 
