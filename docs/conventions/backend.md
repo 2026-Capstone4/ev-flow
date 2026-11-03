@@ -21,7 +21,7 @@
 | 포맷 · 린트 | ⏳ `BE-05` (🟡 Ruff) |
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 |
 | ORM · 마이그레이션 | ✅ SQLAlchemy 2.0 + Alembic |
-| 테스트 | ⏳ `TST-01` |
+| 테스트 | 🟡 pytest — 판정 로직 단위 테스트, DB 없이 실행 (`TST-01` 미확정) |
 
 ---
 
@@ -41,21 +41,25 @@ backend/
 │   ├── main.py              # FastAPI 앱 진입점, 라우터 등록
 │   ├── config.py             # 환경변수 (pydantic-settings)
 │   ├── api/
+│   │   ├── errors.py          # 에러 응답 형식 통일 (ApiError · 예외 핸들러)
 │   │   └── v1/
-│   │       └── router.py     # API 라우터 (엔드포인트는 API 명세 확정 후 추가)
+│   │       ├── router.py      # v1 라우터 묶음
+│   │       └── stations.py 등  # 엔드포인트 - 요청을 받아 services에 넘기기만 함
 │   ├── collector/
 │   │   └── api_client.py     # 공공데이터포털 API 호출 래퍼
 │   ├── db/
 │   │   ├── session.py         # SQLAlchemy engine · Base · get_db
 │   │   └── models.py          # ORM 모델
-│   ├── schemas/                 # Pydantic 스키마 (⏳ API 명세 확정 후 작성)
-│   └── services/                 # 비즈니스 로직 (⏳ 추천 계산 등, 추후 작성)
+│   ├── schemas/                 # Pydantic 요청 · 응답 스키마 (base.py의 CamelModel 상속)
+│   └── services/                 # 조회 · 판정 로직 (status.py = DB 없는 판정 규칙)
+├── tests/                         # pytest 단위 테스트
 ├── migrations/                    # Alembic 마이그레이션
 ├── scripts/                        # 1회성 스크립트 (예: build_station_list.py)
 ├── data/                             # 로컬 데이터 파일 (커밋 안 함)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
+├── requirements-dev.txt            # 개발 · 테스트 전용 (pytest)
 └── .env.example
 ```
 
@@ -73,4 +77,10 @@ backend/
 
 ## PR 전 확인 명령어
 
-⏳ 세팅 시 작성
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest
+```
+
+포맷 · 린트는 `BE-05` 확정 후 추가
