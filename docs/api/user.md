@@ -8,7 +8,7 @@
 - [1. 충전소 목록 — `GET /stations`](#1-충전소-목록--get-stations)
 - [2. 충전소 상세 — `GET /stations/{stationId}`](#2-충전소-상세--get-stationsstationid)
 - [3. 충전소 추천 — `POST /recommendations`](#3-충전소-추천--post-recommendations)
-- [4. 길찾기 — `POST /routes`](#4-길찾기--post-routes)
+- [4. ~~길찾기~~ (삭제)](#4-길찾기-삭제)
 - [5. 휴게소 목록 — `GET /service-areas`](#5-휴게소-목록--get-service-areas)
 - [6. 휴게소 충전기 현황 — `GET /service-areas/chargers`](#6-휴게소-충전기-현황--get-service-areaschargers)
 
@@ -16,7 +16,7 @@
 
 ## 공통 응답 구조
 
-상태 데이터를 담는 응답(1 · 2 · 3 · 5 · 6번)은 최상위에 기준 시각과 데이터 상태가 있다. 길찾기(4번)에는 없다.
+상태 데이터를 담는 응답(1 · 2 · 3 · 5 · 6번)은 최상위에 기준 시각과 데이터 상태가 있다.
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
@@ -205,36 +205,9 @@
 
 ---
 
-## 4. 길찾기 — `POST /routes`
+## 4. ~~길찾기~~ (삭제)
 
-선택한 도심 충전소까지의 경로 (UC-U07). 화면 주기 갱신에는 넣지 않는다.
-
-**요청 본문**
-
-```json
-{ "origin": { "lat": 37.5563, "lng": 126.9220 }, "stationId": "ME19A601" }
-```
-
-목적지 좌표는 서버가 `stationId`로 찾는다.
-
-**응답 200**
-
-```json
-{
-  "stationId": "ME19A601",
-  "travelTimeMinutes": 8,
-  "distanceMeters": 2400,
-  "path": [[37.5563, 126.9220], [37.5560, 126.9180], [37.55503247, 126.89778505]]
-}
-```
-
-| 필드 | 타입 | 설명 |
-|---|---|---|
-| `path` | number[][] | 경로 좌표 `[위도, 경도]` 배열 — 지도에 선으로 그림. Directions 원본(`[경도, 위도]`)에서 순서를 바꿔 보냄 |
-
-같은 출발지(반올림) · 목적지는 캐시 결과를 쓴다 (⏳ 반올림 단위 · TTL `MAP-02`).
-
-**에러**: 404 `STATION_NOT_FOUND` · 404 `ROUTE_NOT_FOUND` · 429 `RATE_LIMITED` · 502 `ROUTE_PROVIDER_ERROR` · 503 `ROUTE_QUOTA_EXCEEDED`
+`POST /routes`는 2026-11-03에 삭제했다. 길안내는 네이버 지도로 목적지(이름 · 좌표)를 넘겨 연결하며 서버에 요청하지 않는다 ([README](README.md#프론트에서-처리하는-것)). 다른 엔드포인트 번호는 그대로 둔다.
 
 ---
 
@@ -255,6 +228,9 @@
       "name": "망향휴게소",
       "route": "경부",
       "direction": "down",
+      "address": "충청남도 천안시 서북구 성거읍 돌다리길 23-37",
+      "lat": 36.8541795,
+      "lng": 127.1804275,
       "totalChargers": 7,
       "availableChargers": 3,
       "statusCounts": { "available": 3, "charging": 3, "stopped": 0, "maintenance": 1, "unknown": 0 },
@@ -268,6 +244,7 @@
 |---|---|---|
 | `name` | string | 휴게소명 — 6번 요청의 `name` |
 | `direction` | string | `up`(상행 · 서울 방향) · `down`(하행 · 부산 방향) |
+| `address` · `lat` · `lng` | string · number | 대표 statId의 주소 · 좌표 — 네이버 지도 길안내 목적지. 급속 충전기가 가장 많은 statId, 같으면 `stationId` 순 |
 | `statusCounts` | object | 상태별 충전기 수 — "충전 중 · 점검 중" 표시용 |
 
 **에러**: 503 `DATA_UNAVAILABLE`
@@ -286,7 +263,9 @@
 {
   "updatedAt": "2026-10-30T14:05:00+09:00",
   "dataQuality": "normal",
-  "serviceArea": { "name": "망향휴게소", "route": "경부", "direction": "down", "totalChargers": 7, "availableChargers": 3 },
+  "serviceArea": { "name": "망향휴게소", "route": "경부", "direction": "down",
+                   "address": "충청남도 천안시 서북구 성거읍 돌다리길 23-37", "lat": 36.8541795, "lng": 127.1804275,
+                   "totalChargers": 7, "availableChargers": 3 },
   "chargers": [
     { "stationId": "ST441324", "operator": "SK일렉링크", "chargerId": "01", "status": "charging",
       "connectorTypes": ["dc_combo"], "capacityKw": 100, "chargingStartedAt": "2026-10-30T13:50:00+09:00" }
