@@ -17,7 +17,7 @@ dc build
 
 echo "[3/3] 서비스 교체"
 # 기능 배포가 수집을 끊지 않도록 collector는 기본 제외 (CI-04)
-dc up -d --no-deps postgres redis api ml
+dc up -d --no-deps postgres redis api ml nginx
 
 if [ "${1:-}" = "--with-collector" ]; then
   echo "    collector 재시작"
