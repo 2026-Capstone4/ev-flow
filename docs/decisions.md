@@ -102,6 +102,23 @@
 - `/` → 정적 파일, `/api` → FastAPI 프록시
 - 로컬 개발은 Vite dev server 프록시로 `/api` 전달 → 운영 · 개발 모두 동일 출처라 CORS 설정 불필요
 
+### PR 검사 (CI) — ✅
+
+FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/frontend-ci.yml`](../.github/workflows/frontend-ci.yml)
+
+| 결정 | 이유 |
+|---|---|
+| **파트별 워크플로 파일 분리** — FE는 `frontend-ci.yml`, BE는 `backend-ci.yml`(장승민) | 파트별로 따로 고칠 수 있어 충돌이 없고 담당이 분명함 |
+| **`develop` · `main` 대상 PR 중 `frontend/**` 또는 워크플로 파일이 바뀐 경우에만 실행** + 수동 실행(`workflow_dispatch`) | 바뀐 파트만 검사. squash 병합이라 PR 검사 결과와 병합 결과가 같음 |
+| **검사 순서**: `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`, job 하나(`check`)에서 차례로 실행 | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패 |
+| **Node · pnpm 버전은 YAML에 쓰지 않음** — `frontend/.nvmrc` · `package.json`의 `packageManager`를 읽음 | 로컬과 CI 버전이 항상 같음 |
+| **환경 변수 · Secrets 없이 빌드** | Mock을 뺀 배포용 번들이 빌드되는지 확인. 지도 Client ID는 빌드에 필요 없음 |
+| **읽기 전용 권한(`contents: read`), 같은 PR 새 커밋 시 이전 실행 취소, 10분 제한** | 외부 PR에도 쓰기 권한이 없고, 무료 실행 시간 낭비를 막음 |
+| **배포는 하지 않음** — 검사만 수행 | 배포는 `infra/deploy.sh` 수동 ([배포 도구 · 방식](#5-백엔드--ai) `CI-02`) |
+
+- 워크플로 이름 `frontend-ci` · job 이름 `check`는 필수 체크(ruleset) 지정 시 기준이 되므로 바꾸지 않는다.
+- **필수 체크로 지정하려면 구조 변경이 먼저 필요하다** — 경로 필터 때문에 FE를 안 바꾼 PR에서는 검사가 실행되지 않아, 필수로 지정하면 결과를 기다리며 병합이 막힌다. 지금은 필수 체크로 지정하지 않는다.
+
 ### API 명세 — ✅
 
 - 프론트엔드는 명세 초안을 따로 작성하지 않고, 백엔드 명세서([api/README.md](api/README.md))를 기준으로 MSW 핸들러와 타입을 작성한다.
@@ -164,3 +181,4 @@
 | 2026-11-01 | 수집 실행 이력(`collection_runs`) 도입 · 서버 소급 적용 — Status 호출 실패 회차를 직전 상태로 저장하지 않고 `FAILED`로만 기록(UC-S01 E1 · ECR-004). 기존 상태 로그(도심 2,140,160 · 휴게소 304,128행)에 소급 run을 연결하고, 전환 이후 `statUpdDt` 정체 회차를 실패로 추정(도심 748 · 휴게소 780회차) — collector 로그 대조 정밀도 0.94 · 재현율 0.96. 이미 전달한 `evflow-dataset-20261025`의 10/23 이후 구간에 이어 쓴 값이 섞여 있어 재추출 필요 | 장승민 |
 | 2026-11-03 | API 명세(PR #22) 확정 반영 — `API-01`(명세 형식 · 전달) · `API-03`(변경 공유) · `API-04`(에러 응답 형식) · `API-05`(JSON 필드 `camelCase`, 백엔드 변환) 이관, 프론트엔드 API 명세 절을 확정으로 갱신 | 김무겸 |
 | 2026-11-03 | 길찾기 화면에 네이버 지도 앱 안내 연결 추가(프론트 딥링크, 앱 안 경로 표시 `POST /routes`는 유지), 휴게소 응답에 대표 statId 주소 · 좌표 추가 | 장승민 |
+| 2026-11-07 | FE PR 검사 확정(`CI-01` 중 FE 이관) — `frontend-ci.yml` 추가, 검사에 `format:check` 포함. BE 검사는 `backend-ci.yml`로 분리해 `CI-01`에 남김 | 김무겸 |

@@ -1,0 +1,72 @@
+# 프론트엔드 PR 검사 — frontend/ 가 바뀐 PR에서 lint · 포맷 · 타입 · 테스트 · 빌드를 차례로 실행
+# 배포는 하지 않음 (배포는 서버에서 infra/deploy.sh로 수동 진행 — docs/decisions.md CI-02)
+name: frontend-ci
+
+on:
+  # develop · main으로 가는 PR에서, frontend/ 또는 이 파일이 바뀐 경우에만 실행
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  # Actions 탭에서 원하는 브랜치를 골라 수동으로 실행할 수 있게 함
+  workflow_dispatch:
+
+# 코드를 읽기만 하므로 저장소 쓰기 권한을 주지 않음
+permissions:
+  contents: read
+
+# 같은 PR에 새 커밋이 올라오면 이전 실행을 취소하고 최신 커밋만 검사함
+concurrency:
+  group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # 설치가 멈추는 등 이상 상황에서 무료 실행 시간을 낭비하지 않도록 10분에서 끊음
+    timeout-minutes: 10
+    defaults:
+      run:
+        # 모든 run 단계를 frontend/ 폴더에서 실행
+        working-directory: frontend
+
+    steps:
+      - name: 코드 받기
+        uses: actions/checkout@v7
+
+      # Node 버전은 YAML에 적지 않고 frontend/.nvmrc를 따름 → 로컬과 CI 버전이 항상 같음
+      - name: Node.js 설치
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+
+      # pnpm 버전은 package.json의 packageManager를 따름
+      # cache: lock 파일 내용이 같으면 이전 실행에서 받은 패키지를 재사용해 설치 시간을 줄임
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+          cache: true
+          cache_dependency_path: frontend/pnpm-lock.yaml
+
+      # lock 파일과 package.json이 맞지 않으면 설치를 고치지 않고 실패시킴
+      - name: 패키지 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: 린트
+        run: pnpm lint
+
+      # 파일을 고치지 않고 Prettier 규칙에 맞는지만 확인 — 실패하면 로컬에서 pnpm format 실행
+      - name: 포맷 검사
+        run: pnpm format:check
+
+      - name: 타입 검사
+        run: pnpm typecheck
+
+      - name: 테스트
+        run: pnpm test
+
+      # .env 없이 빌드 → VITE_USE_MOCK이 비어 있어 Mock을 뺀 배포용 번들로 빌드되는지 확인
+      - name: 빌드
+        run: pnpm build
