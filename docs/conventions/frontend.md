@@ -81,4 +81,4 @@ pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 
 포맷은 `pnpm format`으로 맞춘다.
 
-PR을 올리면 GitHub Actions(`frontend-ci`)가 같은 검사를 같은 순서로 실행한다 — [decisions.md PR 검사](../decisions.md#pr-검사-ci--).
+PR을 올리면 GitHub Actions(`ci` 워크플로의 `frontend-check`)가 같은 검사를 같은 순서로 실행한다 — [decisions.md PR 검사](../decisions.md#pr-검사-ci--).

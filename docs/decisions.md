@@ -104,20 +104,21 @@
 
 ### PR 검사 (CI) — ✅
 
-FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/frontend-ci.yml`](../.github/workflows/frontend-ci.yml)
+FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — 레포 전체 워크플로 하나에 파트별 job을 둠 (BE job은 `CI-01`, 장승민)
 
 | 결정 | 이유 |
 |---|---|
-| **파트별 워크플로 파일 분리** — FE는 `frontend-ci.yml`, BE는 `backend-ci.yml`(장승민) | 파트별로 따로 고칠 수 있어 충돌이 없고 담당이 분명함 |
-| **`develop` · `main` 대상 PR 중 `frontend/**` 또는 워크플로 파일이 바뀐 경우에만 실행** + 수동 실행(`workflow_dispatch`) | 바뀐 파트만 검사. squash 병합이라 PR 검사 결과와 병합 결과가 같음 |
-| **검사 순서**: `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`, job 하나(`check`)에서 차례로 실행 | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패 |
+| **레포 전체 워크플로 `ci.yml` 하나, 파트별 job** — `changes`(바뀐 파트 확인) → `<파트>-check`(바뀐 파트만 실행) → `ci-result`(결과 모음) | 필수 체크를 쓰려면 모든 PR에서 결과가 남아야 함. 파트별 파일에 경로 필터를 걸면 다른 파트 PR에서 워크플로가 아예 안 돌아 결과가 없고 병합이 막힘. 파트별 파일을 모든 PR에서 돌리면 BE PR에 `frontend-ci`가 도는 식으로 이름과 하는 일이 어긋남 |
+| **ruleset 필수 체크는 `ci-result` 하나만 지정** — 앞 job에 실패 · 취소가 있으면 실패, 통과 · 건너뜀은 통과 | 파트를 추가해도 ruleset을 고치지 않음. 건너뛴 job은 GitHub이 통과로 기록 |
+| **`develop` · `main` 대상 모든 PR에서 실행**(경로 필터 없음) + 수동 실행(`workflow_dispatch`, 모든 파트 검사). 바뀐 파트는 PR 브랜치가 갈라진 지점과 `git diff`로 비교 | 다른 PR이 develop에 먼저 들어와도 그 변경이 섞이지 않음. 외부 Action(`dorny/paths-filter`) 의존 없음 |
+| **FE 검사(`frontend-check`)**: `frontend/**` 또는 `ci.yml`이 바뀌면 `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`를 차례로 실행 | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패. `ci.yml`이 바뀌면 모든 파트 검사 |
 | **Node · pnpm 버전은 YAML에 쓰지 않음** — `frontend/.nvmrc` · `package.json`의 `packageManager`를 읽음 | 로컬과 CI 버전이 항상 같음 |
 | **환경 변수 · Secrets 없이 빌드** | Mock을 뺀 배포용 번들이 빌드되는지 확인. 지도 Client ID는 빌드에 필요 없음 |
-| **읽기 전용 권한(`contents: read`), 같은 PR 새 커밋 시 이전 실행 취소, 10분 제한** | 외부 PR에도 쓰기 권한이 없고, 무료 실행 시간 낭비를 막음 |
+| **읽기 전용 권한(`contents: read`), 같은 PR 새 커밋 시 이전 실행 취소, job별 시간 제한** | 외부 PR에도 쓰기 권한이 없고, 무료 실행 시간 낭비를 막음 |
 | **배포는 하지 않음** — 검사만 수행 | 배포는 `infra/deploy.sh` 수동 ([배포 도구 · 방식](#5-백엔드--ai) `CI-02`) |
 
-- 워크플로 이름 `frontend-ci` · job 이름 `check`는 필수 체크(ruleset) 지정 시 기준이 되므로 바꾸지 않는다.
-- **필수 체크로 지정하려면 구조 변경이 먼저 필요하다** — 경로 필터 때문에 FE를 안 바꾼 PR에서는 검사가 실행되지 않아, 필수로 지정하면 결과를 기다리며 병합이 막힌다. 지금은 필수 체크로 지정하지 않는다.
+- job 이름은 `<파트>-check`(`frontend-check`, `backend-check` …)로 짓는다. 필수 체크는 job 이름으로 지정되므로 `ci-result`는 바꾸지 않는다.
+- 파트 추가 방법은 `ci.yml` 맨 위 주석에 있다 (`changes` 판정 추가 → `<파트>-check` job 추가 → `ci-result`의 `needs`에 추가).
 
 ### API 명세 — ✅
 
@@ -182,3 +183,4 @@ FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/frontend-ci.yml`](.
 | 2026-11-03 | API 명세(PR #22) 확정 반영 — `API-01`(명세 형식 · 전달) · `API-03`(변경 공유) · `API-04`(에러 응답 형식) · `API-05`(JSON 필드 `camelCase`, 백엔드 변환) 이관, 프론트엔드 API 명세 절을 확정으로 갱신 | 김무겸 |
 | 2026-11-03 | 길찾기 화면에 네이버 지도 앱 안내 연결 추가(프론트 딥링크, 앱 안 경로 표시 `POST /routes`는 유지), 휴게소 응답에 대표 statId 주소 · 좌표 추가 | 장승민 |
 | 2026-11-07 | FE PR 검사 확정(`CI-01` 중 FE 이관) — `frontend-ci.yml` 추가, 검사에 `format:check` 포함. BE 검사는 `backend-ci.yml`로 분리해 `CI-01`에 남김 | 김무겸 |
+| 2026-11-07 | PR 검사 구조 변경 — 파트별 파일(`frontend-ci.yml` · `backend-ci.yml`) + 경로 필터에서 레포 전체 `ci.yml` 하나(`changes` → `<파트>-check` → `ci-result`)로. 경로 필터로는 다른 파트 PR에 결과가 안 남아 필수 체크를 쓸 수 없어서. 필수 체크는 `ci-result` 하나 | 김무겸 |
