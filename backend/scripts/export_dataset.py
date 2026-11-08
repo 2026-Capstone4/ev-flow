@@ -12,13 +12,16 @@ from scripts.restore_pre_switch import SWITCH_AT, get_engine
 # 원래 컬럼에 is_restored·is_failed_cycle(상태 기록)·data_flag(충전기)만 추가 - 컬럼 설명은 docs/database.md
 # 시각은 모두 UTC(+00) - 피처 생성 시 KST로 변환 (BE-09)
 BUS_ONLY_TYPE = "11"
-# 원천 데이터 문제로 30분마다 2↔9를 반복하는 충전기 (2026-10-22 확인)
+# 원천 데이터 문제로 30분마다 2↔9를 반복하는 충전기 (2026-10-22 확인, 2026-11-07 ME19A265-21 · ME19A601-21 · 22 추가)
 UNSTABLE_CHARGERS = [
     "ME19A245-21",
     "ME19A245-22",
     "ME19A246-21",
     "ME19A246-22",
+    "ME19A265-21",
     "ME19A265-22",
+    "ME19A601-21",
+    "ME19A601-22",
     "ME19A601-23",
     "ME19A601-24",
     "ME19A601-25",
