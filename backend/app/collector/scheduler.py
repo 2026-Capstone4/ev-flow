@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from app.collector.api_client import get_charger_info, get_charger_status
+from app.collector.prediction import refresh_predictions
 from app.db.models import CityCharger, CityStatusLog, CollectionRun, ServiceAreaCharger, ServiceAreaStatusLog
 from app.db.session import SessionLocal
 
@@ -185,6 +186,10 @@ class RegionCollector:
                 "수집 완료 [%s] - %d/%d기 저장 (상태 변화: Status %d · Info %d)",
                 self.label, saved, len(targets), status_changed, info_changed,
             )
+            # 도심만 예측함 (휴게소는 대조군 - DATA-003). 커밋 뒤에 불러야 예측 실패가 수집 기록에 섞이지 않음.
+            # refresh_predictions는 예외를 밖으로 내지 않음 - 아래 except가 이 회차를 FAILED로 바꾸면 안 됨
+            if self.target == "city":
+                refresh_predictions(db, run)
         except Exception as e:
             db.rollback()
             logger.exception("수집 실패 [%s]", self.label)

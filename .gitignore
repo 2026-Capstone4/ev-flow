@@ -30,6 +30,8 @@ venv/
 
 # 데이터 · 모델 산출물 (저장소에 올리지 않음, 예외는 !경로로 추가)
 ml/data/
+ml/models/*
+!ml/models/.gitkeep
 *.csv
 *.parquet
 *.pkl
