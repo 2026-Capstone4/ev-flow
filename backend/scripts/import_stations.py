@@ -33,7 +33,9 @@ def import_stations():
                 db.add(station)
 
             charger_id = row["chgerId"]
-            charger = db.get(CityCharger, (station_id, charger_id)) or CityCharger(station_id=station_id, charger_id=charger_id)
+            charger = db.get(CityCharger, (station_id, charger_id)) or CityCharger(
+                station_id=station_id, charger_id=charger_id
+            )
             charger.charger_type = row.get("chgerType")
             charger.capacity = row.get("output")
             charger.is_limited = False

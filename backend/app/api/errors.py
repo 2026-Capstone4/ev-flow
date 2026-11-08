@@ -24,7 +24,9 @@ class ApiError(Exception):
         self.message = message
 
 
-def error_response(status_code: int, code: str, message: str, headers: dict | None = None) -> JSONResponse:
+def error_response(
+    status_code: int, code: str, message: str, headers: dict | None = None
+) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={"error": {"code": code, "message": message}},
@@ -39,7 +41,9 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request: Request, exc: StarletteHTTPException):
-        code, message = HTTP_ERROR_CODES.get(exc.status_code, ("INTERNAL_ERROR", "서버 오류가 발생했습니다."))
+        code, message = HTTP_ERROR_CODES.get(
+            exc.status_code, ("INTERNAL_ERROR", "서버 오류가 발생했습니다.")
+        )
         return error_response(exc.status_code, code, message, exc.headers)
 
     @app.exception_handler(RequestValidationError)

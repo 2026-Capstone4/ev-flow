@@ -59,7 +59,9 @@ def import_rest_areas():
             station_id = item["statId"]
             if station_id not in seen_stations:
                 seen_stations.add(station_id)
-                station = db.get(ServiceAreaStation, station_id) or ServiceAreaStation(station_id=station_id)
+                station = db.get(ServiceAreaStation, station_id) or ServiceAreaStation(
+                    station_id=station_id
+                )
                 station.name = item.get("statNm")
                 station.addr = item.get("addr")
                 # 주소 앞 두 토큰에서 뽑음 - import_stations.py와 같은 방식

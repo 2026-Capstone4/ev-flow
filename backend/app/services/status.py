@@ -23,7 +23,9 @@ CONNECTOR_TYPES = {
 BUS_CHARGER_TYPE = "11"  # 버스 차고지 충전기 - 충전기 목록 · 대수 집계에서 뺌
 
 DELAYED_AFTER = timedelta(minutes=10)
-STALE_AFTER = timedelta(minutes=20)  # 이후로는 충전기 상태를 모두 unknown으로 보고 예측은 기준선으로 대체
+STALE_AFTER = timedelta(
+    minutes=20
+)  # 이후로는 충전기 상태를 모두 unknown으로 보고 예측은 기준선으로 대체
 MIN_CONFIRMED_RATIO = 0.8  # 상태 확인 비율이 이보다 낮으면 현재 혼잡도 unknown · 예측 기준선
 
 
