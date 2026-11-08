@@ -20,7 +20,7 @@
 |---|---|
 | Python | ✅ 3.11 (백엔드와 통일) |
 | 패키지 관리 | ⏳ `BE-04` (백엔드와 통일) |
-| 포맷 · 린트 | ⏳ `BE-05` (🟡 Ruff) |
+| 포맷 · 린트 | ✅ Ruff (`BE-05`) — `backend/ruff.toml`과 같은 설정, `ml/` 적용은 코드 작성 시 |
 | 주요 라이브러리 버전 | ⏳ pandas · scikit-learn · XGBoost |
 | PyTorch · MLflow | ⏳ `AI-06` |
 
