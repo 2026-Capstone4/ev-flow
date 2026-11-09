@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from app.collector.api_client import get_charger_info, get_charger_status
+from app.collector.baseline import ensure_baseline, refresh_baseline
 from app.collector.prediction import refresh_predictions
 from app.db.models import CityCharger, CityStatusLog, CollectionRun, ServiceAreaCharger, ServiceAreaStatusLog
 from app.db.session import SessionLocal
@@ -190,6 +191,8 @@ class RegionCollector:
             # refresh_predictions는 예외를 밖으로 내지 않음 - 아래 except가 이 회차를 FAILED로 바꾸면 안 됨
             if self.target == "city":
                 refresh_predictions(db, run)
+                # redis를 다시 만들어 키가 사라졌으면 다음 04:00까지 기다리지 않고 바로 채움 - 예외를 밖으로 내지 않음
+                ensure_baseline()
         except Exception as e:
             db.rollback()
             logger.exception("수집 실패 [%s]", self.label)
@@ -211,6 +214,8 @@ def main():
     for zscodes, charger_model, log_model in JOBS:
         collector = RegionCollector(zscodes, charger_model, log_model)
         scheduler.add_job(collector.collect, "interval", minutes=CYCLE_MIN, next_run_time=datetime.now())
+    # 요일 · 시간대 기준선 - 시작 시 1회 + 매일 04:00 KST (이용이 가장 적은 시간, DB 백업 04:30 전에 끝남)
+    scheduler.add_job(refresh_baseline, "cron", hour=4, minute=0, timezone=KST, next_run_time=datetime.now())
     scheduler.start()
 
 

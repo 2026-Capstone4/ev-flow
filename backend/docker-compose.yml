@@ -47,6 +47,8 @@ services:
     environment:
       # .env 값은 호스트 직접 실행용이라 컨테이너 내부 주소로 덮어씀
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # 예측 조회용 (docs/prediction.md) - 없으면 기본값 localhost를 봐서 예측이 항상 null이 됨
+      REDIS_URL: redis://redis:6379/0
     expose:
       - "8000"
     depends_on:
