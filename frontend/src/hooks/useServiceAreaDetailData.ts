@@ -4,7 +4,7 @@ import { groupChargersByOperator } from '@/lib/serviceArea'
 import type { Direction } from '@/types/serviceArea'
 
 // 휴게소 상세 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
-export function useRestAreaDetailData(name: string, direction: Direction) {
+export function useServiceAreaDetailData(name: string, direction: Direction) {
   const query = useServiceAreaChargersQuery(name, direction)
   const chargers = query.data?.chargers
 
