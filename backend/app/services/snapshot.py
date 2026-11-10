@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
 from app.db.models import CollectionRun
-from app.services.status import BUS_CHARGER_TYPE, CONNECTOR_TYPES, is_stale, to_capacity_kw, to_charger_status
+from app.services.status import (
+    BUS_CHARGER_TYPE,
+    CONNECTOR_TYPES,
+    is_stale,
+    to_capacity_kw,
+    to_charger_status,
+)
 
 
 @dataclass
@@ -35,7 +41,12 @@ def latest_success_run(db: Session, target: str) -> CollectionRun:
 
 
 def load_charger_states(
-    db: Session, charger_model, log_model, run: CollectionRun, now: datetime, station_id: str | None = None
+    db: Session,
+    charger_model,
+    log_model,
+    run: CollectionRun,
+    now: datetime,
+    station_id: str | None = None,
 ) -> dict[str, list[ChargerState]]:
     """충전소별 충전기 현재 상태. 버스전용은 빼므로 버스전용만 있는 충전소는 결과에 없음"""
     charger, log = charger_model, log_model
@@ -56,8 +67,14 @@ def load_charger_states(
         .lateral()
     )
     query = (
-        select(charger.station_id, charger.charger_id, charger.charger_type, charger.capacity,
-               latest.c.stat, latest.c.current_charge_start_dt)
+        select(
+            charger.station_id,
+            charger.charger_id,
+            charger.charger_type,
+            charger.capacity,
+            latest.c.stat,
+            latest.c.current_charge_start_dt,
+        )
         .outerjoin(latest, true())
         .where(charger.charger_type != BUS_CHARGER_TYPE)
         .order_by(charger.station_id, charger.charger_id)
@@ -69,12 +86,14 @@ def load_charger_states(
     states: dict[str, list[ChargerState]] = {}
     for row in db.execute(query):
         status = to_charger_status(row.stat, stale)
-        states.setdefault(row.station_id, []).append(ChargerState(
-            station_id=row.station_id,
-            charger_id=row.charger_id,
-            status=status,
-            connector_types=CONNECTOR_TYPES.get(row.charger_type, []),
-            capacity_kw=to_capacity_kw(row.capacity),
-            charging_started_at=row.current_charge_start_dt if status == "charging" else None,
-        ))
+        states.setdefault(row.station_id, []).append(
+            ChargerState(
+                station_id=row.station_id,
+                charger_id=row.charger_id,
+                status=status,
+                connector_types=CONNECTOR_TYPES.get(row.charger_type, []),
+                capacity_kw=to_capacity_kw(row.capacity),
+                charging_started_at=row.current_charge_start_dt if status == "charging" else None,
+            )
+        )
     return states

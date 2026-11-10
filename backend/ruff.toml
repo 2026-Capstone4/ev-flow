@@ -1,0 +1,13 @@
+# Python 포맷 · 린트 설정 (BE-05) — backend/ 에서 실행
+# 검사: ruff check . && ruff format --check .
+# 자동 수정: ruff check --fix . && ruff format .
+target-version = "py311"  # Dockerfile(python:3.11)과 맞춤
+line-length = 100         # 프론트엔드 Prettier printWidth와 맞춤
+
+[lint]
+# E · F: 기본 오류 / I: import 정렬 / UP: 3.11 문법으로 / B: 흔한 버그 패턴
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+  "E501",  # 줄 길이는 포매터가 맞춤. 한글 주석은 자를 수 없어 검사에서 뺌
+  "B008",  # FastAPI의 Depends() · Query() 기본값 패턴 (5곳 모두 이 경우)
+]

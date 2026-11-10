@@ -45,7 +45,6 @@
 | ID | 항목 | 담당 | 선택지 | 제안 · 비고 |
 |---|---|---|---|---|
 | BE-04 | Python 패키지 관리 | 장승민, 김서현, 이상윤 | requirements.txt / uv / Poetry / conda | 백엔드 · AI 통일 권장 — 같은 전처리 코드를 쓰기 때문 |
-| BE-05 | Python 포맷터 · 린터 | 장승민, 김서현, 이상윤 | Ruff / Black | 🟡 Ruff (포맷 · 린트 겸용) |
 | BE-07 | 수집 재시도 정책 · 결측 기록 방식 · 수집 이력 테이블 | 장승민 | — | 제안서: 응답 누락 구간은 결측으로 기록 |
 
 ### 보안 · 비밀 관리
@@ -91,7 +90,7 @@
 
 | ID | 항목 | 담당 | 선택지 | 제안 · 비고 |
 |---|---|---|---|---|
-| CI-01 | PR 시 실행할 검사 (BE) · 필수 체크 지정 | 장승민 | — | 🟡 BE: Ruff → 테스트. `.github/workflows/ci.yml`에 `backend-check` job으로 추가(방법은 파일 맨 위 주석), 추가 후 ruleset 필수 체크에 `ci-result` 지정. FE · 전체 구조는 확정 — [decisions.md PR 검사](decisions.md#pr-검사-ci--) |
+| CI-01 | ruleset 필수 체크 지정 | 장승민 | — | ⏳ `protect-main-develop`에 `ci-result` 추가. 검사 내용은 확정 — [decisions.md PR 검사](decisions.md#pr-검사-ci--) |
 | CI-04 | 배포 시 collector 제외 규칙 | 장승민 | — | API 배포 때 수집이 끊기지 않도록 |
 | CI-05 | 배포 실패 시 롤백 방법 · 배포 후 확인 방법 | 장승민 | 직전 커밋 checkout 후 재빌드 / 이전 이미지 태그 재배포(GHCR 전환 시) | 헬스체크 엔드포인트 경로 포함 (`api` · `ml` 모두 `/health`) |
 | CI-06 | 도메인 · HTTPS 인증서 | 장승민 | 도메인 구매 + Let's Encrypt / EC2 주소 사용 | **Geolocation API는 HTTPS(또는 localhost)에서만 동작** — 모바일 실기기 테스트 · 시연에 영향 |

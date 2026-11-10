@@ -25,9 +25,14 @@ from scripts.restore_pre_switch import SWITCH_AT, get_engine
 #   check:    추정 결과만 요약 (쓰기 없음)
 #   validate: 서버 collector 로그의 Status 실패 기록과 추정을 비교 - 새 collector 배포 전 로그로 실행
 #   apply:    run 생성 + collection_run_id 채움. --commit이 없으면 check와 같음. 끊겨도 다시 실행하면 이어서 함
-TARGETS = {log.__tablename__.removesuffix("_status_log"): (",".join(z), log.__tablename__) for z, _, log in JOBS}
+TARGETS = {
+    log.__tablename__.removesuffix("_status_log"): (",".join(z), log.__tablename__)
+    for z, _, log in JOBS
+}
 UPDATE_BATCH = 100_000  # 상태 로그 id 범위 단위로 나눠 커밋 - 수백만 행을 한 트랜잭션에 묶지 않음
-LOG_MATCH_SEC = 120  # 실패 로그 → 같은 회차 collected_at까지 최대 간격 (호출 timeout 10초 × 재시도 없음)
+LOG_MATCH_SEC = (
+    120  # 실패 로그 → 같은 회차 collected_at까지 최대 간격 (호출 timeout 10초 × 재시도 없음)
+)
 KST = ZoneInfo("Asia/Seoul")
 # 초 이하까지 읽어야 함 - '수집 완료'는 collected_at 몇 ms 뒤에 찍혀 초 단위로 자르면 회차보다 앞선 시각이 됨
 LOG_TS = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z")
@@ -38,16 +43,20 @@ LOG_DONE = re.compile(r"수집 완료 \[([\d,]+)\]")
 def load_cycles(conn, target: str) -> list[tuple]:
     """(collected_at, 행 수, 대상 충전기 수, Status 실패 추정 여부) - 새 collector가 쓴 행은 제외"""
     table = TARGETS[target][1]
-    rows = conn.execute(text(f"""
+    rows = conn.execute(
+        text(f"""
         select l.collected_at, count(*), max(l.stat_upd_dt)
         from {table} l left join collection_runs r on r.id = l.collection_run_id
         where r.id is null or r.is_backfilled
         group by l.collected_at order by l.collected_at
-    """)).all()
+    """)
+    ).all()
     # 당시 대상 수 = 그 회차까지 한 번이라도 기록된 충전기 수 (충전기 행은 FK 때문에 지워지지 않음)
-    firsts = sorted(conn.execute(text(
-        f"select min(collected_at) from {table} group by station_id, charger_id"
-    )).scalars())
+    firsts = sorted(
+        conn.execute(
+            text(f"select min(collected_at) from {table} group by station_id, charger_id")
+        ).scalars()
+    )
     cycles, prev = [], None
     for collected_at, n, max_upd in rows:
         failed = collected_at >= SWITCH_AT and None not in (prev, max_upd) and max_upd <= prev
@@ -64,8 +73,10 @@ def summarize(target: str, cycles: list[tuple]):
     post = [c for c in cycles if c[0] >= SWITCH_AT]
     streaks = [len(list(g)) for failed, g in groupby(c[3] for c in post) if failed]
     hist = " · ".join(f"{k}연속 {streaks.count(k)}구간" for k in sorted(set(streaks)))
-    print(f"[{target}] 회차 {len(cycles):,}개 ({kst(cycles[0][0])} ~ {kst(cycles[-1][0])} KST) · "
-          f"전환 이후 {len(post):,}개 중 FAILED 추정 {sum(streaks):,}개 ({sum(streaks) / max(len(post), 1):.1%})")
+    print(
+        f"[{target}] 회차 {len(cycles):,}개 ({kst(cycles[0][0])} ~ {kst(cycles[-1][0])} KST) · "
+        f"전환 이후 {len(post):,}개 중 FAILED 추정 {sum(streaks):,}개 ({sum(streaks) / max(len(post), 1):.1%})"
+    )
     if hist:
         print(f"    {hist}")
 
@@ -85,7 +96,9 @@ def parse_log(path: str) -> tuple[dict, dict, datetime, datetime]:
             m = LOG_TS.search(line)
             if not m:
                 continue
-            micro = (m.group(2) or "0")[:6].ljust(6, "0")  # docker는 나노초 9자리 - 마이크로초까지만
+            micro = (m.group(2) or "0")[:6].ljust(
+                6, "0"
+            )  # docker는 나노초 9자리 - 마이크로초까지만
             ts = datetime.fromisoformat(f"{m.group(1)}.{micro}+00:00")
             first, last = first or ts, ts
             for pattern, out in ((LOG_FAIL, fails), (LOG_DONE, dones)):
@@ -107,8 +120,12 @@ def validate(db_name: str | None, log_path: str):
             cycles = [c for c in load_cycles(conn, target) if first <= c[0] <= last]
             times = [c[0] for c in cycles]
             # 로그가 끊긴 구간(재시작 등)은 비교하지 않음 - 이전 collector는 실패 회차에도 '수집 완료'를 남김
-            covered = {i for i, t in enumerate(times)
-                       if (k := bisect_right(done_times, t)) < len(done_times) and done_times[k] - t <= window}
+            covered = {
+                i
+                for i, t in enumerate(times)
+                if (k := bisect_right(done_times, t)) < len(done_times)
+                and done_times[k] - t <= window
+            }
             logged, orphan = set(), 0
             for ts in fails.get(target, []):
                 i = bisect_right(times, ts)  # 실패 로그 직후 저장된 같은 회차
@@ -117,11 +134,17 @@ def validate(db_name: str | None, log_path: str):
                 else:
                     orphan += 1
             estimated = {i for i, c in enumerate(cycles) if c[3]}
-            tp, fp, fn = estimated & logged & covered, (estimated - logged) & covered, (logged - estimated) & covered
+            tp, fp, fn = (
+                estimated & logged & covered,
+                (estimated - logged) & covered,
+                (logged - estimated) & covered,
+            )
             precision = len(tp) / max(len(tp) + len(fp), 1)
             recall = len(tp) / max(len(tp) + len(fn), 1)
-            print(f"[{target}] 비교 회차 {len(covered):,}개 · 로그상 실패 {len(logged & covered)} · 추정 FAILED {len(estimated & covered)} · "
-                  f"일치 {len(tp)} → 정밀도 {precision:.2f} · 재현율 {recall:.2f} (회차를 못 찾은 실패 로그 {orphan}건)")
+            print(
+                f"[{target}] 비교 회차 {len(covered):,}개 · 로그상 실패 {len(logged & covered)} · 추정 FAILED {len(estimated & covered)} · "
+                f"일치 {len(tp)} → 정밀도 {precision:.2f} · 재현율 {recall:.2f} (회차를 못 찾은 실패 로그 {orphan}건)"
+            )
             for name, idx in (("추정만 FAILED", fp), ("로그만 실패", fn)):
                 if idx:
                     print(f"    {name}: " + ", ".join(kst(times[i]) for i in sorted(idx)[:20]))
@@ -135,35 +158,57 @@ def apply(db_name: str | None, commit: bool):
             summarize(target, cycles)
             if not commit:
                 continue
-            done = set(conn.execute(text(
-                "select started_at from collection_runs where target = :t and is_backfilled"
-            ), {"t": target}).scalars())
+            done = set(
+                conn.execute(
+                    text(
+                        "select started_at from collection_runs where target = :t and is_backfilled"
+                    ),
+                    {"t": target},
+                ).scalars()
+            )
             new = [
-                {"t": target, "z": zscode, "at": at, "s": "FAILED" if failed else "SUCCESS", "e": expected,
-                 "m": 0 if failed else n}
-                for at, n, expected, failed in cycles if at not in done
+                {
+                    "t": target,
+                    "z": zscode,
+                    "at": at,
+                    "s": "FAILED" if failed else "SUCCESS",
+                    "e": expected,
+                    "m": 0 if failed else n,
+                }
+                for at, n, expected, failed in cycles
+                if at not in done
             ]
             # 소급 run의 started_at = 그 회차 collected_at - 아래 UPDATE가 이 값으로 행을 찾음
             if new:
-                conn.execute(text("""
+                conn.execute(
+                    text("""
                     insert into collection_runs (target, zscode, started_at, status, expected_count, matched_count, is_backfilled)
                     values (:t, :z, :at, :s, :e, :m, true)
-                """), new)
+                """),
+                    new,
+                )
                 conn.commit()
             print(f"    run {len(new):,}개 생성 (기존 소급 run {len(done):,}개)")
 
-            lo, hi = conn.execute(text(f"select min(id), max(id) from {table} where collection_run_id is null")).one()
+            lo, hi = conn.execute(
+                text(f"select min(id), max(id) from {table} where collection_run_id is null")
+            ).one()
             updated = 0
             for start in range(lo or 0, (hi or -1) + 1, UPDATE_BATCH):
-                updated += conn.execute(text(f"""
+                updated += conn.execute(
+                    text(f"""
                     update {table} l set collection_run_id = r.id
                     from collection_runs r
                     where l.id >= :lo and l.id < :hi and l.collection_run_id is null
                       and r.target = :t and r.is_backfilled and r.started_at = l.collected_at
-                """), {"lo": start, "hi": start + UPDATE_BATCH, "t": target}).rowcount
+                """),
+                    {"lo": start, "hi": start + UPDATE_BATCH, "t": target},
+                ).rowcount
                 conn.commit()
                 print(f"    id {start:,}~ · 누적 {updated:,}행", end="\r")
-            left = conn.execute(text(f"select count(*) from {table} where collection_run_id is null")).scalar()
+            left = conn.execute(
+                text(f"select count(*) from {table} where collection_run_id is null")
+            ).scalar()
             print(f"    collection_run_id {updated:,}행 채움 · 남은 NULL {left:,}행")
     if not commit:
         print("요약만 출력함 - 적용하려면 --commit")

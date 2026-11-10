@@ -104,7 +104,7 @@
 
 ### PR 검사 (CI) — ✅
 
-FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — 레포 전체 워크플로 하나에 파트별 job을 둠 (BE job은 `CI-01`, 장승민)
+`CI-01` 이관 (FE 2026-11-07 · BE 2026-11-08). 설정 파일: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — 레포 전체 워크플로 하나에 파트별 job을 둠
 
 | 결정 | 이유 |
 |---|---|
@@ -112,6 +112,7 @@ FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/ci.yml`](../.github
 | **ruleset 필수 체크는 `ci-result` 하나만 지정** — 앞 job에 실패 · 취소가 있으면 실패, 통과 · 건너뜀은 통과 | 파트를 추가해도 ruleset을 고치지 않음. 건너뛴 job은 GitHub이 통과로 기록 |
 | **`develop` · `main` 대상 모든 PR에서 실행**(경로 필터 없음) + 수동 실행(`workflow_dispatch`, 모든 파트 검사). 바뀐 파트는 PR 브랜치가 갈라진 지점과 `git diff`로 비교 | 다른 PR이 develop에 먼저 들어와도 그 변경이 섞이지 않음. 외부 Action(`dorny/paths-filter`) 의존 없음 |
 | **FE 검사(`frontend-check`)**: `frontend/**` 또는 `ci.yml`이 바뀌면 `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`를 차례로 실행 | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패. `ci.yml`이 바뀌면 모든 파트 검사 |
+| **BE 검사(`backend-check`)**: `backend/**` 또는 `ci.yml`이 바뀌면 Python 3.11에서 `pip install -r requirements-dev.txt` → `ruff check` → `ruff format --check` → `pytest`를 차례로 실행 | Python은 운영 이미지(Dockerfile)와 같은 버전, Ruff · pytest는 `requirements-dev.txt`에 고정해 로컬과 CI 결과가 같음. 테스트는 DB · `.env` 없이 도는 판정 로직 단위 테스트 |
 | **Node · pnpm 버전은 YAML에 쓰지 않음** — `frontend/.nvmrc` · `package.json`의 `packageManager`를 읽음 | 로컬과 CI 버전이 항상 같음 |
 | **환경 변수 · Secrets 없이 빌드** | Mock을 뺀 배포용 번들이 빌드되는지 확인. 지도 Client ID는 빌드에 필요 없음 |
 | **읽기 전용 권한(`contents: read`), 같은 PR 새 커밋 시 이전 실행 취소, job별 시간 제한** | 외부 PR에도 쓰기 권한이 없고, 무료 실행 시간 낭비를 막음 |
@@ -135,6 +136,7 @@ FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/ci.yml`](../.github
 | Python 버전 | ✅ 3.11 (백엔드 · AI 통일 — 전처리 로직 재사용 전제) | 장승민, 김서현, 이상윤 |
 | 프레임워크 · 저장소 | ✅ FastAPI 0.115.0, PostgreSQL 16, Redis 7, APScheduler 3.10.4 | 장승민 |
 | ORM · 마이그레이션 | ✅ SQLAlchemy 2.0 + Alembic | 장승민 |
+| 포맷 · 린트 (`BE-05`) | ✅ Ruff 0.17.4 (포맷 · 린트 겸용, 설정 `backend/ruff.toml`) — 규칙 `E` · `F` · `I` · `UP` · `B`, 줄 길이 100(프론트 Prettier와 같음). `E501`(줄 길이)은 포매터에 맡기고 한글 주석 때문에 검사에서 뺌. `B008`은 FastAPI `Depends()` 패턴이라 뺌. AI(`ml/`)는 코드가 생기면 같은 설정을 따름 | 장승민, 김서현, 이상윤 |
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 | 장승민 |
 | Docker Compose 서비스 구성 | ✅ `nginx`, `postgres`, `redis`, `api`, `collector`, `ml` 6개 — collector는 API와 같은 이미지를 쓰되 별도 컨테이너로 분리해 API 재배포 중에도 수집이 끊기지 않게 함. ml은 예측 서빙 전용 컨테이너로 분리(collector만 호출, Redis 쓰기도 collector만). 외부 공개는 nginx만, 나머지는 Compose 내부 네트워크로만 접근. 6개 컨테이너 + 모델 상주가 2GB에 들어가는지는 `AI-04`에서 확인. `docker-compose.yml`은 prod 기준(공개 포트 없음)으로 두고 로컬 개발 포트(5433 · 6379 · 8000 · 8001)는 `docker-compose.override.yml`로 분리 — Compose의 `ports`는 리스트가 병합되어 override로 제거가 불가능하므로 반대로 뒤집음. EC2는 `-f docker-compose.yml`로 override를 배제해 실행 | 장승민 |
 | EC2 인스턴스 · 스토리지 (`INF-02`) | ✅ t3.small (2GB RAM), EBS 30GiB gp3 — 수집 데이터는 12주에 약 1.7GB(행당 330B × 62,496행/일 × 84일)로 여유. 실제 소비처는 OS 2.5GB + 이미지 3GB + 백업이며, 프리티어 EBS 무료 한도가 30GB라 축소할 이유 없음 | 장승민 |
@@ -184,3 +186,4 @@ FE 부분 `CI-01` 이관. 설정 파일: [`.github/workflows/ci.yml`](../.github
 | 2026-11-03 | 길찾기 화면에 네이버 지도 앱 안내 연결 추가(프론트 딥링크, 앱 안 경로 표시 `POST /routes`는 유지), 휴게소 응답에 대표 statId 주소 · 좌표 추가 | 장승민 |
 | 2026-11-07 | FE PR 검사 확정(`CI-01` 중 FE 이관) — `frontend-ci.yml` 추가, 검사에 `format:check` 포함. BE 검사는 `backend-ci.yml`로 분리해 `CI-01`에 남김 | 김무겸 |
 | 2026-11-07 | PR 검사 구조 변경 — 파트별 파일(`frontend-ci.yml` · `backend-ci.yml`) + 경로 필터에서 레포 전체 `ci.yml` 하나(`changes` → `<파트>-check` → `ci-result`)로. 경로 필터로는 다른 파트 PR에 결과가 안 남아 필수 체크를 쓸 수 없어서. 필수 체크는 `ci-result` 하나 | 김무겸 |
+| 2026-11-08 | Python 포맷 · 린트 Ruff 확정(`BE-05` 이관), BE PR 검사 추가(`CI-01` 중 BE 이관) — `backend-check` job(Ruff 린트 · 포맷 검사 → pytest), 기존 백엔드 코드 일괄 포맷. ruleset 필수 체크 지정은 `CI-01`에 남김 | 장승민 |
