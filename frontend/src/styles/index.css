@@ -16,6 +16,8 @@
   --color-border-default: #e5e7eb;
   --color-status-warning: #b45309;
   --color-status-warning-bg: #fffbeb;
+  /* 충전기 '충전 중' 글자색. 좋음/경고 뜻이 없는 상태라 혼잡도 색과 겹치지 않는 남색 */
+  --color-status-charging: #383295;
 
   --color-congestion-free: #16a34a;
   --color-congestion-free-bg: #dcfce7;
