@@ -1,3 +1,5 @@
+import logging
+
 import httpx
 
 from app.config import settings
@@ -9,8 +11,28 @@ BASE_URL = "https://apis.data.go.kr/B552584/EvCharger"
 INFO_URL = f"{BASE_URL}/getChargerInfo"
 STATUS_URL = f"{BASE_URL}/getChargerStatus"
 # 2026-10-23부터 getChargerStatus 응답이 10초를 넘는 회차가 약 30% (11/1까지 ReadTimeout 1,582건) -
-# 수집 주기(5분)에 비해 짧아 30초로 늘림. 페이지마다 적용되며, Status · Info를 모두 기다려도 1분 안에 끝남
+# 수집 주기(5분)에 비해 짧아 30초로 늘림. 페이지마다 적용되며, Status · Info가 둘 다 재시도까지 기다려도 2분 안에 끝남
 REQUEST_TIMEOUT_SEC = 30
+# 타임아웃 · 504만 1회 재시도함 - 11/1~11/9 실패가 이 둘뿐이고(Status 실패율 16.5%) 둘 다 응답 30초 언저리의
+# 같은 현상(게이트웨이 한도와 타임아웃의 경합)이라 바로 다시 부르면 통하는 경우가 있음.
+# 그 외 4xx · 5xx · 연결 오류는 다시 불러도 같은 결과라 재시도하지 않음.
+# 하루 한도 1,000건 중 정상 672건 - 실패율만큼 호출이 늘어나며(16.5%면 약 +110건), 1회로 제한해 한도를 넘지 않게 함
+MAX_RETRIES = 1
+
+logger = logging.getLogger(__name__)
+
+
+def _is_retryable(e: httpx.HTTPError) -> bool:
+    if isinstance(e, httpx.TimeoutException):
+        return True
+    return isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 504
+
+
+def _describe(e: httpx.HTTPError) -> str:
+    # 요청 URL(serviceKey 포함)이 든 예외 메시지는 쓰지 않고 상태 코드 · 예외 이름만 남김
+    if isinstance(e, httpx.HTTPStatusError):
+        return f"HTTP {e.response.status_code}"
+    return f"요청 실패: {type(e).__name__}"
 
 
 def _fetch_items(url: str, params: dict) -> list[dict]:
@@ -22,13 +44,17 @@ def _fetch_items(url: str, params: dict) -> list[dict]:
     # httpx 예외 메시지에는 serviceKey가 든 요청 URL이 평문으로 들어감 - 호출부의 logger.exception으로
     # 로그에 남지 않도록 원래 예외를 버리고(from None) 엔드포인트 이름 · 상태 코드만 남김
     name = url.rsplit("/", 1)[-1]
-    try:
-        resp = httpx.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        raise RuntimeError(f"{name} HTTP {e.response.status_code}") from None
-    except httpx.HTTPError as e:
-        raise RuntimeError(f"{name} 요청 실패: {type(e).__name__}") from None
+    for attempt in range(1 + MAX_RETRIES):
+        try:
+            resp = httpx.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
+            resp.raise_for_status()
+            break
+        except httpx.HTTPError as e:
+            reason = _describe(e)
+            if attempt < MAX_RETRIES and _is_retryable(e):
+                logger.warning("%s %s - 재시도 (%d/%d)", name, reason, attempt + 1, MAX_RETRIES)
+                continue
+            raise RuntimeError(f"{name} {reason}") from None
 
     data = resp.json()
     items = data.get("items")
