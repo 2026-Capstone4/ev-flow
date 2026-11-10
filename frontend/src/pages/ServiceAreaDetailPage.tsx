@@ -5,17 +5,17 @@ import { ChargerRow } from '@/components/ChargerRow'
 import { DirectionTag } from '@/components/DirectionTag'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { useNow } from '@/hooks/useNow'
-import { useRestAreaDetailData } from '@/hooks/useRestAreaDetailData'
+import { useServiceAreaDetailData } from '@/hooks/useServiceAreaDetailData'
 import { AVAILABILITY_TONE_CLASS, getAvailabilityTone, parseDirection } from '@/lib/serviceArea'
 
 // 명세상 휴게소는 길찾기를 제공하지 않아(POST /routes는 도심 충전소만) Figma 08의 길찾기 버튼은 넣지 않음
-export function RestAreaDetailPage() {
+export function ServiceAreaDetailPage() {
   const [searchParams] = useSearchParams()
   const name = searchParams.get('name') ?? ''
   const direction = parseDirection(searchParams.get('direction'))
   const now = useNow()
   const { serviceArea, chargerGroups, unknownCount, updatedAt, isError, isNotFound } =
-    useRestAreaDetailData(name, direction)
+    useServiceAreaDetailData(name, direction)
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">

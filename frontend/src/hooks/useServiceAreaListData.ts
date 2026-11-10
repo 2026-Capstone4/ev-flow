@@ -3,7 +3,7 @@ import { getListLoadState } from '@/lib/loadState'
 import type { Direction } from '@/types/serviceArea'
 
 // 휴게소 목록 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
-export function useRestAreaListData(direction: Direction) {
+export function useServiceAreaListData(direction: Direction) {
   const query = useServiceAreasQuery()
   const all = query.data?.serviceAreas
   const serviceAreas = all?.filter((area) => area.direction === direction)

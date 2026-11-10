@@ -3,16 +3,17 @@ import { BottomTab } from '@/components/BottomTab'
 import { DirectionSelector } from '@/components/DirectionSelector'
 import { ServiceAreaCard } from '@/components/ServiceAreaCard'
 import { UpdateStatus } from '@/components/UpdateStatus'
-import { useRestAreaListData } from '@/hooks/useRestAreaListData'
+import { useServiceAreaListData } from '@/hooks/useServiceAreaListData'
 import { NO_FORECAST_SERVICE_AREA_LABEL, parseDirection } from '@/lib/serviceArea'
 import type { Direction } from '@/types/serviceArea'
 
-export function RestAreaListPage() {
+export function ServiceAreaListPage() {
   const navigate = useNavigate()
   // 상세에서 뒤로 돌아와도 고른 방향이 유지되도록 URL에 둠
   const [searchParams, setSearchParams] = useSearchParams()
   const direction = parseDirection(searchParams.get('direction'))
-  const { serviceAreas, totalCount, updatedAt, isError, loadState } = useRestAreaListData(direction)
+  const { serviceAreas, totalCount, updatedAt, isError, loadState } =
+    useServiceAreaListData(direction)
 
   const changeDirection = (value: Direction) =>
     setSearchParams({ direction: value }, { replace: true })
@@ -42,7 +43,7 @@ export function RestAreaListPage() {
                   serviceArea={area}
                   onClick={() =>
                     navigate(
-                      `/rest-areas/detail?${new URLSearchParams({ name: area.name, direction })}`,
+                      `/service-areas/detail?${new URLSearchParams({ name: area.name, direction })}`,
                     )
                   }
                 />
