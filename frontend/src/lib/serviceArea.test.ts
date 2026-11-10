@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formatStatusSummary, getAvailabilityTone, parseDirection } from '@/lib/serviceArea'
+import {
+  formatStatusSummary,
+  getAvailabilityTone,
+  groupChargersByOperator,
+  parseDirection,
+} from '@/lib/serviceArea'
+import type { ServiceAreaCharger } from '@/types/serviceArea'
 
 describe('parseDirection', () => {
   it('down만 하행, 나머지는 상행', () => {
@@ -32,5 +38,42 @@ describe('getAvailabilityTone', () => {
 
   it('상태를 아는 충전기가 없으면 unknown', () => {
     expect(getAvailabilityTone(0, 3, 3)).toBe('unknown')
+  })
+})
+
+describe('groupChargersByOperator', () => {
+  const charger = (operator: string, stationId: string, chargerId: string): ServiceAreaCharger => ({
+    operator,
+    stationId,
+    chargerId,
+    status: 'available',
+    connectorTypes: ['dc_combo'],
+    capacityKw: 100,
+    chargingStartedAt: null,
+  })
+
+  it('같은 운영기관의 다른 충전소는 한 운영기관 안에서 충전소별로 나눔', () => {
+    const groups = groupChargersByOperator([
+      charger('기후에너지환경부', 'ME178010', '01'),
+      charger('기후에너지환경부', 'ME21A307', '01'),
+      charger('SK일렉링크', 'ST441325', '01'),
+      charger('기후에너지환경부', 'ME178010', '02'),
+    ])
+    expect(groups.map((g) => g.operator)).toEqual(['기후에너지환경부', 'SK일렉링크'])
+    expect(
+      groups[0].stations.map((s) => [s.stationId, s.chargers.map((c) => c.chargerId)]),
+    ).toEqual([
+      ['ME178010', ['01', '02']],
+      ['ME21A307', ['01']],
+    ])
+  })
+
+  it('운영기관명 앞뒤 공백은 다듬어서 같은 운영기관으로 묶음', () => {
+    const groups = groupChargersByOperator([
+      charger('SK시그넷 ', 'SGMAC044', '01'),
+      charger('SK시그넷', 'SGMAC045', '01'),
+    ])
+    expect(groups).toHaveLength(1)
+    expect(groups[0].operator).toBe('SK시그넷')
   })
 })

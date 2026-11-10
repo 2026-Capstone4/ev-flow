@@ -2,6 +2,7 @@
 
 api는 Redis만 읽음. Redis 장애는 예측을 비우는 데서 끝내고 조회 API 자체는 실패시키지 않음
 """
+
 import json
 import logging
 import time
@@ -68,15 +69,20 @@ def _round_wait(minutes: float) -> int:
     return int(minutes + 0.5)
 
 
-def build_predictions(station_id: str, quality: str, model: dict | None, baseline: dict | None,
-                      now: datetime) -> list[Prediction]:
+def build_predictions(
+    station_id: str, quality: str, model: dict | None, baseline: dict | None, now: datetime
+) -> list[Prediction]:
     """충전소 하나의 15 · 30 · 60분 예측 (docs/prediction.md api 조회 규칙)"""
     preds = model.get(station_id) if model and quality != "baseline" else None
     if preds:
         return [
-            Prediction(horizon_minutes=p["horizon"], congestion=p["congestion"],
-                       wait_time_p50_minutes=_round_wait(p["wait_p50"]),
-                       wait_time_p90_minutes=_round_wait(p["wait_p90"]), source="model")
+            Prediction(
+                horizon_minutes=p["horizon"],
+                congestion=p["congestion"],
+                wait_time_p50_minutes=_round_wait(p["wait_p50"]),
+                wait_time_p90_minutes=_round_wait(p["wait_p90"]),
+                source="model",
+            )
             for p in preds
         ]
     # 기준선은 혼잡도만 있음 - 대기시간 기준선은 정하지 않아 null
@@ -84,6 +90,13 @@ def build_predictions(station_id: str, quality: str, model: dict | None, baselin
     result = []
     for h in HORIZONS:
         congestion = slots[baseline_slot(now + timedelta(minutes=h))] if slots else None
-        result.append(Prediction(horizon_minutes=h, congestion=congestion, wait_time_p50_minutes=None,
-                                 wait_time_p90_minutes=None, source="baseline" if congestion else None))
+        result.append(
+            Prediction(
+                horizon_minutes=h,
+                congestion=congestion,
+                wait_time_p50_minutes=None,
+                wait_time_p90_minutes=None,
+                source="baseline" if congestion else None,
+            )
+        )
     return result

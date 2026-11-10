@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,8 +12,16 @@ from app.services.snapshot import ChargerState, latest_success_run, load_charger
 from app.services.status import current_congestion, elapsed_quality, station_quality
 
 
-def build_station(schema, charger_schema, station: CityStation, chargers: list[ChargerState],
-                  updated_at: datetime, now: datetime, model: dict | None, baseline: dict | None):
+def build_station(
+    schema,
+    charger_schema,
+    station: CityStation,
+    chargers: list[ChargerState],
+    updated_at: datetime,
+    now: datetime,
+    model: dict | None,
+    baseline: dict | None,
+):
     """목록(Station · Charger)과 상세(StationDetail · ChargerDetail)가 충전기 필드만 달라 스키마를 받음"""
     statuses = [c.status for c in chargers]
     quality = station_quality(statuses, updated_at, now)
@@ -38,17 +46,23 @@ def build_station(schema, charger_schema, station: CityStation, chargers: list[C
 def get_stations(db: Session) -> StationsResponse:
     run = latest_success_run(db, "city")
     updated_at = run.started_at
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     states = load_charger_states(db, CityCharger, CityStatusLog, run, now)
     stations = db.scalars(
-        select(CityStation).where(CityStation.station_id.in_(list(states))).order_by(CityStation.station_id)
+        select(CityStation)
+        .where(CityStation.station_id.in_(list(states)))
+        .order_by(CityStation.station_id)
     )
     model, baseline = load_model_predictions(), load_baseline()
     return StationsResponse(
         updated_at=updated_at,
         data_quality=elapsed_quality(updated_at, now),
-        stations=[build_station(Station, Charger, s, states[s.station_id], updated_at, now, model, baseline)
-                  for s in stations],
+        stations=[
+            build_station(
+                Station, Charger, s, states[s.station_id], updated_at, now, model, baseline
+            )
+            for s in stations
+        ],
     )
 
 
@@ -58,7 +72,7 @@ def get_station(db: Session, station_id: str) -> StationDetailResponse:
         raise ApiError(404, "STATION_NOT_FOUND", "충전소를 찾을 수 없습니다.")
     run = latest_success_run(db, "city")
     updated_at = run.started_at
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     states = load_charger_states(db, CityCharger, CityStatusLog, run, now, station_id=station_id)
     # 버스전용만 있는 충전소 - 목록에서 빠지므로 상세도 없는 충전소로 처리
     if station_id not in states:
@@ -67,6 +81,14 @@ def get_station(db: Session, station_id: str) -> StationDetailResponse:
     return StationDetailResponse(
         updated_at=updated_at,
         data_quality=elapsed_quality(updated_at, now),
-        station=build_station(StationDetail, ChargerDetail, station, states[station_id], updated_at, now,
-                              model, baseline),
+        station=build_station(
+            StationDetail,
+            ChargerDetail,
+            station,
+            states[station_id],
+            updated_at,
+            now,
+            model,
+            baseline,
+        ),
     )

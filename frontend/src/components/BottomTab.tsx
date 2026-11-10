@@ -2,7 +2,7 @@ import { NavLink } from 'react-router'
 
 const TABS = [
   { to: '/', label: '도심 충전소' },
-  { to: '/rest-areas', label: '고속도로 휴게소' },
+  { to: '/service-areas', label: '고속도로 휴게소' },
 ]
 
 export function BottomTab() {

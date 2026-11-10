@@ -23,7 +23,9 @@ CONNECTOR_TYPES = {
 BUS_CHARGER_TYPE = "11"  # 버스 차고지 충전기 - 충전기 목록 · 대수 집계에서 뺌
 
 DELAYED_AFTER = timedelta(minutes=10)
-STALE_AFTER = timedelta(minutes=20)  # 이후로는 충전기 상태를 모두 unknown으로 보고 예측은 기준선으로 대체
+STALE_AFTER = timedelta(
+    minutes=20
+)  # 이후로는 충전기 상태를 모두 unknown으로 보고 예측은 기준선으로 대체
 MIN_CONFIRMED_RATIO = 0.8  # 상태 확인 비율이 이보다 낮으면 현재 혼잡도 unknown · 예측 기준선
 
 
@@ -73,7 +75,9 @@ def station_quality(statuses: list[str], updated_at: datetime, now: datetime) ->
 def current_congestion(statuses: list[str]) -> str:
     """현재 혼잡도 (분석서 p.9). statuses는 버스전용을 뺀 충전기 상태 - 비어 있으면 안 됨"""
     confirmed = sum(s != "unknown" for s in statuses)
-    return congestion_from_counts(len(statuses), confirmed, statuses.count("available"), statuses.count("charging"))
+    return congestion_from_counts(
+        len(statuses), confirmed, statuses.count("available"), statuses.count("charging")
+    )
 
 
 def congestion_from_counts(total: int, confirmed: int, available: int, charging: int) -> str:

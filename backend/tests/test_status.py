@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -10,7 +10,7 @@ from app.services.status import (
     to_charger_status,
 )
 
-NOW = datetime(2026, 10, 30, 5, 5, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 30, 5, 5, tzinfo=UTC)
 
 
 def minutes_ago(minutes: int) -> datetime:
@@ -74,7 +74,10 @@ def test_station_quality(statuses, minutes, expected):
         (["available", "available", "charging", "charging"], "medium"),  # 점유율 50%
         (["available", "charging"], "medium"),  # 가용 1
         (["available"], "medium"),  # 1기 충전소는 비어 있어도 여유가 아님
-        (["available", "available", "maintenance", "maintenance"], "low"),  # 점검은 점유율 분모에서 뺌
+        (
+            ["available", "available", "maintenance", "maintenance"],
+            "low",
+        ),  # 점검은 점유율 분모에서 뺌
         (["charging", "charging", "maintenance"], "high"),
         (["maintenance", "stopped"], "unavailable"),
         (["maintenance"] * 4 + ["unknown"], "unavailable"),  # 확인 비율 80% - 확인된 충전기 기준

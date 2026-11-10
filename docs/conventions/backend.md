@@ -18,7 +18,7 @@
 |---|---|
 | Python | ✅ 3.11 |
 | 패키지 관리 | ⏳ `BE-04` |
-| 포맷 · 린트 | ⏳ `BE-05` (🟡 Ruff) |
+| 포맷 · 린트 | ✅ Ruff — 설정 `ruff.toml` (`BE-05`) |
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 |
 | ORM · 마이그레이션 | ✅ SQLAlchemy 2.0 + Alembic |
 | 테스트 | 🟡 pytest — 판정 로직 단위 테스트, DB 없이 실행 (`TST-01` 미확정) |
@@ -59,7 +59,8 @@ backend/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
-├── requirements-dev.txt            # 개발 · 테스트 전용 (pytest)
+├── requirements-dev.txt            # 개발 · 테스트 전용 (pytest · ruff)
+├── ruff.toml                       # 포맷 · 린트 설정
 └── .env.example
 ```
 
@@ -80,7 +81,9 @@ backend/
 ```bash
 cd backend
 pip install -r requirements-dev.txt
+ruff check --fix .   # 린트 (자동 수정 가능한 것은 고침)
+ruff format .        # 포맷
 pytest
 ```
 
-포맷 · 린트는 `BE-05` 확정 후 추가
+CI는 같은 순서로 고치지 않고 검사만 함 (`ruff check .` · `ruff format --check .` · `pytest`)

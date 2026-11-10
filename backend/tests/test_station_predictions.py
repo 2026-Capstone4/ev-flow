@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -14,27 +14,45 @@ from app.services import predictions  # noqa: E402
 from app.services.predictions import build_predictions, load_baseline, load_model_predictions  # noqa: E402
 
 # 월 00:40 KST - 기준선 대상 시각은 +15분 00:55(0번 칸), +30분 01:10 · +60분 01:40(1번 칸)
-NOW = datetime(2026, 11, 8, 15, 40, tzinfo=timezone.utc)
+NOW = datetime(2026, 11, 8, 15, 40, tzinfo=UTC)
 BASELINE = {"A": ["low", "high"] + [None] * 166}
-MODEL = {"A": [
-    {"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 2.5},
-    {"horizon": 30, "congestion": "medium", "wait_p50": 1.49, "wait_p90": 4.5},
-    {"horizon": 60, "congestion": "high", "wait_p50": 3.0, "wait_p90": 10.0},
-]}
-FROM_BASELINE = [(15, "low", None, None, "baseline"), (30, "high", None, None, "baseline"),
-                 (60, "high", None, None, "baseline")]
+MODEL = {
+    "A": [
+        {"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 2.5},
+        {"horizon": 30, "congestion": "medium", "wait_p50": 1.49, "wait_p90": 4.5},
+        {"horizon": 60, "congestion": "high", "wait_p50": 3.0, "wait_p90": 10.0},
+    ]
+}
+FROM_BASELINE = [
+    (15, "low", None, None, "baseline"),
+    (30, "high", None, None, "baseline"),
+    (60, "high", None, None, "baseline"),
+]
 ALL_NULL = [(h, None, None, None, None) for h in (15, 30, 60)]
 
 
 def run(quality="normal", model=MODEL, baseline=BASELINE):
-    return [(p.horizon_minutes, p.congestion, p.wait_time_p50_minutes, p.wait_time_p90_minutes, p.source)
-            for p in build_predictions("A", quality, model, baseline, NOW)]
+    return [
+        (
+            p.horizon_minutes,
+            p.congestion,
+            p.wait_time_p50_minutes,
+            p.wait_time_p90_minutes,
+            p.source,
+        )
+        for p in build_predictions("A", quality, model, baseline, NOW)
+    ]
 
 
 # --- 조회 규칙 (docs/prediction.md api 조회 규칙) ---
 
+
 def test_model_used_and_wait_rounded_half_up():
-    assert run() == [(15, "low", 0, 3, "model"), (30, "medium", 1, 5, "model"), (60, "high", 3, 10, "model")]
+    assert run() == [
+        (15, "low", 0, 3, "model"),
+        (30, "medium", 1, 5, "model"),
+        (60, "high", 3, 10, "model"),
+    ]
 
 
 @pytest.mark.parametrize("quality", ["normal", "missing", "delayed"])
@@ -57,6 +75,7 @@ def test_all_null_without_baseline(baseline):
 
 
 # --- Redis 읽기 · 기준선 캐시 ---
+
 
 class FakeRedis:
     def __init__(self):

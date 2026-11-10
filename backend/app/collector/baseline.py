@@ -4,11 +4,12 @@
 예측이 없거나(pred:v1 만료 · ml 미준비) 충전소 dataQuality가 baseline일 때 api가 대신 보여줌.
 실패는 여기서 모두 삼킴 - 수집에 영향을 주면 안 됨
 """
+
 import json
 import logging
 import threading
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import redis
 from sqlalchemy import and_, func, select
@@ -63,19 +64,26 @@ def load_counts(db: Session, since: datetime):
         )
         .select_from(run)
         .join(log, log.collection_run_id == run.id)
-        .join(charger, and_(charger.station_id == log.station_id, charger.charger_id == log.charger_id))
+        .join(
+            charger,
+            and_(charger.station_id == log.station_id, charger.charger_id == log.charger_id),
+        )
         # 실행 id로 고름 - collection_runs 도입 이전 FAILED 회차도 행을 남겼음 (snapshot.py와 같은 이유)
-        .where(run.target == "city", run.status.in_(("SUCCESS", "PARTIAL")), run.started_at >= since,
-               log.collected_at >= since, charger.charger_type != BUS_CHARGER_TYPE)
+        .where(
+            run.target == "city",
+            run.status.in_(("SUCCESS", "PARTIAL")),
+            run.started_at >= since,
+            log.collected_at >= since,
+            charger.charger_type != BUS_CHARGER_TYPE,
+        )
         .group_by(run.id, run.started_at, log.station_id)
         .subquery()
     )
     p = per_run.c
     hour = func.date_trunc("hour", p.started_at).label("hour")
-    query = (
-        select(p.station_id, hour, p.confirmed, p.available, p.charging, func.count().label("n"))
-        .group_by(p.station_id, hour, p.confirmed, p.available, p.charging)
-    )
+    query = select(
+        p.station_id, hour, p.confirmed, p.available, p.charging, func.count().label("n")
+    ).group_by(p.station_id, hour, p.confirmed, p.available, p.charging)
     return db.execute(query).all()
 
 
@@ -104,7 +112,7 @@ def refresh_baseline() -> None:
         return
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         since = now - WINDOW
         stations = build_slots(load_counts(db, since), load_totals(db))
         if not stations:
