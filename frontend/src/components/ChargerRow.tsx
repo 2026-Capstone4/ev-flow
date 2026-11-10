@@ -4,7 +4,7 @@ import type { ChargerDetail, ChargerStatus } from '@/types/station'
 // TODO(fe): Figma에 운영 중지 · 확인 불가 색 추가 후 맞춤 (지금은 점검 중 · 확인 불가 배지 색을 빌려 씀)
 const STATUS_CLASS: Record<ChargerStatus, string> = {
   available: 'text-congestion-free',
-  charging: 'text-text-secondary',
+  charging: 'text-status-charging',
   stopped: 'text-status-warning',
   maintenance: 'text-status-warning',
   unknown: 'text-congestion-unknown',
