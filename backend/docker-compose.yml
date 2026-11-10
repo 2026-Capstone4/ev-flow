@@ -47,6 +47,8 @@ services:
     environment:
       # .env 값은 호스트 직접 실행용이라 컨테이너 내부 주소로 덮어씀
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # 예측 조회용 (docs/prediction.md) - 없으면 기본값 localhost를 봐서 예측이 항상 null이 됨
+      REDIS_URL: redis://redis:6379/0
     expose:
       - "8000"
     depends_on:
@@ -66,6 +68,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # 예측 갱신용 (docs/prediction.md) - depends_on은 걸지 않음: redis · ml이 죽어도 수집은 계속돼야 함
+      REDIS_URL: redis://redis:6379/0
+      ML_URL: http://ml:8001
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +83,11 @@ services:
       dockerfile: Dockerfile
     container_name: evflow-ml
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1
+    environment:
+      MODEL_DIR: /models
+    # 모델 파일은 저장소 · 이미지에 넣지 않고 서버의 ml/models/에 둠 (AI-02) - 교체 후 ml 재시작
+    volumes:
+      - ../ml/models:/models:ro
     expose:
       - "8001"
     mem_limit: 512m

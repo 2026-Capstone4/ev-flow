@@ -74,10 +74,17 @@ def station_quality(statuses: list[str], updated_at: datetime, now: datetime) ->
 
 def current_congestion(statuses: list[str]) -> str:
     """현재 혼잡도 (분석서 p.9). statuses는 버스전용을 뺀 충전기 상태 - 비어 있으면 안 됨"""
-    if confirmed_ratio(statuses) < MIN_CONFIRMED_RATIO:
+    confirmed = sum(s != "unknown" for s in statuses)
+    return congestion_from_counts(
+        len(statuses), confirmed, statuses.count("available"), statuses.count("charging")
+    )
+
+
+def congestion_from_counts(total: int, confirmed: int, available: int, charging: int) -> str:
+    """current_congestion의 개수 버전 - 기준선 계산이 SQL 집계 결과(회차 × 충전소)에 그대로 씀.
+    total은 버스전용을 뺀 충전기 수, confirmed는 그중 상태를 아는 충전기 수"""
+    if confirmed / total < MIN_CONFIRMED_RATIO:
         return "unknown"
-    available = statuses.count("available")
-    charging = statuses.count("charging")
     # 분석서는 '모두 점검 중 · 사용 불가'로 정의하나, 확인 비율 80~100%에서 확인된 충전기가 모두
     # 운영중지 · 점검중이면 점유율 분모가 0이라 어느 단계에도 들지 않음 - 확인된 충전기 기준으로 넓힘
     if available + charging == 0:
