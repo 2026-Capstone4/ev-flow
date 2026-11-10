@@ -14,11 +14,24 @@ from scripts.restore_pre_switch import SWITCH_AT, get_engine
 BUS_ONLY_TYPE = "11"
 # 원천 데이터 문제로 30분마다 2↔9를 반복하는 충전기 (2026-10-22 확인)
 UNSTABLE_CHARGERS = [
-    "ME19A245-21", "ME19A245-22", "ME19A246-21", "ME19A246-22", "ME19A265-22",
-    "ME19A601-23", "ME19A601-24", "ME19A601-25", "ME19A601-26",
-    "ME21B180-01", "ME21B412-01", "ME21B412-02", "ME21B412-03", "ME21B412-04",
+    "ME19A245-21",
+    "ME19A245-22",
+    "ME19A246-21",
+    "ME19A246-22",
+    "ME19A265-22",
+    "ME19A601-23",
+    "ME19A601-24",
+    "ME19A601-25",
+    "ME19A601-26",
+    "ME21B180-01",
+    "ME21B412-01",
+    "ME21B412-02",
+    "ME21B412-03",
+    "ME21B412-04",
 ]
-ALWAYS_DOWN_RATIO = 0.9  # 기간 중 이 비율 이상이 통신이상·운영중지·점검중·미확인이면 상시 고장으로 표시
+ALWAYS_DOWN_RATIO = (
+    0.9  # 기간 중 이 비율 이상이 통신이상·운영중지·점검중·미확인이면 상시 고장으로 표시
+)
 DOWN_STATS = ("1", "4", "5", "9")
 PREFIXES = ["city", "service_area"]
 

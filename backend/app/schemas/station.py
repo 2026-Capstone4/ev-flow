@@ -1,7 +1,13 @@
 from typing import Literal
 
 from app.schemas.base import CamelModel, KstDatetime
-from app.schemas.common import Charger, ChargerDetail, CurrentCongestion, DataQuality, ResponseDataQuality
+from app.schemas.common import (
+    Charger,
+    ChargerDetail,
+    CurrentCongestion,
+    DataQuality,
+    ResponseDataQuality,
+)
 
 
 class Prediction(CamelModel):

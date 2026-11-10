@@ -19,7 +19,8 @@ export function ChargerRow({ charger, now }: ChargerRowProps) {
   const elapsed = formatChargingElapsed(charger.chargingStartedAt, now)
   return (
     <li className="flex items-center justify-between gap-2 border-b border-border-default px-4 py-3 last:border-b-0">
-      <span className="min-w-0 truncate text-sm font-medium">
+      {/* 커넥터가 여럿인 충전기(DC차데모/AC3상/DC콤보)는 한 줄에 안 들어가서 말줄임 대신 줄바꿈. 단어 중간은 끊지 않음 */}
+      <span className="min-w-0 text-sm font-medium break-keep">
         급속 {charger.chargerId} · {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
       </span>
       <span className={`shrink-0 text-[13px] font-bold ${STATUS_CLASS[charger.status]}`}>

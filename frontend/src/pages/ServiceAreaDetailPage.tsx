@@ -5,17 +5,17 @@ import { ChargerRow } from '@/components/ChargerRow'
 import { DirectionTag } from '@/components/DirectionTag'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { useNow } from '@/hooks/useNow'
-import { useRestAreaDetailData } from '@/hooks/useRestAreaDetailData'
+import { useServiceAreaDetailData } from '@/hooks/useServiceAreaDetailData'
 import { AVAILABILITY_TONE_CLASS, getAvailabilityTone, parseDirection } from '@/lib/serviceArea'
 
 // 명세상 휴게소는 길찾기를 제공하지 않아(POST /routes는 도심 충전소만) Figma 08의 길찾기 버튼은 넣지 않음
-export function RestAreaDetailPage() {
+export function ServiceAreaDetailPage() {
   const [searchParams] = useSearchParams()
   const name = searchParams.get('name') ?? ''
   const direction = parseDirection(searchParams.get('direction'))
   const now = useNow()
-  const { serviceArea, chargersByOperator, unknownCount, updatedAt, isError, isNotFound } =
-    useRestAreaDetailData(name, direction)
+  const { serviceArea, chargerGroups, unknownCount, updatedAt, isError, isNotFound } =
+    useServiceAreaDetailData(name, direction)
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
@@ -24,7 +24,7 @@ export function RestAreaDetailPage() {
         <h1 className="text-[17px] font-bold">휴게소 상세</h1>
       </header>
 
-      {serviceArea && chargersByOperator ? (
+      {serviceArea && chargerGroups ? (
         <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-2 pb-8">
           <section className="flex flex-col items-start gap-1.5">
             <div className="flex items-center gap-2">
@@ -67,21 +67,23 @@ export function RestAreaDetailPage() {
 
           <section className="flex flex-col gap-3">
             <h3 className="text-base font-bold">충전기 현황</h3>
-            {chargersByOperator.map(([operator, chargers]) => (
+            {chargerGroups.map(({ operator, stations }) => (
               <div key={operator} className="flex flex-col gap-2">
                 {/* 운영기관이 하나면 묶음 제목은 생략 */}
-                {chargersByOperator.length > 1 && (
+                {chargerGroups.length > 1 && (
                   <h4 className="text-[13px] font-medium text-text-secondary">{operator}</h4>
                 )}
-                <ul className="overflow-hidden rounded-md border border-border-default">
-                  {chargers.map((charger) => (
-                    <ChargerRow
-                      key={`${charger.stationId}-${charger.chargerId}`}
-                      charger={charger}
-                      now={now}
-                    />
-                  ))}
-                </ul>
+                {/* 충전기 번호가 충전소마다 01부터라 충전소별로 상자를 나눠 번호 중복을 구분 */}
+                {stations.map(({ stationId, chargers }) => (
+                  <ul
+                    key={stationId}
+                    className="overflow-hidden rounded-md border border-border-default"
+                  >
+                    {chargers.map((charger) => (
+                      <ChargerRow key={charger.chargerId} charger={charger} now={now} />
+                    ))}
+                  </ul>
+                ))}
               </div>
             ))}
           </section>

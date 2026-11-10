@@ -27,16 +27,24 @@ class StationColumns:
     lng = Column(Float)  # getChargerInfo 응답에 포함됨
     operator = Column(String(100))  # 운영기관
     # 추천 화면 표시용 - 수집 대상(급속)이 아니라 개수만 저장함. scripts/update_charger_counts.py로 채움
-    slow_charger_count = Column(Integer, nullable=False, default=0, server_default="0")  # output <= 11kW
-    mid_charger_count = Column(Integer, nullable=False, default=0, server_default="0")  # 11kW < output < 50kW
+    slow_charger_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )  # output <= 11kW
+    mid_charger_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )  # 11kW < output < 50kW
 
 
 class ChargerColumns:
     station_id = Column(String(20), primary_key=True)
     charger_id = Column(String(10), primary_key=True)
-    charger_type = Column(String(50))  # chgerType 코드 (예: 04 = DC콤보, 11 = 버스전용) - 코드표는 docs/database.md
+    charger_type = Column(
+        String(50)
+    )  # chgerType 코드 (예: 04 = DC콤보, 11 = 버스전용) - 코드표는 docs/database.md
     capacity = Column(String(50))  # output (kW) - 급속 판정에도 쓰는 필드
-    is_limited = Column(Boolean, default=False)  # limitYn - 수집 단계에서 이미 이용제한(limitYn=Y) 충전기를 제외하므로 항상 False
+    is_limited = Column(
+        Boolean, default=False
+    )  # limitYn - 수집 단계에서 이미 이용제한(limitYn=Y) 충전기를 제외하므로 항상 False
 
 
 class StatusLogColumns:
@@ -48,7 +56,9 @@ class StatusLogColumns:
     stat_upd_dt = Column(DateTime(timezone=True))  # statUpdDt - API 기준 상태 갱신 시각
     last_charge_start_dt = Column(DateTime(timezone=True))  # lastTsdt - 마지막 충전 시작
     last_charge_end_dt = Column(DateTime(timezone=True))  # lastTedt - 마지막 충전 종료
-    current_charge_start_dt = Column(DateTime(timezone=True))  # nowTsdt - 현재충전중이면 시작시각, 아니면 NULL
+    current_charge_start_dt = Column(
+        DateTime(timezone=True)
+    )  # nowTsdt - 현재충전중이면 시작시각, 아니면 NULL
     collected_at = Column(DateTime(timezone=True), nullable=False)  # 실제 수집(호출) 시각
     # 이 행을 저장한 수집 실행 - 기존 행은 scripts/backfill_collection_runs.py로 채움. NULL 허용 (2026-09-28 결정)
     collection_run_id = Column(Integer)
@@ -63,16 +73,23 @@ class CollectionRun(Base):
     zscode = Column(String(50), nullable=False)  # 조회 지역 코드 (여러 개면 쉼표로 연결)
     started_at = Column(DateTime(timezone=True), nullable=False)
     finished_at = Column(DateTime(timezone=True))  # 실행 중이면 NULL
-    status = Column(String(10), nullable=False, default="RUNNING")  # RUNNING / SUCCESS / PARTIAL / FAILED
+    status = Column(
+        String(10), nullable=False, default="RUNNING"
+    )  # RUNNING / SUCCESS / PARTIAL / FAILED
     api_latency_ms = Column(Integer)  # getChargerStatus 응답 지연
     expected_count = Column(Integer, nullable=False)  # 수집 대상 충전기 수
-    matched_count = Column(Integer, nullable=False, default=0)  # 상태 로그에 저장한 충전기 수 - 결측 = expected - matched
+    matched_count = Column(
+        Integer, nullable=False, default=0
+    )  # 상태 로그에 저장한 충전기 수 - 결측 = expected - matched
     error_message = Column(Text)
     # 기존 상태 로그로 만든 소급 행 - 실제 호출 기록이 아니고, 이 중 FAILED는 statUpdDt 정체로 추정한 값
     is_backfilled = Column(Boolean, nullable=False, default=False, server_default="false")
 
     __table_args__ = (
-        CheckConstraint("status in ('RUNNING', 'SUCCESS', 'PARTIAL', 'FAILED')", name="ck_collection_runs_status"),
+        CheckConstraint(
+            "status in ('RUNNING', 'SUCCESS', 'PARTIAL', 'FAILED')",
+            name="ck_collection_runs_status",
+        ),
         Index("ix_collection_runs_lookup", "target", "started_at"),
     )
 
@@ -114,7 +131,9 @@ class CityStatusLog(StatusLogColumns, Base):
 class ServiceAreaStation(StationColumns, Base):
     __tablename__ = "service_area_stations"
 
-    service_area_name = Column(String(50))  # 휴게소명 - 사업자마다 statNm이 달라 매핑 CSV 기준으로 통일
+    service_area_name = Column(
+        String(50)
+    )  # 휴게소명 - 사업자마다 statNm이 달라 매핑 CSV 기준으로 통일
     route = Column(String(20))  # 노선 (예: 경부)
     direction = Column(String(10))  # 상행 / 하행
 

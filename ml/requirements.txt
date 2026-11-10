@@ -1,2 +1,7 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+# xgboost-cpu: 일반 xgboost는 Linux x86_64에서 GPU 통신 라이브러리(nvidia-nccl-cu12, 수백 MB)를 같이 설치함 - t3.small엔 불필요
+# 🟡 학습한 버전 이상이어야 .ubj를 읽음 - AI 팀 학습 버전 확인 필요
+xgboost-cpu==3.2.0
+numpy==2.4.6
+scipy==1.17.1

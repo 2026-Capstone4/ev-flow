@@ -102,6 +102,25 @@
 - `/` → 정적 파일, `/api` → FastAPI 프록시
 - 로컬 개발은 Vite dev server 프록시로 `/api` 전달 → 운영 · 개발 모두 동일 출처라 CORS 설정 불필요
 
+### PR 검사 (CI) — ✅
+
+`CI-01` 이관 (FE 2026-11-07 · BE 2026-11-08). 설정 파일: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — 레포 전체 워크플로 하나에 파트별 job을 둠
+
+| 결정 | 이유 |
+|---|---|
+| **레포 전체 워크플로 `ci.yml` 하나, 파트별 job** — `changes`(바뀐 파트 확인) → `<파트>-check`(바뀐 파트만 실행) → `ci-result`(결과 모음) | 필수 체크를 쓰려면 모든 PR에서 결과가 남아야 함. 파트별 파일에 경로 필터를 걸면 다른 파트 PR에서 워크플로가 아예 안 돌아 결과가 없고 병합이 막힘. 파트별 파일을 모든 PR에서 돌리면 BE PR에 `frontend-ci`가 도는 식으로 이름과 하는 일이 어긋남 |
+| **ruleset 필수 체크는 `ci-result` 하나만 지정** — 앞 job에 실패 · 취소가 있으면 실패, 통과 · 건너뜀은 통과 | 파트를 추가해도 ruleset을 고치지 않음. 건너뛴 job은 GitHub이 통과로 기록 |
+| **`develop` · `main` 대상 모든 PR에서 실행**(경로 필터 없음) + 수동 실행(`workflow_dispatch`, 모든 파트 검사). 바뀐 파트는 PR 브랜치가 갈라진 지점과 `git diff`로 비교 | 다른 PR이 develop에 먼저 들어와도 그 변경이 섞이지 않음. 외부 Action(`dorny/paths-filter`) 의존 없음 |
+| **FE 검사(`frontend-check`)**: `frontend/**` 또는 `ci.yml`이 바뀌면 `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`를 차례로 실행 | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패. `ci.yml`이 바뀌면 모든 파트 검사 |
+| **BE 검사(`backend-check`)**: `backend/**` 또는 `ci.yml`이 바뀌면 Python 3.11에서 `pip install -r requirements-dev.txt` → `ruff check` → `ruff format --check` → `pytest`를 차례로 실행 | Python은 운영 이미지(Dockerfile)와 같은 버전, Ruff · pytest는 `requirements-dev.txt`에 고정해 로컬과 CI 결과가 같음. 테스트는 DB · `.env` 없이 도는 판정 로직 단위 테스트 |
+| **Node · pnpm 버전은 YAML에 쓰지 않음** — `frontend/.nvmrc` · `package.json`의 `packageManager`를 읽음 | 로컬과 CI 버전이 항상 같음 |
+| **환경 변수 · Secrets 없이 빌드** | Mock을 뺀 배포용 번들이 빌드되는지 확인. 지도 Client ID는 빌드에 필요 없음 |
+| **읽기 전용 권한(`contents: read`), 같은 PR 새 커밋 시 이전 실행 취소, job별 시간 제한** | 외부 PR에도 쓰기 권한이 없고, 무료 실행 시간 낭비를 막음 |
+| **배포는 하지 않음** — 검사만 수행 | 배포는 `infra/deploy.sh` 수동 ([배포 도구 · 방식](#5-백엔드--ai) `CI-02`) |
+
+- job 이름은 `<파트>-check`(`frontend-check`, `backend-check` …)로 짓는다. 필수 체크는 job 이름으로 지정되므로 `ci-result`는 바꾸지 않는다.
+- 파트 추가 방법은 `ci.yml` 맨 위 주석에 있다 (`changes` 판정 추가 → `<파트>-check` job 추가 → `ci-result`의 `needs`에 추가).
+
 ### API 명세 — ✅
 
 - 프론트엔드는 명세 초안을 따로 작성하지 않고, 백엔드 명세서([api/README.md](api/README.md))를 기준으로 MSW 핸들러와 타입을 작성한다.
@@ -117,6 +136,7 @@
 | Python 버전 | ✅ 3.11 (백엔드 · AI 통일 — 전처리 로직 재사용 전제) | 장승민, 김서현, 이상윤 |
 | 프레임워크 · 저장소 | ✅ FastAPI 0.115.0, PostgreSQL 16, Redis 7, APScheduler 3.10.4 | 장승민 |
 | ORM · 마이그레이션 | ✅ SQLAlchemy 2.0 + Alembic | 장승민 |
+| 포맷 · 린트 (`BE-05`) | ✅ Ruff 0.17.4 (포맷 · 린트 겸용, 설정 `backend/ruff.toml`) — 규칙 `E` · `F` · `I` · `UP` · `B`, 줄 길이 100(프론트 Prettier와 같음). `E501`(줄 길이)은 포매터에 맡기고 한글 주석 때문에 검사에서 뺌. `B008`은 FastAPI `Depends()` 패턴이라 뺌. AI(`ml/`)는 코드가 생기면 같은 설정을 따름 | 장승민, 김서현, 이상윤 |
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 | 장승민 |
 | Docker Compose 서비스 구성 | ✅ `nginx`, `postgres`, `redis`, `api`, `collector`, `ml` 6개 — collector는 API와 같은 이미지를 쓰되 별도 컨테이너로 분리해 API 재배포 중에도 수집이 끊기지 않게 함. ml은 예측 서빙 전용 컨테이너로 분리(collector만 호출, Redis 쓰기도 collector만). 외부 공개는 nginx만, 나머지는 Compose 내부 네트워크로만 접근. 6개 컨테이너 + 모델 상주가 2GB에 들어가는지는 `AI-04`에서 확인. `docker-compose.yml`은 prod 기준(공개 포트 없음)으로 두고 로컬 개발 포트(5433 · 6379 · 8000 · 8001)는 `docker-compose.override.yml`로 분리 — Compose의 `ports`는 리스트가 병합되어 override로 제거가 불가능하므로 반대로 뒤집음. EC2는 `-f docker-compose.yml`로 override를 배제해 실행 | 장승민 |
 | EC2 인스턴스 · 스토리지 (`INF-02`) | ✅ t3.small (2GB RAM), EBS 30GiB gp3 — 수집 데이터는 12주에 약 1.7GB(행당 330B × 62,496행/일 × 84일)로 여유. 실제 소비처는 OS 2.5GB + 이미지 3GB + 백업이며, 프리티어 EBS 무료 한도가 30GB라 축소할 이유 없음 | 장승민 |
@@ -164,3 +184,7 @@
 | 2026-11-01 | 수집 실행 이력(`collection_runs`) 도입 · 서버 소급 적용 — Status 호출 실패 회차를 직전 상태로 저장하지 않고 `FAILED`로만 기록(UC-S01 E1 · ECR-004). 기존 상태 로그(도심 2,140,160 · 휴게소 304,128행)에 소급 run을 연결하고, 전환 이후 `statUpdDt` 정체 회차를 실패로 추정(도심 748 · 휴게소 780회차) — collector 로그 대조 정밀도 0.94 · 재현율 0.96. 이미 전달한 `evflow-dataset-20261025`의 10/23 이후 구간에 이어 쓴 값이 섞여 있어 재추출 필요 | 장승민 |
 | 2026-11-03 | API 명세(PR #22) 확정 반영 — `API-01`(명세 형식 · 전달) · `API-03`(변경 공유) · `API-04`(에러 응답 형식) · `API-05`(JSON 필드 `camelCase`, 백엔드 변환) 이관, 프론트엔드 API 명세 절을 확정으로 갱신 | 김무겸 |
 | 2026-11-03 | 길찾기 화면에 네이버 지도 앱 안내 연결 추가(프론트 딥링크, 앱 안 경로 표시 `POST /routes`는 유지), 휴게소 응답에 대표 statId 주소 · 좌표 추가 | 장승민 |
+| 2026-11-07 | FE PR 검사 확정(`CI-01` 중 FE 이관) — `frontend-ci.yml` 추가, 검사에 `format:check` 포함. BE 검사는 `backend-ci.yml`로 분리해 `CI-01`에 남김 | 김무겸 |
+| 2026-11-07 | PR 검사 구조 변경 — 파트별 파일(`frontend-ci.yml` · `backend-ci.yml`) + 경로 필터에서 레포 전체 `ci.yml` 하나(`changes` → `<파트>-check` → `ci-result`)로. 경로 필터로는 다른 파트 PR에 결과가 안 남아 필수 체크를 쓸 수 없어서. 필수 체크는 `ci-result` 하나 | 김무겸 |
+| 2026-11-08 | Python 포맷 · 린트 Ruff 확정(`BE-05` 이관), BE PR 검사 추가(`CI-01` 중 BE 이관) — `backend-check` job(Ruff 린트 · 포맷 검사 → pytest), 기존 백엔드 코드 일괄 포맷. ruleset 필수 체크 지정은 `CI-01`에 남김 | 장승민 |
+| 2026-11-10 | 공공데이터포털 API 타임아웃 · HTTP 504 시 1회 재시도 추가(`getChargerStatus` · `getChargerInfo` 공통, 페이지 단위, 대기 없이 즉시) — 30초 상향 뒤에도 Status 실패 16.5%(11/1~11/9, 4,656회차 중 767)가 남았고 전부 504 536 · `ReadTimeout` 231로, 응답 시간이 둘 다 30.04~30.24초라 게이트웨이 한도(약 30초 추정)와 타임아웃의 경합인 같은 현상으로 판단. Info도 같은 이유로 114회차가 `PARTIAL`. 타임아웃을 더 늘려도 해결되지 않아 재시도로 대응하고, HTTP 500 · 4xx · 연결 오류는 다시 불러도 같은 결과라 제외. 호출 수는 실패율만큼 늘어 하루 약 780건(한도 1,000), 전부 실패해도 최대 약 1,344건이라 한도 초과는 API 전면 장애 때만 가능. `api_latency_ms`에 재시도 시간이 포함됨 | 장승민 |

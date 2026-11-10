@@ -104,7 +104,7 @@
 | `.editorconfig` | UTF-8, LF 줄바꿈, 파일 끝 줄바꿈, 들여쓰기 스페이스 2칸 (Python 4칸) |
 | `.gitattributes` | 커밋 시 줄바꿈 LF로 통일 (Windows 팀원 대비) |
 
-- 포맷터 설정은 파트별: 프론트엔드 Prettier, Python 🟡 Ruff (`BE-05`)
+- 포맷터 설정은 파트별: 프론트엔드 Prettier, Python Ruff (`backend/ruff.toml`)
 - 에디터 개인 설정(`.vscode/settings.json`, `.idea/`)은 커밋하지 않는다. 추천 확장 목록(`.vscode/extensions.json`)만 커밋 가능.
 
 ---

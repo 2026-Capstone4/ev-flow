@@ -2,8 +2,8 @@ import argparse
 import csv
 import sys
 from bisect import bisect_right
-from datetime import datetime, timezone
-from itertools import groupby
+from datetime import UTC, datetime
+from itertools import groupby, pairwise
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -21,7 +21,7 @@ from app.config import settings
 #
 #   build: 원본 DB에서 복원값을 계산해 패치 CSV로 저장 - 서버는 적용 후 원본이 없으므로 로컬 원본 DB에서 실행
 #   apply: 패치 CSV를 DB에 적용. --commit이 없으면 검사만 하고 롤백함
-SWITCH_AT = datetime(2026, 10, 3, 10, 16, 3, tzinfo=timezone.utc)  # 2026-10-03 19:16:03 KST
+SWITCH_AT = datetime(2026, 10, 3, 10, 16, 3, tzinfo=UTC)  # 2026-10-03 19:16:03 KST
 TABLES = ["city_status_log", "service_area_status_log"]
 BATCH_SEC = 1800
 BATCH_OFFSET_SEC = 4 * 60  # 배치 기준 시각 :04/:34
@@ -47,7 +47,9 @@ def epoch(dt: datetime | None) -> int | None:
 
 def batch_time(collected: int) -> int:
     # 이 행이 보여주는 배치의 기준 시각 - :09~:38 수집분은 :04 배치
-    return (collected - BATCH_OFFSET_SEC - VISIBLE_LAG_SEC) // BATCH_SEC * BATCH_SEC + BATCH_OFFSET_SEC
+    return (
+        collected - BATCH_OFFSET_SEC - VISIBLE_LAG_SEC
+    ) // BATCH_SEC * BATCH_SEC + BATCH_OFFSET_SEC
 
 
 def within(x: int | None, b0: int, b1: int) -> bool:
@@ -80,9 +82,11 @@ def charging_intervals(snaps: list[tuple]) -> list[tuple[int, int]]:
     iv = []
     b, stat, _, _, nw = snaps[0]
     open_start = None
-    if stat == CHARGING:  # 첫 배치에서 이미 충전 중 - 시작 시각이 그 이전이면 믿고, 아니면 배치 시각부터
+    if (
+        stat == CHARGING
+    ):  # 첫 배치에서 이미 충전 중 - 시작 시각이 그 이전이면 믿고, 아니면 배치 시각부터
         open_start = nw if nw is not None and nw <= b else b
-    for (b0, pstat, _, _, pnw), (b1, stat, st, en, nw) in zip(snaps, snaps[1:]):
+    for (b0, pstat, _, _, pnw), (b1, stat, st, en, nw) in pairwise(snaps):
         guess = (b0 + b1) // 2 if b1 - b0 <= LONG_GAP_SEC else b1
         same_session = pstat == CHARGING and stat == CHARGING and pnw == nw
         # 이전 배치에서 충전 중이던 세션이 이번 구간에 끝남
@@ -120,16 +124,21 @@ def restore_charger(rows: list[tuple], boundary: tuple | None):
 
 
 def assert_raw(conn, table: str):
-    ratio = conn.execute(text(f"""
+    ratio = conn.execute(
+        text(f"""
         with x as (
             select collected_at, stat,
                    lag(stat) over (partition by station_id, charger_id order by collected_at) prev
             from {table} where collected_at < :switch
         )
         select avg((extract(minute from collected_at)::int in (9, 39))::int) from x where stat <> prev
-    """), {"switch": SWITCH_AT}).scalar()
+    """),
+        {"switch": SWITCH_AT},
+    ).scalar()
     if ratio is None or ratio < RAW_MIN_RATIO:
-        raise RuntimeError(f"[{table}] 원본이 아닌 것 같음 (:09/:39 변화 비율 {ratio}) - 원본 DB에서 실행할 것")
+        raise RuntimeError(
+            f"[{table}] 원본이 아닌 것 같음 (:09/:39 변화 비율 {ratio}) - 원본 DB에서 실행할 것"
+        )
 
 
 def build(db_name: str, out_path: str):
@@ -139,29 +148,44 @@ def build(db_name: str, out_path: str):
         writer.writerow(PATCH_FIELDS)
         for table in TABLES:
             assert_raw(conn, table)
-            rows = conn.execute(text(f"""
+            rows = conn.execute(
+                text(f"""
                 select station_id, charger_id, id, collected_at, stat,
                        last_charge_start_dt, last_charge_end_dt, current_charge_start_dt
                 from {table} where collected_at < :switch
                 order by station_id, charger_id, collected_at
-            """), {"switch": SWITCH_AT}).all()
+            """),
+                {"switch": SWITCH_AT},
+            ).all()
             boundary = {
                 (r.station_id, r.charger_id): (
-                    epoch(r.collected_at), r.stat, epoch(r.last_charge_start_dt),
-                    epoch(r.last_charge_end_dt), epoch(r.current_charge_start_dt),
+                    epoch(r.collected_at),
+                    r.stat,
+                    epoch(r.last_charge_start_dt),
+                    epoch(r.last_charge_end_dt),
+                    epoch(r.current_charge_start_dt),
                 )
-                for r in conn.execute(text(f"""
+                for r in conn.execute(
+                    text(f"""
                     select distinct on (station_id, charger_id) station_id, charger_id, collected_at, stat,
                            last_charge_start_dt, last_charge_end_dt, current_charge_start_dt
                     from {table} where collected_at >= :switch
                     order by station_id, charger_id, collected_at
-                """), {"switch": SWITCH_AT})
+                """),
+                    {"switch": SWITCH_AT},
+                )
             }
             total = changed = raw_charging = new_charging = 0
             for key, group in groupby(rows, key=lambda r: (r.station_id, r.charger_id)):
                 charger_rows = [
-                    (r.id, epoch(r.collected_at), r.stat, epoch(r.last_charge_start_dt),
-                     epoch(r.last_charge_end_dt), epoch(r.current_charge_start_dt))
+                    (
+                        r.id,
+                        epoch(r.collected_at),
+                        r.stat,
+                        epoch(r.last_charge_start_dt),
+                        epoch(r.last_charge_end_dt),
+                        epoch(r.current_charge_start_dt),
+                    )
                     for r in group
                 ]
                 for row_id, raw_stat, stat in restore_charger(charger_rows, boundary.get(key)):
@@ -170,7 +194,9 @@ def build(db_name: str, out_path: str):
                     changed += raw_stat != stat
                     raw_charging += raw_stat == CHARGING
                     new_charging += stat == CHARGING
-            print(f"[{table}] 전환 이전 {total:,}행 · 변경 {changed:,}행 · 충전중 {raw_charging:,} → {new_charging:,}")
+            print(
+                f"[{table}] 전환 이전 {total:,}행 · 변경 {changed:,}행 · 충전중 {raw_charging:,} → {new_charging:,}"
+            )
 
 
 def apply(patch_path: str, db_name: str | None, commit: bool):
@@ -189,22 +215,32 @@ def apply(patch_path: str, db_name: str | None, commit: bool):
             (expected,) = cur.fetchone()
             cur.execute("select count(*) from restore_patch where tbl = %s", (table,))
             (patch_rows,) = cur.fetchone()
-            cur.execute(f"""
+            cur.execute(
+                f"""
                 select count(*), count(*) filter (where s.stat is not distinct from p.raw_stat)
                 from {table} s join restore_patch p
                   on p.tbl = %s and p.id = s.id and p.station_id = s.station_id and p.charger_id = s.charger_id
                 where s.collected_at < %s
-            """, (table, SWITCH_AT))
+            """,
+                (table, SWITCH_AT),
+            )
             matched, still_raw = cur.fetchone()
             # 패치와 DB의 전환 이전 행이 정확히 일치할 때만 적용 - 다른 DB의 패치를 잘못 넣는 것 방지
             if not (expected == patch_rows == matched):
-                raise RuntimeError(f"[{table}] 행 불일치 - DB {expected:,} · 패치 {patch_rows:,} · 일치 {matched:,}")
-            cur.execute(f"""
+                raise RuntimeError(
+                    f"[{table}] 행 불일치 - DB {expected:,} · 패치 {patch_rows:,} · 일치 {matched:,}"
+                )
+            cur.execute(
+                f"""
                 update {table} s set stat = p.stat
                 from restore_patch p
                 where p.tbl = %s and p.id = s.id and s.collected_at < %s and s.stat is distinct from p.stat
-            """, (table, SWITCH_AT))
-            print(f"[{table}] 전환 이전 {expected:,}행 일치 (원본 상태 {still_raw:,}행) · 갱신 {cur.rowcount:,}행")
+            """,
+                (table, SWITCH_AT),
+            )
+            print(
+                f"[{table}] 전환 이전 {expected:,}행 일치 (원본 상태 {still_raw:,}행) · 갱신 {cur.rowcount:,}행"
+            )
         if commit:
             raw.commit()
             print("커밋 완료")
