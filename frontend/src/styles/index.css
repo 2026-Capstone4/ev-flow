@@ -27,7 +27,7 @@
   --color-congestion-busy-bg: #fee2e2;
   --color-congestion-unknown: #9ca3af;
   --color-congestion-unknown-bg: #f3f4f6;
-  /* TODO(fe): Figma에 운영 불가 색 추가 후 맞춤 — 확인 불가(데이터 없음)와 구분되게 더 어둡게 둠 */
+  /* 운영 불가는 확인 불가(데이터 부족)와 구분되게 더 어두운 회색 */
   --color-congestion-unavailable: #4b5563;
   --color-congestion-unavailable-bg: #e5e7eb;
 
