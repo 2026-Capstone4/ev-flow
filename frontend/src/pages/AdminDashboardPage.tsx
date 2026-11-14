@@ -119,7 +119,7 @@ export function AdminDashboardPage() {
         </div>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="전체 충전기"
           value={summary && `${summary.total}기`}
