@@ -18,3 +18,8 @@ services:
   ml:
     ports:
       - "127.0.0.1:8001:8001"  # 예측 응답 직접 확인용
+
+  # 로컬에는 인증서(/etc/letsencrypt)가 없어 nginx가 뜨지 못함 - 로컬은 api(127.0.0.1:8000)를 직접 호출
+  # profiles를 걸면 docker compose up에서 빠짐. 서버는 이 파일을 읽지 않으므로 영향 없음
+  nginx:
+    profiles: ["server"]
