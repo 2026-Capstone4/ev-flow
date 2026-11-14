@@ -98,7 +98,8 @@
 
 ### 배포 — ✅
 
-- Vite 정적 빌드(`frontend/dist`) → 동일 EC2의 Nginx **컨테이너**가 정적 서빙 (`dist` 전달 방식은 `INF-05`, 🟡 볼륨 마운트)
+- Vite 정적 빌드(`frontend/dist`) → 동일 EC2의 Nginx **컨테이너**가 정적 서빙 — `dist` 전달은 **볼륨 마운트**(`INF-05`): 맥에서 빌드 후 `rsync -a --delete`로 서버 `frontend/dist`에 복사, nginx는 읽기 전용 마운트. 폴더째 지우고 다시 만들면 nginx가 옛 폴더를 계속 보므로 내용만 교체. 백엔드 배포(`deploy.sh`)와 별개로 화면만 갱신 가능. 백엔드에 없는 API가 남아 있는 동안은 `VITE_USE_MOCK=partial`로 빌드
+- 화면 경로(`/stations/...` 등)는 없는 파일이면 `index.html`로 넘김(React Router). `index.html`은 `no-cache`, `/assets/`는 1년 캐시(해시 파일명), gzip 압축
 - `/` → 정적 파일, `/api` → FastAPI 프록시
 - 로컬 개발은 Vite dev server 프록시로 `/api` 전달 → 운영 · 개발 모두 동일 출처라 CORS 설정 불필요
 
@@ -190,3 +191,4 @@
 | 2026-11-08 | Python 포맷 · 린트 Ruff 확정(`BE-05` 이관), BE PR 검사 추가(`CI-01` 중 BE 이관) — `backend-check` job(Ruff 린트 · 포맷 검사 → pytest), 기존 백엔드 코드 일괄 포맷. ruleset 필수 체크 지정은 `CI-01`에 남김 | 장승민 |
 | 2026-11-10 | 공공데이터포털 API 타임아웃 · HTTP 504 시 1회 재시도 추가(`getChargerStatus` · `getChargerInfo` 공통, 페이지 단위, 대기 없이 즉시) — 30초 상향 뒤에도 Status 실패 16.5%(11/1~11/9, 4,656회차 중 767)가 남았고 전부 504 536 · `ReadTimeout` 231로, 응답 시간이 둘 다 30.04~30.24초라 게이트웨이 한도(약 30초 추정)와 타임아웃의 경합인 같은 현상으로 판단. Info도 같은 이유로 114회차가 `PARTIAL`. 타임아웃을 더 늘려도 해결되지 않아 재시도로 대응하고, HTTP 500 · 4xx · 연결 오류는 다시 불러도 같은 결과라 제외. 호출 수는 실패율만큼 늘어 하루 약 780건(한도 1,000), 전부 실패해도 최대 약 1,344건이라 한도 초과는 API 전면 장애 때만 가능. `api_latency_ms`에 재시도 시간이 포함됨 | 장승민 |
 | 2026-11-14 | 도메인 · HTTPS 확정(`CI-06` 이관) — `evflowkr.app` + Let's Encrypt(서버 certbot, webroot 갱신). Geolocation API가 HTTPS(또는 localhost)에서만 동작해 모바일 실기기 테스트 · 시연에 필요. 80번은 HTTPS로 넘기므로 프론트 개발 프록시 대상(`VITE_PROXY_TARGET`)을 `https://evflowkr.app`으로 바꾸고 프록시에 `changeOrigin` 필요 | 장승민 |
+| 2026-11-14 | 프론트 빌드 전달 방식 확정(`INF-05` 이관) — 볼륨 마운트 + 맥에서 빌드 · `rsync`. 이미지에 포함하면 FE 변경마다 이미지를 다시 빌드해야 하고, 서버(2GB)에서 Node 빌드는 부담. `https://evflowkr.app`에서 화면 서빙 시작 | 장승민 |
