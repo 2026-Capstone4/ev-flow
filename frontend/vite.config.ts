@@ -14,7 +14,10 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       // 배포 환경과 같은 경로로 호출하도록 /api는 백엔드로 프록시 (MSW 사용 시에는 브라우저에서 가로챔)
-      proxy: { '/api': env.VITE_PROXY_TARGET || 'http://localhost:8000' },
+      // changeOrigin: Host 헤더를 대상 주소로 바꿈. 없으면 HTTPS 서버에 localhost로 TLS 연결을 시도해 인증서 검증 실패
+      proxy: {
+        '/api': { target: env.VITE_PROXY_TARGET || 'http://localhost:8000', changeOrigin: true },
+      },
     },
     test: {
       environment: 'jsdom',
