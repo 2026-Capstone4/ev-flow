@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    func,
 )
 from sqlalchemy.orm import relationship
 
@@ -164,3 +165,19 @@ class ServiceAreaStatusLog(StatusLogColumns, Base):
         ForeignKeyConstraint(["collection_run_id"], ["collection_runs.id"]),
         Index("ix_service_area_status_log_lookup", "station_id", "charger_id", "collected_at"),
     )
+
+
+# 운영자 계정 - scripts/create_admin.py 시드로만 만듦. 가입 · 비밀번호 찾기 없음, 권한 차등 없음 (SER-001 · 004)
+# 로그인 실패 횟수는 Redis(login_fail:{login_id}, TTL)에 두므로 잠금 관련 컬럼이 없음
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    login_id = Column(String(50), nullable=False, unique=True)
+    # argon2id 해시(PHC 문자열, 약 100자) - 설정값 · 알고리즘을 바꿀 여지를 두고 넉넉히 잡음
+    password_hash = Column(String(255), nullable=False)
+    name = Column(String(50), nullable=False)  # 로그인 응답 admin.name
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    # 비밀번호를 바꾸면 갱신 - 이보다 먼저 발급된 토큰(iat)은 거부해 기존 로그인을 끊음
+    password_changed_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_login_at = Column(DateTime(timezone=True))  # 로그인 성공 시 갱신
