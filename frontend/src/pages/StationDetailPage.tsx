@@ -91,7 +91,7 @@ export function StationDetailPage() {
             </section>
           </main>
 
-          <footer className="shrink-0 border-t border-border-default px-4 pt-3 pb-7">
+          <footer className="shrink-0 border-t border-border-default px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
             <Button
               className="w-full"
               onClick={() => navigate(`/stations/${stationId}/route?horizon=${horizon}`)}
