@@ -15,7 +15,7 @@ export function SearchBar({ onClick, activeFilterCount = 0 }: SearchBarProps) {
       className="flex w-full items-center gap-2 rounded-md bg-bg-page px-4 py-3 text-left shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
     >
       <Search aria-hidden size={20} strokeWidth={2} className="shrink-0 text-text-secondary" />
-      <span className="flex-1 text-[15px] text-text-secondary">충전소·장소 검색 (예: 합정역)</span>
+      <span className="flex-1 text-[15px] text-text-secondary">충전소 이름·주소 검색</span>
       <span className="text-sm font-bold text-brand-primary">
         필터{activeFilterCount > 0 && ` ${activeFilterCount}`}
       </span>
