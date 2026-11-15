@@ -1,7 +1,7 @@
 // 백엔드 API 명세(docs/api/user.md) 기준. 응답 필드 이름을 바꾸지 않고 그대로 씀 (API-05)
 
-/** 화면에서 고를 수 있는 예측 시점. 60분은 서비스에서 뺌 (2026-11-15) */
-export type HorizonMinutes = 15 | 30
+/** 화면에서 고를 수 있는 시점. 0 = 지금 출발. 60분은 서비스에서 뺌 (2026-11-15) */
+export type HorizonMinutes = 0 | 15 | 30
 
 /** 서버가 보내는 예측 시점. 백엔드 · ml에서 60분을 정리하기 전까지 60분도 올 수 있음 */
 export type ApiHorizonMinutes = HorizonMinutes | 60
@@ -53,7 +53,7 @@ export type Station = {
   congestion: CurrentCongestion
   dataQuality: DataQuality
   chargers: Charger[]
-  /** 시점 순서대로. 화면은 15 · 30분만 씀 (서버가 60분을 보내도 무시) */
+  /** 시점 순서대로. 화면은 0(지금) · 15 · 30분만 씀 (서버가 60분을 보내도 무시) */
   predictions: Prediction[]
 }
 
@@ -120,7 +120,7 @@ export type HorizonRecommendations = {
 export type RecommendationsResponse = {
   updatedAt: string
   dataQuality: ResponseDataQuality
-  /** 시점 순서대로 (잠정). 화면은 15 · 30분만 씀 */
+  /** 시점 순서대로 (잠정). 화면은 0(지금) · 15 · 30분만 씀 */
   results: HorizonRecommendations[]
 }
 

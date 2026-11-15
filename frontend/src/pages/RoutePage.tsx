@@ -10,7 +10,7 @@ import { useRouteData } from '@/hooks/useRouteData'
 import { useRouteOverlay } from '@/hooks/useRouteOverlay'
 import { formatWaitRange, NO_PREDICTION_LABEL } from '@/lib/congestion'
 import { DEMO_USER_LOCATION, MAPO_CENTER } from '@/lib/constants'
-import { parseHorizon } from '@/lib/horizon'
+import { getHorizonWhen, parseHorizon } from '@/lib/horizon'
 import {
   detectPlatform,
   getNaverCarRouteUrl,
@@ -102,10 +102,20 @@ export function RoutePage() {
               <div className="flex gap-2">
                 <SummaryTile value={`${route.travelTimeMinutes}분`} label="자동차 소요" />
                 <SummaryTile value={formatDistance(route.distanceMeters)} label="거리" />
-                <SummaryTile
-                  value={waitRange ?? NO_PREDICTION_LABEL}
-                  label={`${horizon}분 후 예상 대기`}
-                />
+                {/* 지금 출발은 예상 대기 대신 실시간 사용 가능 대수 */}
+                {horizon === 0 ? (
+                  <SummaryTile
+                    value={
+                      station ? `${station.availableChargers}/${station.totalChargers}대` : '-'
+                    }
+                    label="지금 사용 가능"
+                  />
+                ) : (
+                  <SummaryTile
+                    value={waitRange ?? NO_PREDICTION_LABEL}
+                    label={`${getHorizonWhen(horizon)} 예상 대기`}
+                  />
+                )}
               </div>
               {naverMapUrl ? (
                 <Button onClick={() => openNaverMapApp(naverMapUrl, platform)}>

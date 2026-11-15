@@ -1,4 +1,4 @@
-import { HORIZONS } from '@/lib/horizon'
+import { HORIZONS, toCurrentPrediction } from '@/lib/horizon'
 import type {
   ApiHorizonMinutes,
   Charger,
@@ -17,8 +17,8 @@ type MockStation = Omit<
   Station,
   'totalChargers' | 'availableChargers' | 'congestion' | 'predictions'
 > & {
-  /** 예측 시점별 혼잡도. null이면 그 시점 예측 · 기준선 없음 */
-  forecast: Record<HorizonMinutes, PredictedCongestion | null>
+  /** 예측 시점별 혼잡도. null이면 그 시점 예측 · 기준선 없음. 지금(0분)은 현재 혼잡도로 만듦 */
+  forecast: Record<Exclude<HorizonMinutes, 0>, PredictedCongestion | null>
 }
 
 function charger(
@@ -226,13 +226,17 @@ function toPrediction(
 }
 
 function toStation({ forecast, ...station }: MockStation): Station {
+  const congestion = getCurrentCongestion(station.chargers)
   return {
     ...station,
     totalChargers: station.chargers.length,
     availableChargers: station.chargers.filter((c) => c.status === 'available').length,
-    congestion: getCurrentCongestion(station.chargers),
+    congestion,
+    // 지금(0분)은 현재 혼잡도만(대기시간 없음), 15 · 30분은 forecast 값
     predictions: HORIZONS.map((horizon) =>
-      toPrediction(horizon, forecast[horizon], station.dataQuality),
+      horizon === 0
+        ? toCurrentPrediction(congestion)
+        : toPrediction(horizon, forecast[horizon], station.dataQuality),
     ),
   }
 }
@@ -251,10 +255,16 @@ export function fillMissingPredictions(station: Station): Station {
   if (current === 'unknown' || current === 'unavailable') return station
   return {
     ...station,
-    // 이미 예측이 있는 시점은 그대로 쓰고, null인 시점만 현재 혼잡도(source: baseline)로 채움
-    predictions: station.predictions.map((p) =>
-      p.congestion ? p : toPrediction(p.horizonMinutes, current, 'baseline'),
-    ),
+    // 15 · 30분은 이미 예측이 있으면 그대로 쓰고, 없거나 null이면 현재 혼잡도(source: baseline)로 채움
+    // 실제 서버는 지금(0분) 값을 보내지 않아서 이 단계에서 새로 생김
+    predictions: HORIZONS.map((horizon) => {
+      // 지금(0분)은 현재 혼잡도만(대기시간 없음)
+      if (horizon === 0) return toCurrentPrediction(current)
+      const prediction = station.predictions.find((p) => p.horizonMinutes === horizon)
+      // 예측 혼잡도가 있는 시점은 서버 값 그대로
+      if (prediction?.congestion) return prediction
+      return toPrediction(horizon, current, 'baseline')
+    }),
   }
 }
 

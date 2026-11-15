@@ -1,5 +1,6 @@
 import { getApiErrorCode } from '@/api/errors'
 import { useStationQuery } from '@/hooks/useStationsQuery'
+import { findPrediction } from '@/lib/horizon'
 import type { HorizonMinutes } from '@/types/station'
 
 // 충전소 상세 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
@@ -12,6 +13,6 @@ export function useStationDetailData(stationId: string, horizon: HorizonMinutes)
     updatedAt: query.data ? new Date(query.data.updatedAt) : null,
     isError: query.isError,
     isNotFound: getApiErrorCode(query.error) === 'STATION_NOT_FOUND',
-    selectedPrediction: station?.predictions.find((p) => p.horizonMinutes === horizon),
+    selectedPrediction: station && findPrediction(station, horizon),
   }
 }

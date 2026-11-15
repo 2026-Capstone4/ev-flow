@@ -1,4 +1,4 @@
-import { HORIZONS } from '@/lib/horizon'
+import { getHorizonLabel, HORIZONS } from '@/lib/horizon'
 import type { HorizonMinutes } from '@/types/station'
 
 type HorizonSelectorProps = {
@@ -28,7 +28,7 @@ export function HorizonSelector({ value, onChange }: HorizonSelectorProps) {
                 : 'font-medium text-text-secondary'
             }`}
           >
-            {option}분 후
+            {getHorizonLabel(option)}
           </button>
         )
       })}
