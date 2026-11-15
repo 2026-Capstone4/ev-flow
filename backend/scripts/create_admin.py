@@ -11,7 +11,7 @@ from app.db.models import AdminUser
 from app.db.session import SessionLocal
 from app.services.auth import hash_password
 
-# 운영자 계정 생성 · 비밀번호 변경 - 관리자 화면에 가입 · 변경 기능이 없어 계정은 이 스크립트로만 다룸 (SER-001)
+# 운영자 계정 생성 · 비밀번호 변경 - 운영자 화면에 가입 · 변경 기능이 없어 계정은 이 스크립트로만 다룸 (SER-001)
 # 비밀번호는 인자로 받지 않고 터미널에서 입력받음 - 셸 기록 · 프로세스 목록에 남지 않게 함
 #   새 계정:       python scripts/create_admin.py <login_id> --name <이름>
 #   비밀번호 변경: python scripts/create_admin.py <login_id>   (기존 로그인은 전부 끊김)

@@ -53,7 +53,7 @@ export function AdminLoginPage() {
         className="flex w-full max-w-[360px] flex-col gap-4 rounded-lg border border-border-default bg-bg-page p-6"
       >
         <header className="flex flex-col gap-1">
-          <h1 className="text-[22px] font-bold">EV-flow 관리자</h1>
+          <h1 className="text-[22px] font-bold">EV-flow 운영자</h1>
           <p className="text-[13px] text-text-secondary">운영자 계정으로 로그인해 주세요</p>
         </header>
 
