@@ -9,7 +9,7 @@ import { WaitRangeBar } from '@/components/WaitRangeBar'
 import { useNow } from '@/hooks/useNow'
 import { useStationDetailData } from '@/hooks/useStationDetailData'
 import { formatWaitRange, NO_PREDICTION_LABEL } from '@/lib/congestion'
-import { parseHorizon } from '@/lib/horizon'
+import { HORIZONS, parseHorizon } from '@/lib/horizon'
 import type { HorizonMinutes } from '@/types/station'
 
 export function StationDetailPage() {
@@ -54,14 +54,19 @@ export function StationDetailPage() {
             <section className="flex flex-col gap-3">
               <h3 className="text-base font-bold">시간대별 혼잡 예측</h3>
               <div role="radiogroup" aria-label="예측 시점" className="flex gap-2">
-                {station.predictions.map((prediction) => (
-                  <PredictionTile
-                    key={prediction.horizonMinutes}
-                    prediction={prediction}
-                    isSelected={prediction.horizonMinutes === horizon}
-                    onSelect={() => selectHorizon(prediction.horizonMinutes)}
-                  />
-                ))}
+                {HORIZONS.map((option) => {
+                  const prediction = station.predictions.find((p) => p.horizonMinutes === option)
+                  // 서버가 이 시점 예측을 보내지 않았으면 칸을 그리지 않음
+                  if (!prediction) return null
+                  return (
+                    <PredictionTile
+                      key={option}
+                      prediction={prediction}
+                      isSelected={option === horizon}
+                      onSelect={() => selectHorizon(option)}
+                    />
+                  )
+                })}
               </div>
             </section>
 

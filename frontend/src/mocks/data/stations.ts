@@ -1,5 +1,6 @@
 import { HORIZONS } from '@/lib/horizon'
 import type {
+  ApiHorizonMinutes,
   Charger,
   ChargerStatus,
   ConnectorType,
@@ -29,7 +30,7 @@ function charger(
   return { chargerId, status, connectorTypes, capacityKw }
 }
 
-const NO_FORECAST = { 15: null, 30: null, 60: null }
+const NO_FORECAST = { 15: null, 30: null }
 
 // 충전소 이름 · 좌표는 화면 개발용 예시 (실제 수집 데이터 아님)
 // 현재 혼잡도 · 데이터 상태 · 예측 없음 등 화면 분기를 모두 볼 수 있게 구성
@@ -50,7 +51,7 @@ const MOCK_STATIONS: MockStation[] = [
       charger('03', 'available', ['dc_chademo', 'ac3', 'dc_combo']),
       charger('04', 'charging', ['dc_chademo', 'ac3', 'dc_combo']),
     ],
-    forecast: { 15: 'low', 30: 'low', 60: 'medium' },
+    forecast: { 15: 'low', 30: 'low' },
   },
   {
     stationId: 'MOCK0002',
@@ -63,7 +64,7 @@ const MOCK_STATIONS: MockStation[] = [
     midChargerCount: 0,
     dataQuality: 'normal',
     chargers: [charger('01', 'available'), charger('02', 'charging')],
-    forecast: { 15: 'medium', 30: 'medium', 60: 'high' },
+    forecast: { 15: 'medium', 30: 'medium' },
   },
   {
     stationId: 'MOCK0003',
@@ -81,7 +82,7 @@ const MOCK_STATIONS: MockStation[] = [
       charger('03', 'charging'),
       charger('04', 'charging'),
     ],
-    forecast: { 15: 'high', 30: 'high', 60: 'medium' },
+    forecast: { 15: 'high', 30: 'high' },
   },
   {
     stationId: 'MOCK0004',
@@ -107,7 +108,7 @@ const MOCK_STATIONS: MockStation[] = [
     midChargerCount: 0,
     dataQuality: 'normal',
     chargers: [charger('01', 'available'), charger('02', 'available'), charger('03', 'charging')],
-    forecast: { 15: 'low', 30: 'medium', 60: 'medium' },
+    forecast: { 15: 'low', 30: 'medium' },
   },
   {
     stationId: 'MOCK0006',
@@ -127,7 +128,7 @@ const MOCK_STATIONS: MockStation[] = [
       charger('05', 'charging', ['dc_combo', 'nacs'], 200),
       charger('06', 'charging', ['dc_combo', 'nacs'], 200),
     ],
-    forecast: { 15: 'low', 30: 'low', 60: 'low' },
+    forecast: { 15: 'low', 30: 'low' },
   },
   {
     stationId: 'MOCK0007',
@@ -140,7 +141,7 @@ const MOCK_STATIONS: MockStation[] = [
     midChargerCount: 0,
     dataQuality: 'normal',
     chargers: [charger('01', 'charging'), charger('02', 'charging')],
-    forecast: { 15: 'high', 30: 'high', 60: 'high' },
+    forecast: { 15: 'high', 30: 'high' },
   },
   {
     stationId: 'MOCK0008',
@@ -153,7 +154,7 @@ const MOCK_STATIONS: MockStation[] = [
     midChargerCount: 0,
     dataQuality: 'baseline',
     chargers: [charger('01', 'available'), charger('02', 'unknown'), charger('03', 'unknown')],
-    forecast: { 15: 'medium', 30: 'medium', 60: null },
+    forecast: { 15: 'medium', 30: 'medium' },
   },
   {
     stationId: 'MOCK0009',
@@ -171,7 +172,7 @@ const MOCK_STATIONS: MockStation[] = [
       charger('03', 'available'),
       charger('04', 'charging'),
     ],
-    forecast: { 15: 'low', 30: 'low', 60: 'low' },
+    forecast: { 15: 'low', 30: 'low' },
   },
   {
     stationId: 'MOCK0010',
@@ -190,7 +191,7 @@ const MOCK_STATIONS: MockStation[] = [
       charger('04', 'charging'),
       charger('05', 'unknown'),
     ],
-    forecast: { 15: 'medium', 30: 'high', 60: 'high' },
+    forecast: { 15: 'medium', 30: 'high' },
   },
 ]
 
@@ -213,7 +214,7 @@ function getCurrentCongestion(chargers: Charger[]): CurrentCongestion {
 }
 
 function toPrediction(
-  horizonMinutes: HorizonMinutes,
+  horizonMinutes: ApiHorizonMinutes,
   congestion: PredictedCongestion | null,
   dataQuality: DataQuality,
 ): Prediction {
