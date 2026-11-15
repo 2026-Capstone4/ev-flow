@@ -7,7 +7,7 @@
         <mxCell id="45" parent="1" style="text;html=1;fontStyle=1;fontSize=18;fontFamily=Pretendard;align=left;" value="운영자 로그인 (AUTH-002, SER-001)" vertex="1">
           <mxGeometry height="30" width="600" x="20" y="10" as="geometry" />
         </mxCell>
-        <mxCell id="46" parent="1" style="shape=note;whiteSpace=wrap;html=1;size=14;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Pretendard;fontSize=12;fontSize=11;" value="가정: 인증 방식 JWT + HttpOnly 쿠키 (SER-001 미확정)&lt;br&gt;N(실패 제한 횟수) · 제한 시간 · 토큰 만료 시간 미정&lt;br&gt;Nginx 프록시(/api)는 생략" vertex="1">
+        <mxCell id="46" parent="1" style="shape=note;whiteSpace=wrap;html=1;size=14;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Pretendard;fontSize=12;fontSize=11;" value="인증: JWT(HS256) + HttpOnly 쿠키, 유지 2시간 (SER-001)&lt;br&gt;실패 제한: 15분 안에 아이디 5회 · IP 20회 → 15분 잠금&lt;br&gt;Nginx 프록시(/api)는 생략" vertex="1">
           <mxGeometry height="56" width="440" x="660" y="10" as="geometry" />
         </mxCell>
         <mxCell id="47" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;participant=umlActor;verticalAlign=top;spacingTop=36;container=0;collapsible=0;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" value="운영자" vertex="1">
@@ -31,7 +31,7 @@
             <mxPoint x="300" y="190" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="3" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="GET /api/admin/me (쿠키)">
+        <mxCell id="3" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="GET /api/v1/auth/me (쿠키)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="230" as="sourcePoint" />
             <mxPoint x="560" y="230" as="targetPoint" />
@@ -59,19 +59,19 @@
             <mxPoint x="300" y="382" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="7" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="POST /api/admin/auth/login {username, password}">
+        <mxCell id="7" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="POST /api/v1/auth/login {loginId, password}">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="422" as="sourcePoint" />
             <mxPoint x="560" y="422" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="8" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="GET login_fail:{username}">
+        <mxCell id="8" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="TTL login_lock:{id·ip}">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="560" y="462" as="sourcePoint" />
             <mxPoint x="800" y="462" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="9" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="실패 횟수">
+        <mxCell id="9" edge="1" parent="1" style="dashed=1;endArrow=open;endFill=0;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="남은 잠금 시간">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="800" y="502" as="sourcePoint" />
             <mxPoint x="560" y="502" as="targetPoint" />
@@ -89,7 +89,7 @@
             <mxPoint x="90" y="622" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="12" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="SELECT 운영자 계정 WHERE username = ?">
+        <mxCell id="12" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="SELECT 운영자 계정 WHERE login_id = ?">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="560" y="692" as="sourcePoint" />
             <mxPoint x="1010" y="692" as="targetPoint" />
@@ -111,7 +111,7 @@
             <mxPoint x="560" y="794" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="15" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="INCR login_fail:{username} (TTL 설정)">
+        <mxCell id="15" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="INCR login_fail:{id·ip} (한도 도달 시 login_lock 설정)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="560" y="874" as="sourcePoint" />
             <mxPoint x="800" y="874" as="targetPoint" />
@@ -129,13 +129,13 @@
             <mxPoint x="90" y="954" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="18" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="DEL login_fail:{username}">
+        <mxCell id="18" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="DEL login_fail:id:{loginId}">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="560" y="1024" as="sourcePoint" />
             <mxPoint x="800" y="1024" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="19" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="JWT 발급 (sub, exp)">
+        <mxCell id="19" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="JWT 발급 (sub, iat, exp)">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="600" y="1064" />
@@ -175,7 +175,7 @@
         <mxCell id="26" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;width=50;height=22;fillColor=none;fontStyle=1;fontFamily=Pretendard;fontSize=12;" value="alt" vertex="1">
           <mxGeometry height="674" width="1060" x="30" y="532" as="geometry" />
         </mxCell>
-        <mxCell id="27" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[실패 횟수 ≥ N : 로그인 제한]" vertex="1">
+        <mxCell id="27" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[잠금 중 : 로그인 제한]" vertex="1">
           <mxGeometry height="20" width="320" x="86" y="534" as="geometry" />
         </mxCell>
         <mxCell id="28" parent="1" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontFamily=Pretendard;fontSize=12;" value="[제한 아님]" vertex="1">
@@ -198,7 +198,7 @@
         <mxCell id="52" value="운영자 로그아웃 · 로그인 만료 (AUTH-003)" style="text;html=1;fontStyle=1;fontSize=18;fontFamily=Pretendard;align=left;" vertex="1" parent="1">
           <mxGeometry x="20" y="10" width="600" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="53" value="가정: 인증 방식 JWT + HttpOnly 쿠키 (SER-001 미확정)&lt;br&gt;N(실패 제한 횟수) · 제한 시간 · 토큰 만료 시간 미정&lt;br&gt;Nginx 프록시(/api)는 생략" style="shape=note;whiteSpace=wrap;html=1;size=14;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Pretendard;fontSize=12;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="53" value="인증: JWT(HS256) + HttpOnly 쿠키, 유지 2시간 (SER-001)&lt;br&gt;실패 제한: 15분 안에 아이디 5회 · IP 20회 → 15분 잠금&lt;br&gt;Nginx 프록시(/api)는 생략" style="shape=note;whiteSpace=wrap;html=1;size=14;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Pretendard;fontSize=12;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="660" y="10" width="440" height="56" as="geometry" />
         </mxCell>
         <mxCell id="54" value="운영자" style="shape=umlLifeline;perimeter=lifelinePerimeter;participant=umlActor;verticalAlign=top;spacingTop=36;container=0;collapsible=0;whiteSpace=wrap;html=1;fontFamily=Pretendard;fontSize=12;" vertex="1" parent="1">
@@ -222,7 +222,7 @@
             <mxPoint x="300" y="230" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="31" value="POST /api/admin/auth/logout (쿠키)" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
+        <mxCell id="31" value="POST /api/v1/auth/logout (쿠키)" style="endArrow=block;endFill=1;html=1;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="270" as="sourcePoint" />
             <mxPoint x="560" y="270" as="targetPoint" />

@@ -3,21 +3,20 @@ import getpass
 import sys
 from pathlib import Path
 
-from argon2 import PasswordHasher
 from sqlalchemy import func, select
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.db.models import AdminUser
 from app.db.session import SessionLocal
+from app.services.auth import hash_password
 
 # 운영자 계정 생성 · 비밀번호 변경 - 관리자 화면에 가입 · 변경 기능이 없어 계정은 이 스크립트로만 다룸 (SER-001)
 # 비밀번호는 인자로 받지 않고 터미널에서 입력받음 - 셸 기록 · 프로세스 목록에 남지 않게 함
 #   새 계정:       python scripts/create_admin.py <login_id> --name <이름>
 #   비밀번호 변경: python scripts/create_admin.py <login_id>   (기존 로그인은 전부 끊김)
 #   서버에서는:    docker compose exec api python scripts/create_admin.py ...
-# 해시는 argon2id, 설정은 argon2-cffi 기본값(RFC 9106 저메모리 권장: 64MiB · 3회 · 병렬 4)
-# - OWASP 최소(19MiB · 2회 · 병렬 1)보다 높음. 로그인 API도 같은 기본값으로 검증해야 함
+# 해시 설정은 app/services/auth.py의 password_hasher - 로그인 API와 같은 객체를 씀
 MAX_LOGIN_ID_LEN = 50  # admin_users.login_id
 MAX_NAME_LEN = 50  # admin_users.name
 MIN_PASSWORD_LEN = 8
@@ -49,7 +48,7 @@ def main() -> None:
         if admin is None and not args.name:
             sys.exit("새 계정은 --name이 필요합니다")
 
-        password_hash = PasswordHasher().hash(read_password())
+        password_hash = hash_password(read_password())
 
         if admin is None:
             db.add(AdminUser(login_id=args.login_id, name=args.name, password_hash=password_hash))
