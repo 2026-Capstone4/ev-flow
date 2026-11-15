@@ -63,7 +63,7 @@
 
 | 파라미터 | 값 | 기본값 |
 |---|---|---|
-| `region` | `all` · `city`(마포구) · `service_area`(휴게소) | `all` |
+| `region` | `all` · `city`(도심, 현재 마포구) · `service_area`(휴게소) | `all` |
 | `period` | `day` · `week` | `day` |
 
 - 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지. 시연 스냅샷에서는 "지금" = 스냅샷 시각 ([README 시연 기준 시각](README.md#기본))
