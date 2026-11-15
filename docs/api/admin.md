@@ -22,7 +22,8 @@
 | 항목 | 분석서 | 이 명세의 해석 |
 |---|---|---|
 | 기간 `period`와 차트 구간 | ADM-001은 "시간대별(오늘) · 요일별(최근 4주)" 고정, ADM-005는 "기간(일 · 주) 선택" | `day` = 오늘 시간대별(0~23시), `week` = 최근 4주 요일별 평균. 결측(13번)은 `day` = 오늘 시간대별, `week` = 최근 7일 날짜별 |
-| 이용률 | 정의 없음 | 기간 동안의 **시점 점유율 평균** (용어 정의 p.9) = 충전 중 관측 수 ÷ (사용 가능 + 충전 중 관측 수). `stopped` · `maintenance` · `unknown`은 분모에서 뺌. 버스전용 제외 |
+| 이용률 | 정의 없음 | 기간 동안의 **시점 점유율 평균** (용어 정의 p.9) = 충전 중 관측 수 ÷ (사용 가능 + 충전 중 관측 수). `stopped` · `maintenance` · `unknown`은 분모에서 뺌. 버스전용 제외. 기간 평균(`averageOccupancyRate`)도 칸별 비율의 평균이 아니라 관측을 합친 비율 |
+| 관측 | 정의 없음 | 수집 성공 회차(`success` · `partial`)에 저장된 상태 로그 1행. `failed` 소급 회차의 로그는 직전 상태를 복사한 것이라 뺌. 시간 구간은 회차 시작 시각(KST) 기준 |
 | 마지막 수신 시각 (ADM-002) | 정의 없음 | collector가 매 사이클 마지막 상태를 다시 쓰므로 충전기별 수신 시각이 따로 없음 → API의 상태 갱신 시각(`statUpdDt`)을 그대로 보냄. 운영사마다 갱신 방식이 달라 참고용 |
 
 ---
@@ -68,7 +69,7 @@
 
 - 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지. 시연 스냅샷에서는 "지금" = 스냅샷 시각 ([README 시연 기준 시각](README.md#기본))
 - 응답의 `from` · `to`는 실제 집계 기간 — `week`가 이용률(최근 4주)과 결측(최근 7일)에서 기간이 달라 화면에 함께 표시
-- 버스전용 충전기는 모든 집계에서 뺀다
+- 버스전용 충전기는 모든 집계에서 뺀다 — 결측(13번)은 `collection_runs`의 서비스 대상 기준 수(`eligible_expected_count` · `eligible_matched_count`)를 쓴다
 - 사용자 API와 달리 `dataQuality`는 없다 — 수집 상태는 12번에서 직접 보여 준다
 
 ---
@@ -129,7 +130,8 @@
 |---|---|---|
 | `stationName` | string | 도심은 충전소명, 휴게소는 휴게소명 |
 | `status` | string | 화면 상태 (README) |
-| `stat` | string | API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 등 이상 충전기 구분용 |
+| `updatedAt` | string | 대상별 마지막 성공 수집 시각 중 오래된 쪽 (`region=all`) |
+| `stat` | string \| null | API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 등 이상 충전기 구분용. 마지막 성공 회차에 그 충전기 행이 없으면 `null` |
 | `todayOccupancyRate` | number \| null | 오늘 이용률. 관측이 없으면 `null` |
 | `statUpdatedAt` | string \| null | API의 상태 갱신 시각 — [분석서 해석](#분석서-해석) 참고 |
 
@@ -137,7 +139,7 @@
 
 ## 12. 수집 상태 — `GET /admin/collection-status`
 
-마지막 수집 시각 · 실패 횟수 · API 응답 지연 (ADM-003). ⏳ `collection_runs` 테이블 추가 후.
+마지막 수집 시각 · 실패 횟수 · API 응답 지연 (ADM-003).
 
 **응답 200**
 
@@ -162,13 +164,15 @@
 |---|---|---|
 | `target` | string | `city` · `service_area`. `region=all`이면 둘 다 |
 | `lastStatus` | string | `running` · `success` · `partial` · `failed` (CollectionRun.status) |
+| `lastSuccessAt` | string \| null | 마지막 `success` 실행 시각 (`partial` 제외) |
 | `failedRunsToday` | number | 오늘 `failed` · `partial` 실행 수 |
+| `averageApiLatencyMsToday` | number \| null | 오늘 실행들의 `getChargerStatus` 응답 지연 평균 (반올림) |
 
 ---
 
 ## 13. 결측 현황 — `GET /admin/missing-stats`
 
-기간별 수집 결측 (ADM-004). ⏳ `collection_runs` 테이블 추가 후.
+기간별 수집 결측 (ADM-004).
 
 **응답 200** (`period=week`)
 
@@ -187,8 +191,9 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `series` | object[] | `day`: 오늘 0~23시 · `week`: 최근 7일 날짜별 |
-| `expectedCount` · `matchedCount` | number | 해당 구간 수집 실행들의 대상 · 저장 충전기 수 합 (CollectionRun) |
+| `expectedCount` · `matchedCount` | number | 해당 구간 수집 실행들의 서비스 대상(버스전용 제외) 대상 · 저장 수 합 (`eligible_expected_count` · `eligible_matched_count`). 진행 중(`running`) 실행과 이 값을 채우기 전 실행은 뺌 |
 | `missingRate` | number \| null | `missingCount ÷ expectedCount`. 실행이 없으면 `null` |
+| `failedRuns` | number | `failed` 실행 수 — `partial`은 대부분 Info 보정 실패라 결측이 아님 |
 
 ---
 

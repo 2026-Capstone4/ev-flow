@@ -101,6 +101,8 @@ erDiagram
 | `api_latency_ms` | int | `getChargerStatus` 응답 지연 — 소급 행은 NULL |
 | `expected_count` | int | 수집 대상 충전기 수 |
 | `matched_count` | int | 상태 로그에 저장한 충전기 수. **결측 = `expected_count − matched_count`** |
+| `eligible_expected_count` | int · NULL 허용 | 서비스 대상(버스전용 제외) 충전기 수 — 운영자 결측 현황 기준. 위 두 값에는 버스전용 14기가 섞여 있음 |
+| `eligible_matched_count` | int · NULL 허용 | 그중 상태 로그에 저장한 수 (`FAILED`는 0). 두 컬럼 도입(2026-11-16) 이전 회차는 `scripts/backfill_eligible_counts.py`로 채움 — 채우기 전에는 NULL |
 | `error_message` | text | 실패 내용 (엔드포인트 · 지역 · HTTP 코드) — 소급 행은 NULL |
 | `is_backfilled` | boolean | 기존 상태 로그로 만든 소급 행 — 실제 호출 기록이 아님 |
 

@@ -6,6 +6,7 @@ import { MapFallback } from '@/components/MapFallback'
 import { RecommendCard } from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
+import { useCoverageMask } from '@/hooks/useCoverageMask'
 import { useMapHomeData } from '@/hooks/useMapHomeData'
 import { useMyLocationMarker, useStationMarkers } from '@/hooks/useMapMarkers'
 import { useNaverMap } from '@/hooks/useNaverMap'
@@ -52,6 +53,7 @@ export function MapHomePage() {
     [openStation],
   )
 
+  useCoverageMask(map)
   useStationMarkers(map, stations, handleMarkerSelect)
   useMyLocationMarker(map, DEMO_USER_LOCATION)
 
@@ -88,7 +90,7 @@ export function MapHomePage() {
         {status !== 'ready' && <MapFallback status={status} />}
 
         {/* 상단 검색창 · 갱신 상태 */}
-        <div className="absolute inset-x-4 top-[52px] flex flex-col items-start gap-2">
+        <div className="absolute inset-x-4 top-4 flex flex-col items-start gap-2">
           <SearchBar
             activeFilterCount={countActiveFilters(filters)}
             onClick={() => navigate('/search')}

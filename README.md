@@ -24,6 +24,12 @@ ev-flow/
 | 아직 정해야 할 것 | [docs/open-questions.md](docs/open-questions.md) |
 | 전체 문서 목록 · 문서 작성 규칙 | [docs/README.md](docs/README.md) |
 
+## 데이터 출처
+
+| 데이터 | 사용 위치 | 출처 · 라이선스 |
+|---|---|---|
+| 서울 · 마포구 경계 | [`frontend/src/assets/coverage-boundary.json`](frontend/src/assets/coverage-boundary.json) — 지도 홈의 서비스 범위 표시 | 본 데이터는 통계청 통계지리정보서비스([SGIS](https://sgis.kostat.go.kr))에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: [vuski/admdongkor](https://github.com/vuski/admdongkor), ver20261001), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)으로 배포됩니다. EV-flow에서 서울 · 마포구 단위로 동을 합치고 점 수를 줄였습니다 |
+
 ## 팀
 
 | 이름 | 역할 | 담당 경로 |
