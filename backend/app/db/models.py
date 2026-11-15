@@ -82,6 +82,10 @@ class CollectionRun(Base):
     matched_count = Column(
         Integer, nullable=False, default=0
     )  # 상태 로그에 저장한 충전기 수 - 결측 = expected - matched
+    # 서비스 대상(버스전용 제외) 기준 대상 · 저장 수 - 운영자 결측 현황(ADM-004)용. 위 두 값에는 버스전용이 섞여 있음.
+    # 도입(2026-11-16) 이전 회차는 scripts/backfill_eligible_counts.py로 채움 - 채우기 전에는 NULL
+    eligible_expected_count = Column(Integer)
+    eligible_matched_count = Column(Integer)
     error_message = Column(Text)
     # 기존 상태 로그로 만든 소급 행 - 실제 호출 기록이 아니고, 이 중 FAILED는 statUpdDt 정체로 추정한 값
     is_backfilled = Column(Boolean, nullable=False, default=False, server_default="false")

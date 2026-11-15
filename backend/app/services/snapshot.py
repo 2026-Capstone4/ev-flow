@@ -25,6 +25,9 @@ class ChargerState:
     connector_types: list[str]
     capacity_kw: int | float
     charging_started_at: datetime | None
+    # 운영자 충전기 목록(ADM-002)용 원본 값 - 마지막 성공 회차에 행이 없으면 둘 다 None
+    stat: str | None = None
+    stat_upd_dt: datetime | None = None
 
 
 def latest_success_run(db: Session, target: str) -> CollectionRun:
@@ -55,7 +58,7 @@ def load_charger_states(
     # collection_runs 도입 이전에는 FAILED 회차도 행을 남겼으므로 실행 id로 그 회차 행만 고름.
     # 시각 조건은 인덱스 범위를 좁히는 용도 - 행이 없으면 상태를 모르는 충전기
     latest = (
-        select(log.stat, log.current_charge_start_dt)
+        select(log.stat, log.stat_upd_dt, log.current_charge_start_dt)
         .where(
             log.station_id == charger.station_id,
             log.charger_id == charger.charger_id,
@@ -73,6 +76,7 @@ def load_charger_states(
             charger.charger_type,
             charger.capacity,
             latest.c.stat,
+            latest.c.stat_upd_dt,
             latest.c.current_charge_start_dt,
         )
         .outerjoin(latest, true())
@@ -94,6 +98,8 @@ def load_charger_states(
                 connector_types=CONNECTOR_TYPES.get(row.charger_type, []),
                 capacity_kw=to_capacity_kw(row.capacity),
                 charging_started_at=row.current_charge_start_dt if status == "charging" else None,
+                stat=row.stat,
+                stat_upd_dt=row.stat_upd_dt,
             )
         )
     return states
