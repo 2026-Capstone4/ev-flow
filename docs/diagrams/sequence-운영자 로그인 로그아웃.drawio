@@ -101,7 +101,7 @@
             <mxPoint x="560" y="732" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="14" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="bcrypt 비밀번호 검증">
+        <mxCell id="14" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;align=left;spacingLeft=46;labelBackgroundColor=none;fontFamily=Pretendard;fontSize=12;" value="argon2id 비밀번호 검증">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="600" y="772" />

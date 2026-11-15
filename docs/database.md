@@ -20,6 +20,7 @@
 | 도심 | `city_stations` · `city_chargers` · `city_status_log` | 서울 마포구 급속 69개소 · 190기 | 예측 · 추천 대상 (버스 전용 14기 제외 — [주의](#데이터-사용-시-주의)) |
 | 휴게소 | `service_area_stations` · `service_area_chargers` · `service_area_status_log` | 천안 경부선 휴게소 4곳 · 9 statId · 27기 | 대조군 — **학습 · 추천 대상 아님** |
 | 공통 | `collection_runs` | 도심 · 휴게소 수집 회차마다 1행 | 수집 성공 · 실패 · 결측 기록 (운영자 대시보드, 사용자 응답 `updatedAt`) |
+| 운영자 | `admin_users` | 운영자 계정 (스크립트로만 생성) | 관리자 화면 로그인 — 다른 테이블과 관계 없음 |
 
 - 두 묶음은 컬럼이 같고, `service_area_stations`에만 `service_area_name` · `route` · `direction`이 더 있다.
 - 테이블명에 지역명을 넣지 않음 — 수집 지역이 바뀌어도 스키마를 유지하기 위함.
@@ -111,6 +112,22 @@ erDiagram
 | `FAILED` | Status 호출 실패 또는 DB 저장 오류 | **저장 안 함** |
 
 인덱스: `(target, started_at)`.
+
+### `admin_users` — 운영자 계정
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `id` | int PK | 일련번호 |
+| `login_id` | varchar(50) UNIQUE | 로그인 아이디 (요청 `loginId`) — 대소문자 구분 |
+| `password_hash` | varchar(255) | argon2id 해시 (PHC 문자열 — 알고리즘 · 설정값 · salt 포함) |
+| `name` | varchar(50) | 표시 이름 (응답 `admin.name`) |
+| `created_at` | timestamptz | 계정 생성 시각 |
+| `password_changed_at` | timestamptz | 마지막 비밀번호 설정 시각 — 이보다 먼저 발급된 토큰(`iat`)은 거부 |
+| `last_login_at` | timestamptz | 마지막 로그인 성공 시각 — 로그인한 적 없으면 NULL |
+
+- 계정 생성 · 비밀번호 변경은 `backend/scripts/create_admin.py`로만 한다 (관리자 화면에 가입 · 변경 기능 없음). 서버에서는 `docker compose exec api python scripts/create_admin.py <login_id> [--name <이름>]`
+- 로그인 실패 횟수는 Redis(`login_fail:{login_id}`)에 TTL로 두므로 잠금 컬럼이 없다.
+- 계정을 막으려면 행을 지운다 — 운영자 API가 요청마다 계정을 조회하므로(로그인 API 구현 시) 남은 토큰도 바로 거부된다.
 
 ---
 
