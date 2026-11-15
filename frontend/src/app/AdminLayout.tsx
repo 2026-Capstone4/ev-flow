@@ -65,7 +65,7 @@ export function AdminLayout() {
     <div className="flex min-h-dvh flex-col bg-bg-subtle lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-4 bg-text-primary px-4 py-4 text-text-on-brand lg:sticky lg:top-0 lg:h-dvh lg:w-[232px] lg:gap-8 lg:py-8">
         <div className="flex items-center justify-between lg:block">
-          <p className="text-lg font-bold">EV-flow 관리자</p>
+          <p className="text-lg font-bold">EV-flow 운영자</p>
           {/* 좁은 화면에서는 사이드바 아래쪽 계정 영역 대신 여기서 로그아웃 */}
           <button
             type="button"
