@@ -18,10 +18,11 @@ HTTP_ERROR_CODES = {
 class ApiError(Exception):
     """에러 응답으로 그대로 내보낼 예외 - code는 docs/api/README.md 에러 표의 고정값"""
 
-    def __init__(self, status_code: int, code: str, message: str):
+    def __init__(self, status_code: int, code: str, message: str, headers: dict | None = None):
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.headers = headers  # 429의 Retry-After 등
 
 
 def error_response(
@@ -37,7 +38,7 @@ def error_response(
 def register_error_handlers(app: FastAPI):
     @app.exception_handler(ApiError)
     async def handle_api_error(request: Request, exc: ApiError):
-        return error_response(exc.status_code, exc.code, exc.message)
+        return error_response(exc.status_code, exc.code, exc.message, exc.headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request: Request, exc: StarletteHTTPException):

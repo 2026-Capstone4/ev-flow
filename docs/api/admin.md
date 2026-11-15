@@ -43,11 +43,11 @@
 
 | 필드 | 설명 |
 |---|---|
-| `expiresAt` | 로그인 만료 시각 — 프론트는 만료 안내에 씀. ⏳ 만료 시간 SER-001 |
+| `expiresAt` | 로그인 만료 시각 — 프론트는 만료 안내에 씀. 로그인 후 2시간 (연장 없음) |
 
 **에러**: 401 `INVALID_CREDENTIALS` · 429 `LOGIN_LOCKED`(`Retry-After`) · 422 `VALIDATION_ERROR`
 
-쿠키: `HttpOnly` · `SameSite=Strict` · `Path=/api`, `Domain`은 지정하지 않는다 — Vite 개발 프록시를 거쳐도 저장되게 함. ⏳ `Secure`는 HTTPS 적용(`CI-06`) 후 운영 환경에만.
+쿠키: `HttpOnly` · `SameSite=Strict` · `Path=/api`, `Domain`은 지정하지 않는다 — Vite 개발 프록시를 거쳐도 저장되게 함. `Secure`도 붙인다 — 로컬 http 개발에서 쿠키가 저장되지 않으면 `.env`에 `AUTH_COOKIE_SECURE=false`. 쿠키 이름 `evflow_admin_token`.
 
 ### 8. 로그아웃 — `POST /auth/logout`
 
@@ -63,7 +63,7 @@
 
 | 파라미터 | 값 | 기본값 |
 |---|---|---|
-| `region` | `all` · `city`(마포구) · `service_area`(휴게소) | `all` |
+| `region` | `all` · `city`(도심, 현재 마포구) · `service_area`(휴게소) | `all` |
 | `period` | `day` · `week` | `day` |
 
 - 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지. 시연 스냅샷에서는 "지금" = 스냅샷 시각 ([README 시연 기준 시각](README.md#기본))

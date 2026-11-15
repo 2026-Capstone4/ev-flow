@@ -19,5 +19,21 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     ml_url: str = "http://localhost:8001"
 
+    # 네이버 Directions 5 - 추천 · 경로 API에서 사용. 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함
+    naver_client_id: str = ""
+    naver_client_secret: SecretStr = SecretStr("")
+
+    # 운영자 로그인 (SER-001) - 토큰은 JWT(HS256)를 HttpOnly 쿠키로 내려줌
+    # 비어 있으면 로그인만 500으로 막고 api · collector는 그대로 뜸 - 값은 .env.example 안내대로 생성
+    jwt_secret: SecretStr = SecretStr("")
+    auth_token_ttl_minutes: int = 120  # 연장 없음 - 만료되면 다시 로그인
+    # HTTPS 운영 기준 기본 켬. 로컬 http에서 쿠키가 저장되지 않으면 .env에 false
+    auth_cookie_secure: bool = True
+    # 로그인 실패 제한 - 창(window) 안에 한도만큼 틀리면 잠금. IP는 시연자 IP까지 막히지 않게 넉넉히
+    login_max_failures_per_id: int = 5
+    login_max_failures_per_ip: int = 20
+    login_failure_window_seconds: int = 900
+    login_lock_seconds: int = 900
+
 
 settings = Settings()

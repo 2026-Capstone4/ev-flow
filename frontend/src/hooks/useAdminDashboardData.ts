@@ -7,12 +7,14 @@ import {
 } from '@/hooks/useAdminQueries'
 import { useNow } from '@/hooks/useNow'
 import {
-  getCollectionHealth,
-  getTargetHealth,
+  groupChargersByStation,
   sortChargers,
+  sortStations,
   summarizeChargers,
   type ChargerSort,
-} from '@/lib/admin'
+  type StationSort,
+} from '@/lib/admin/chargerStatus'
+import { getCollectionHealth, getTargetHealth } from '@/lib/admin/collection'
 import { getListLoadState } from '@/lib/loadState'
 import type { AdminPeriod, AdminRegion } from '@/types/admin'
 
@@ -21,7 +23,12 @@ import type { AdminPeriod, AdminRegion } from '@/types/admin'
  * 이용률 차트는 분석서(ADM-001)대로 오늘 시간대별 · 최근 4주 요일별을 항상 함께 보여 주고,
  * 기간(period)은 결측 현황 · 결측 대체 건수에만 씀
  */
-export function useAdminDashboardData(region: AdminRegion, period: AdminPeriod, sort: ChargerSort) {
+export function useAdminDashboardData(
+  region: AdminRegion,
+  period: AdminPeriod,
+  chargerSort: ChargerSort,
+  stationSort: StationSort,
+) {
   const now = useNow()
   const chargersQuery = useAdminChargersQuery(region)
   const hourlyQuery = useUtilizationQuery(region, 'day')
@@ -40,7 +47,9 @@ export function useAdminDashboardData(region: AdminRegion, period: AdminPeriod, 
     isChargersError: chargersQuery.isError,
     chargersLoadState: getListLoadState(chargers, chargersQuery.isError),
     summary: chargers ? summarizeChargers(chargers) : null,
-    sortedChargers: chargers ? sortChargers(chargers, sort) : [],
+    sortedChargers: chargers ? sortChargers(chargers, chargerSort) : [],
+    /** 충전소별 보기 — 충전기 목록을 충전소로 묶어 정렬 */
+    sortedStations: chargers ? sortStations(groupChargersByStation(chargers), stationSort) : [],
     hourly: hourlyQuery.data,
     isHourlyError: hourlyQuery.isError,
     weekly: weeklyQuery.data,
