@@ -81,7 +81,7 @@ export function RoutePage() {
         </div>
         {status !== 'ready' && <MapFallback status={status} />}
 
-        <div className="absolute top-[52px] left-4">
+        <div className="absolute top-4 left-4">
           <BackButton floating />
         </div>
 
