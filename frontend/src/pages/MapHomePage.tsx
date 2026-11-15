@@ -6,6 +6,7 @@ import { MapFallback } from '@/components/MapFallback'
 import { RecommendCard } from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
+import { useCoverageMask } from '@/hooks/useCoverageMask'
 import { useMapHomeData } from '@/hooks/useMapHomeData'
 import { useMyLocationMarker, useStationMarkers } from '@/hooks/useMapMarkers'
 import { useNaverMap } from '@/hooks/useNaverMap'
@@ -52,6 +53,7 @@ export function MapHomePage() {
     [openStation],
   )
 
+  useCoverageMask(map)
   useStationMarkers(map, stations, handleMarkerSelect)
   useMyLocationMarker(map, DEMO_USER_LOCATION)
 
