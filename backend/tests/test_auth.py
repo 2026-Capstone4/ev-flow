@@ -1,19 +1,24 @@
+import os
 from datetime import UTC, datetime, timedelta
 
-import jwt
-import pytest
-import redis
-from fastapi.testclient import TestClient
-from pydantic import SecretStr
-from starlette.requests import Request
+# app.config가 import 시점에 필수 설정을 읽음 - .env가 없는 환경(CI)에서도 돌도록 가짜 값을 넣음
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
+os.environ.setdefault("EV_SERVICE_KEY", "test")
 
-from app.api.errors import ApiError
-from app.api.v1 import auth as auth_api
-from app.config import settings
-from app.db.models import AdminUser
-from app.db.session import get_db
-from app.main import app
-from app.services import auth
+import jwt  # noqa: E402
+import pytest  # noqa: E402
+import redis  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from pydantic import SecretStr  # noqa: E402
+from starlette.requests import Request  # noqa: E402
+
+from app.api.errors import ApiError  # noqa: E402
+from app.api.v1 import auth as auth_api  # noqa: E402
+from app.config import settings  # noqa: E402
+from app.db.models import AdminUser  # noqa: E402
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.services import auth  # noqa: E402
 
 PASSWORD = "correct-horse-1"
 TEST_SECRET = "test-secret-" + "x" * 32  # HS256 권장 길이(32바이트) 이상
