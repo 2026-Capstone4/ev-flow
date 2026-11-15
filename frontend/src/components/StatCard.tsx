@@ -25,9 +25,7 @@ export function StatCard({
       ) : (
         <p className={`text-2xl leading-9 font-bold sm:text-[28px] ${valueClassName}`}>{value}</p>
       )}
-      {caption && (
-        <p className="mt-auto pt-1 text-xs break-keep text-text-secondary">{caption}</p>
-      )}
+      {caption && <p className="mt-auto pt-1 text-xs break-keep text-text-secondary">{caption}</p>}
     </section>
   )
 }
