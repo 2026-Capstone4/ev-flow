@@ -206,17 +206,41 @@ function readDashboardParams(request: Request) {
 }
 
 /**
+ * 대시보드 요청이 로그인된 상태인지 판단하는 함수 모양.
+ * 전체 Mock은 Mock 쿠키를, 혼합 모드는 실제 서버의 /auth/me를 본다
+ */
+type SessionCheck = (cookies: Record<string, string>) => Promise<boolean>
+
+/** 전체 Mock용 - Mock 로그인 쿠키가 살아 있으면 로그인된 상태 */
+const checkMockSession: SessionCheck = async (cookies) => readMockSession(cookies) !== null
+
+/**
+ * 혼합 모드용 - 실제 서버의 /auth/me로 확인한다.
+ * 실제 로그인 쿠키는 HttpOnly라 MSW가 읽을 수 없어서, 브라우저가 쿠키를 붙여 보내는 bypass 요청으로 물어봄
+ */
+const checkRealSession: SessionCheck = async () => {
+  try {
+    const response = await fetch(bypass('/api/v1/auth/me'))
+    return response.ok
+  } catch {
+    // 서버에 연결이 안 되면 로그인 여부를 알 수 없으니 로그인 안 된 상태로 봄
+    return false
+  }
+}
+
+/**
  * 로그인이 필요한 운영자 API 핸들러를 만든다.
- * 쿠키가 없거나 만료면 401, region · period가 잘못됐으면 422, 둘 다 통과하면 build 결과를 돌려줌
+ * 로그인 안 됐으면 401, region · period가 잘못됐으면 422, 둘 다 통과하면 build 결과를 돌려줌
  */
 function adminGet<T extends DefaultBodyType>(
   path: string,
+  isLoggedIn: SessionCheck,
   build: (params: { region: AdminRegion; period: AdminPeriod }, now: Date) => T,
 ) {
   return http.get(`/api/v1${path}`, async ({ request, cookies }) => {
     await delay(300)
-    // 로그인 쿠키가 없거나 만료 → 401. 프론트는 로그인 화면으로 이동
-    if (!readMockSession(cookies)) {
+    // 로그인 안 됐거나 만료 → 401. 프론트는 로그인 화면으로 이동
+    if (!(await isLoggedIn(cookies))) {
       return HttpResponse.json<ApiErrorBody>(UNAUTHORIZED, { status: 401 })
     }
     const params = readDashboardParams(request)
@@ -231,8 +255,8 @@ function adminGet<T extends DefaultBodyType>(
   })
 }
 
-/** 운영자 로그인 · 대시보드 API - 백엔드에 아직 없어서 전체 · 혼합 모드 모두 Mock */
-const adminHandlers = [
+/** 운영자 로그인 · 로그아웃 · 로그인 상태 API - 전체 Mock에서만 씀 (혼합 모드는 실제 서버가 응답) */
+const authHandlers = [
   // 로그인. 아이디 · 비밀번호가 맞으면 만료 시각을 담은 쿠키를 내려줌
   http.post<never, LoginRequest>('/api/v1/auth/login', async ({ request }) => {
     await delay(400)
@@ -314,22 +338,32 @@ const adminHandlers = [
       return HttpResponse.json<AuthSession>(session)
     },
   ),
-
-  adminGet('/admin/utilization', ({ region, period }, now) =>
-    buildUtilization(region, period, now),
-  ),
-  adminGet('/admin/chargers', ({ region }, now) => ({
-    updatedAt: toKstIso(now),
-    chargers: buildAdminChargers(region, now),
-  })),
-  adminGet('/admin/collection-status', ({ region }, now) => ({
-    targets: buildCollectionTargets(region, now),
-  })),
-  adminGet('/admin/missing-stats', ({ region, period }, now) =>
-    buildMissingStats(region, period, now),
-  ),
-  adminGet('/admin/imputed-count', ({ period }, now) => buildImputedCount(period, now)),
 ]
+
+/**
+ * 운영자 대시보드 API - 백엔드에 아직 없어서 전체 · 혼합 모드 모두 Mock.
+ * 로그인 확인 방법만 모드에 따라 받아서 씀
+ */
+function createDashboardHandlers(isLoggedIn: SessionCheck) {
+  return [
+    adminGet('/admin/utilization', isLoggedIn, ({ region, period }, now) =>
+      buildUtilization(region, period, now),
+    ),
+    adminGet('/admin/chargers', isLoggedIn, ({ region }, now) => ({
+      updatedAt: toKstIso(now),
+      chargers: buildAdminChargers(region, now),
+    })),
+    adminGet('/admin/collection-status', isLoggedIn, ({ region }, now) => ({
+      targets: buildCollectionTargets(region, now),
+    })),
+    adminGet('/admin/missing-stats', isLoggedIn, ({ region, period }, now) =>
+      buildMissingStats(region, period, now),
+    ),
+    adminGet('/admin/imputed-count', isLoggedIn, ({ period }, now) =>
+      buildImputedCount(period, now),
+    ),
+  ]
+}
 
 /**
  * 혼합 모드용 충전소 목록. MSW를 거치지 않고(bypass) 실제 서버의 /stations를 직접 호출한다.
@@ -355,8 +389,15 @@ export const handlers = [
   ...stationHandlers,
   ...createUnimplementedHandlers(async () => STATIONS),
   ...serviceAreaHandlers,
-  ...adminHandlers,
+  ...authHandlers,
+  ...createDashboardHandlers(checkMockSession),
 ]
 
-/** VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 길찾기 · 운영자)만 Mock, 나머지는 실제 서버로 */
-export const partialHandlers = [...createUnimplementedHandlers(fetchRealStations), ...adminHandlers]
+/**
+ * VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 길찾기 · 운영자 대시보드)만 Mock, 나머지는 실제 서버로.
+ * 운영자 로그인은 실제 서버 계정으로 하고, 대시보드 Mock은 실제 로그인 여부를 확인한 뒤 응답함
+ */
+export const partialHandlers = [
+  ...createUnimplementedHandlers(fetchRealStations),
+  ...createDashboardHandlers(checkRealSession),
+]
