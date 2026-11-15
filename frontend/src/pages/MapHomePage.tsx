@@ -88,7 +88,7 @@ export function MapHomePage() {
         {status !== 'ready' && <MapFallback status={status} />}
 
         {/* 상단 검색창 · 갱신 상태 */}
-        <div className="absolute inset-x-4 top-[52px] flex flex-col items-start gap-2">
+        <div className="absolute inset-x-4 top-4 flex flex-col items-start gap-2">
           <SearchBar
             activeFilterCount={countActiveFilters(filters)}
             onClick={() => navigate('/search')}
