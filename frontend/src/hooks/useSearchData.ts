@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useStationsQuery } from '@/hooks/useStationsQuery'
 import { getDistanceMeters } from '@/lib/distance'
+import { findPrediction } from '@/lib/horizon'
 import { matchesFilters } from '@/lib/stationFilter'
 import { matchesQuery, sortSearchResults, type StationSortKey } from '@/lib/stationSearch'
 import type { LatLng } from '@/types/geo'
@@ -26,7 +27,7 @@ export function useSearchData({ origin, query, filters, horizon, sortKey }: UseS
       .map((station) => ({
         station,
         distanceMeters: getDistanceMeters(origin, station),
-        prediction: station.predictions.find((p) => p.horizonMinutes === horizon),
+        prediction: findPrediction(station, horizon),
       }))
     return sortSearchResults(matched, sortKey)
   }, [stations, origin, query, filters, horizon, sortKey])

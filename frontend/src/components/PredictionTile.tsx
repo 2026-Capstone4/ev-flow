@@ -1,15 +1,18 @@
 import { CongestionBadge } from '@/components/CongestionBadge'
 import { formatWaitTime } from '@/lib/congestion'
+import { getHorizonLabel } from '@/lib/horizon'
 import type { Prediction } from '@/types/station'
 
 type PredictionTileProps = {
   prediction: Prediction
   isSelected: boolean
   onSelect: () => void
+  /** 대기시간 자리에 대신 보여줄 글자 (지금 출발: 사용 가능 2/4대) */
+  caption?: string
 }
 
 /** 상세 화면 "시간대별 혼잡 예측"의 한 칸 */
-export function PredictionTile({ prediction, isSelected, onSelect }: PredictionTileProps) {
+export function PredictionTile({ prediction, isSelected, onSelect, caption }: PredictionTileProps) {
   return (
     <button
       type="button"
@@ -25,11 +28,13 @@ export function PredictionTile({ prediction, isSelected, onSelect }: PredictionT
       <span
         className={`text-[13px] ${isSelected ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'}`}
       >
-        {prediction.horizonMinutes}분 후
+        {getHorizonLabel(prediction.horizonMinutes)}
       </span>
       <CongestionBadge congestion={prediction.congestion} />
       <span className="text-xs font-medium">
-        {formatWaitTime(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes) ?? '-'}
+        {caption ??
+          formatWaitTime(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes) ??
+          '-'}
       </span>
     </button>
   )

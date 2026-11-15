@@ -1,5 +1,6 @@
 import { getApiErrorCode } from '@/api/errors'
 import { useRouteQuery, useStationQuery } from '@/hooks/useStationsQuery'
+import { findPrediction } from '@/lib/horizon'
 import type { LatLng } from '@/types/geo'
 import type { HorizonMinutes } from '@/types/station'
 
@@ -16,7 +17,7 @@ export function useRouteData(origin: LatLng, stationId: string, horizon: Horizon
   return {
     station,
     route: routeQuery.data,
-    prediction: station?.predictions.find((p) => p.horizonMinutes === horizon),
+    prediction: station && findPrediction(station, horizon),
     isStationError: stationQuery.isError,
     isRouteError: routeQuery.isError,
     /** true면 재시도 버튼 대신 다른 충전소를 고르도록 안내 */

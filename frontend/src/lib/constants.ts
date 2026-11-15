@@ -11,4 +11,5 @@ export const DEMO_USER_LOCATION: LatLng = { lat: 37.5535, lng: 126.9135 }
 export const POLLING_INTERVAL_MS = 60_000
 export const CACHE_TIME_MS = 5 * 60_000
 
-export const DEFAULT_HORIZON: HorizonMinutes = 30
+/** 처음 화면을 열 때 시점. 0 = 지금 출발 */
+export const DEFAULT_HORIZON: HorizonMinutes = 0

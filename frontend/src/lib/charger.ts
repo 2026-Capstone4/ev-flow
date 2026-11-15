@@ -29,3 +29,33 @@ export function formatChargingElapsed(startedAt: string | null, now: Date) {
   const rest = minutes % 60
   return `${Math.floor(minutes / 60)}시간${rest ? ` ${rest}분` : ''}째`
 }
+
+/** 지금 상태 막대의 묶음. 운영 중지 · 점검 중은 둘 다 "쓸 수 없음"이라 하나로 묶음 */
+export type ChargerStatusGroup = 'available' | 'charging' | 'offline' | 'unknown'
+
+export const CHARGER_STATUS_GROUP_LABEL: Record<ChargerStatusGroup, string> = {
+  available: '사용 가능',
+  charging: '충전 중',
+  offline: '점검 · 중지',
+  unknown: '확인 불가',
+}
+
+const STATUS_GROUP: Record<ChargerStatus, ChargerStatusGroup> = {
+  available: 'available',
+  charging: 'charging',
+  stopped: 'offline',
+  maintenance: 'offline',
+  unknown: 'unknown',
+}
+
+/** 충전기 상태를 묶음별로 센다 (막대 순서: 사용 가능 → 충전 중 → 점검 · 중지 → 확인 불가) */
+export function countChargerStatusGroups(statuses: ChargerStatus[]) {
+  const counts: Record<ChargerStatusGroup, number> = {
+    available: 0,
+    charging: 0,
+    offline: 0,
+    unknown: 0,
+  }
+  for (const status of statuses) counts[STATUS_GROUP[status]] += 1
+  return counts
+}

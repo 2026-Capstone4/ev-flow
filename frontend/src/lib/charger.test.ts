@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatChargerSpec, formatChargingElapsed } from '@/lib/charger'
+import { countChargerStatusGroups, formatChargerSpec, formatChargingElapsed } from '@/lib/charger'
 
 describe('formatChargerSpec', () => {
   it('커넥터가 여러 개면 /로 이어 표기함', () => {
@@ -22,5 +22,22 @@ describe('formatChargingElapsed', () => {
 
   it('충전 중이 아니면 null', () => {
     expect(formatChargingElapsed(null, now)).toBeNull()
+  })
+})
+
+describe('countChargerStatusGroups', () => {
+  it('운영 중지 · 점검 중은 하나로 묶어 셈', () => {
+    expect(
+      countChargerStatusGroups(['available', 'charging', 'charging', 'stopped', 'maintenance']),
+    ).toEqual({ available: 1, charging: 2, offline: 2, unknown: 0 })
+  })
+
+  it('충전기가 없으면 모두 0', () => {
+    expect(countChargerStatusGroups([])).toEqual({
+      available: 0,
+      charging: 0,
+      offline: 0,
+      unknown: 0,
+    })
   })
 })

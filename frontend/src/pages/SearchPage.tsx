@@ -155,7 +155,8 @@ export function SearchPage() {
         {results ? (
           <>
             <p className="px-4 pt-4 pb-1 text-[13px] font-medium text-text-secondary">
-              검색 결과 {results.length}곳 · {horizon}분 후 예측 기준
+              검색 결과 {results.length}곳 ·{' '}
+              {horizon === 0 ? '지금 기준' : `${horizon}분 후 예측 기준`}
             </p>
             {results.length > 0 ? (
               <ul>
