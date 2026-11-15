@@ -2,18 +2,22 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { HorizonSelector } from '@/components/HorizonSelector'
+import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
+import { MapNotice } from '@/components/MapNotice'
 import { RecommendCard } from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { useCoverageMask } from '@/hooks/useCoverageMask'
+import { useCurrentLocation } from '@/hooks/useCurrentLocation'
 import { useMapHomeData } from '@/hooks/useMapHomeData'
 import { useMyLocationMarker, useStationMarkers } from '@/hooks/useMapMarkers'
 import { useNaverMap } from '@/hooks/useNaverMap'
 import { useSheetCollapsedOffset } from '@/hooks/useSheetCollapsedOffset'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useMapView } from '@/hooks/useMapView'
-import { DEMO_USER_LOCATION, MAPO_CENTER } from '@/lib/constants'
+import { IS_GEOLOCATION_ENABLED, MAPO_CENTER } from '@/lib/constants'
+import { LOCATE_FAILURE_MESSAGE } from '@/lib/geolocation'
 import { countActiveFilters } from '@/lib/stationFilter'
 import type { Station } from '@/types/station'
 
@@ -22,10 +26,13 @@ const RECOMMEND_MESSAGE = {
   empty: '추천할 충전소가 없습니다',
 }
 
+/** 안내 문구를 띄워 두는 시간 */
+const NOTICE_DURATION_MS = 3000
+
 export function MapHomePage() {
   const navigate = useNavigate()
   // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
-  const { horizon, setHorizon, filters } = useMapView()
+  const { horizon, setHorizon, filters, userLocation } = useMapView()
   // 길찾기 화면의 "다른 추천 충전소 보기"로 오면 추천 시트를 펼친 채로 시작
   const location = useLocation()
   const [isSheetExpanded, setIsSheetExpanded] = useState(
@@ -34,7 +41,7 @@ export function MapHomePage() {
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 13 })
   const { stations, updatedAt, isStationsError, recommendations, recommendState } = useMapHomeData(
-    DEMO_USER_LOCATION,
+    userLocation,
     horizon,
     filters,
   )
@@ -55,7 +62,27 @@ export function MapHomePage() {
 
   useCoverageMask(map)
   useStationMarkers(map, stations, handleMarkerSelect)
-  useMyLocationMarker(map, DEMO_USER_LOCATION)
+  useMyLocationMarker(map, userLocation)
+
+  // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
+  const [notice, setNotice] = useState<{ id: number; message: string } | null>(null)
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(null), NOTICE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [notice])
+
+  const { locate, isLocating } = useCurrentLocation()
+  const handleLocate = async () => {
+    const result = await locate()
+    // 찾았으면 그 위치로, 마포구 밖이면 지금 추천 기준 위치로 지도를 옮김
+    if (map && (result.ok || result.reason === 'out-of-area')) {
+      const target = result.ok ? result.location : userLocation
+      map.panTo(new window.naver.maps.LatLng(target.lat, target.lng))
+    }
+    // 못 쓴 이유는 잠깐 안내 (권한 거부 · HTTPS 아님 · 마포구 밖 등)
+    if (!result.ok) setNotice({ id: Date.now(), message: LOCATE_FAILURE_MESSAGE[result.reason] })
+  }
 
   // 펼침 · 접힘 · 손 뗐을 때만 애니메이션. 데이터가 와서 높이를 처음 잴 때 시트가 미끄러져 내려오지 않게 함
   const [isSheetAnimating, setIsSheetAnimating] = useState(false)
@@ -96,6 +123,7 @@ export function MapHomePage() {
             onClick={() => navigate('/search')}
           />
           <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
+          {notice && <MapNotice key={notice.id} message={notice.message} />}
         </div>
 
         <button
@@ -122,6 +150,21 @@ export function MapHomePage() {
               : ''
           }`}
         >
+          {/* 현재 위치 버튼. 시트 위에 붙어 함께 움직이고, 시트를 펼치면 숨김 */}
+          {IS_GEOLOCATION_ENABLED && (
+            <div
+              style={{ opacity: 1 - expandProgress }}
+              className={`absolute right-4 bottom-full mb-3 ${isSheetExpanded ? 'pointer-events-none' : ''} ${
+                isSheetAnimating && !sheetDrag.isDragging ? 'transition-opacity duration-200' : ''
+              }`}
+            >
+              <LocateButton
+                isLocating={isLocating}
+                onClick={handleLocate}
+                tabIndex={isSheetExpanded ? -1 : undefined}
+              />
+            </div>
+          )}
           {/* 손잡이 · 헤더를 끌어 펼치고 접음. 카드 영역은 탭으로 상세 이동이라 제외 */}
           <div
             onPointerDown={sheetDrag.onPointerDown}

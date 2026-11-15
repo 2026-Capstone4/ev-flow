@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_USE_MOCK?: 'true' | 'partial' | 'false'
   readonly VITE_API_BASE_URL?: string
   readonly VITE_PROXY_TARGET?: string
+  /** 지도 홈 현재 위치 버튼 - true일 때만 보임 */
+  readonly VITE_USE_GEOLOCATION?: 'true' | 'false'
 }
 
 interface ImportMeta {
