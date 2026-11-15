@@ -1,9 +1,6 @@
-import {
-  CHARGER_REGION_LABEL,
-  formatPercent,
-  getAdminChargerStatusLabel,
-  isStale,
-} from '@/lib/admin'
+import { InfoTooltip } from '@/components/InfoTooltip'
+import { getAdminChargerStatusLabel, TODAY_OCCUPANCY_TOOLTIP } from '@/lib/admin/chargerStatus'
+import { CHARGER_REGION_LABEL, formatPercent, isStale } from '@/lib/admin/common'
 import { formatClock, formatElapsed } from '@/lib/formatUpdatedAt'
 import type { AdminCharger } from '@/types/admin'
 import type { ChargerStatus } from '@/types/station'
@@ -26,16 +23,22 @@ type AdminChargerTableProps = {
 /** 충전기 상태 표 (ADM-002). 정렬은 바깥에서 해서 넘겨줌 */
 export function AdminChargerTable({ chargers, updatedAt }: AdminChargerTableProps) {
   return (
-    // 충전기가 수십 기라 표 높이를 제한하고 안에서 스크롤. 머리글은 위에 고정
-    <div className="max-h-[480px] overflow-auto border-y border-border-default">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="sticky top-0 bg-bg-subtle text-[13px] text-text-secondary shadow-[0_1px_0_var(--color-border-default)]">
+    // 표 높이를 10줄 정도로 고정하고 안에서 스크롤 — 검색으로 줄 수가 바뀌어도 패널 크기는 그대로. 머리글은 위에 고정
+    <div className="h-[480px] overflow-auto border-y border-border-default">
+      <table className="w-full min-w-[640px] text-left text-sm whitespace-nowrap">
+        {/* z-10: 아래로 펼쳐지는 ⓘ 말풍선이 표 줄에 가려지지 않게 */}
+        <thead className="sticky top-0 z-10 bg-bg-subtle text-[13px] text-text-secondary shadow-[0_1px_0_var(--color-border-default)]">
           <tr>
             <th className="px-5 py-2.5 font-medium">구분</th>
             <th className="px-5 py-2.5 font-medium">충전소 / 휴게소</th>
             <th className="px-5 py-2.5 font-medium">충전기</th>
             <th className="px-5 py-2.5 font-medium">상태</th>
-            <th className="px-5 py-2.5 font-medium">오늘 이용률</th>
+            <th className="px-5 py-2.5 font-medium">
+              <span className="inline-flex items-center gap-1">
+                오늘 이용률
+                <InfoTooltip text={TODAY_OCCUPANCY_TOOLTIP} label="오늘 이용률 설명" />
+              </span>
+            </th>
             <th className="px-5 py-2.5 font-medium">마지막 수신</th>
           </tr>
         </thead>

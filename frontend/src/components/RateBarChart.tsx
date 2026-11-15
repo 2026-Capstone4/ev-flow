@@ -1,5 +1,5 @@
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { formatPercent } from '@/lib/admin'
+import { formatPercent } from '@/lib/admin/common'
 
 export type RateDatum = {
   label: string

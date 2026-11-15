@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router'
 import { getApiErrorCode, getRetryAfterSeconds } from '@/api/errors'
 import { Button } from '@/components/Button'
 import { useAuthMeQuery, useLoginMutation } from '@/hooks/useAdminAuth'
-import { getLoginErrorMessage } from '@/lib/admin'
+import { getLoginErrorMessage } from '@/lib/admin/auth'
 
 /** 가드(AdminLayout)가 로그인 화면으로 보낼 때 넘기는 값 */
 export type AdminLoginState = {

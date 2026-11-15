@@ -1,4 +1,4 @@
-import { COLLECTION_HEALTH_LABEL, type CollectionHealth } from '@/lib/admin'
+import { COLLECTION_HEALTH_LABEL, type CollectionHealth } from '@/lib/admin/collection'
 
 const HEALTH_CLASS: Record<CollectionHealth, string> = {
   normal: 'text-congestion-free',

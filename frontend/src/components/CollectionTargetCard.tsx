@@ -1,5 +1,6 @@
 import { CollectionHealthLabel } from '@/components/CollectionHealthLabel'
-import { CHARGER_REGION_LABEL, type CollectionHealth } from '@/lib/admin'
+import { type CollectionHealth } from '@/lib/admin/collection'
+import { CHARGER_REGION_LABEL } from '@/lib/admin/common'
 import { formatClock, formatElapsed } from '@/lib/formatUpdatedAt'
 import type { CollectionTarget } from '@/types/admin'
 
