@@ -19,5 +19,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     ml_url: str = "http://localhost:8001"
 
+    # 네이버 Directions 5 - 추천 · 경로 API에서 사용. 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함
+    naver_client_id: str = ""
+    naver_client_secret: SecretStr = SecretStr("")
+
 
 settings = Settings()
