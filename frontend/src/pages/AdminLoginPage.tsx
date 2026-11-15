@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { useId, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { getApiErrorCode, getRetryAfterSeconds } from '@/api/errors'
 import { Button } from '@/components/Button'
@@ -21,6 +22,10 @@ export function AdminLoginPage() {
   const loginMutation = useLoginMutation()
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
+  // true면 비밀번호를 글자 그대로 보여 줌
+  const [showPassword, setShowPassword] = useState(false)
+  // 비밀번호 칸과 라벨을 잇는 id. 보기 버튼이 라벨 밖에 있어야 해서 label로 감싸지 않고 id로 연결
+  const passwordId = useId()
 
   // 이미 로그인된 상태로 들어오면 로그인 폼 대신 대시보드로 보냄
   if (me.isSuccess) return <Navigate to={state.from ?? '/admin'} replace />
@@ -71,16 +76,29 @@ export function AdminLoginPage() {
             className="rounded-sm border border-border-default px-3 py-2.5 text-[15px] font-normal outline-none focus:border-brand-primary"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-[13px] font-medium">
-          비밀번호
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            className="rounded-sm border border-border-default px-3 py-2.5 text-[15px] font-normal outline-none focus:border-brand-primary"
-          />
-        </label>
+        <div className="flex flex-col gap-1.5 text-[13px] font-medium">
+          <label htmlFor={passwordId}>비밀번호</label>
+          <div className="relative">
+            <input
+              id={passwordId}
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              // 오른쪽 보기 버튼 자리만큼 안쪽 여백. Edge 기본 보기 버튼은 겹치지 않게 숨김
+              className="w-full rounded-sm border border-border-default py-2.5 pr-11 pl-3 text-[15px] font-normal outline-none focus:border-brand-primary [&::-ms-reveal]:hidden"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-text-secondary"
+            >
+              {/* 지금 보이는 상태면 숨기기 아이콘, 가려진 상태면 보기 아이콘 */}
+              {showPassword ? <EyeOff size={18} aria-hidden /> : <Eye size={18} aria-hidden />}
+            </button>
+          </div>
+        </div>
 
         {errorMessage && (
           <p role="alert" className="text-[13px] text-congestion-busy">
