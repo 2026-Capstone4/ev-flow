@@ -192,6 +192,7 @@
 | 404 | `ROUTE_NOT_FOUND` | 경로를 찾지 못함 (UC-U07 E2) |
 | 405 | `METHOD_NOT_ALLOWED` | 지원하지 않는 메서드 |
 | 422 | `VALIDATION_ERROR` | 파라미터 · 본문 형식 오류 |
+| 422 | `OUT_OF_SERVICE_AREA` | 추천 출발 위치가 마포구 밖 (🟡 제안 `MAP-02`) |
 | 429 | `LOGIN_LOCKED` | 로그인 실패가 반복돼 일정 시간 제한됨 (SER-001) |
 | 429 | `RATE_LIMITED` | 추천 · 길찾기 호출 제한 초과 (SER-003) |
 | 502 | `ROUTE_PROVIDER_ERROR` | 길찾기에서 네이버 Directions 오류 · 타임아웃 (UC-U07 E2) |
@@ -218,8 +219,8 @@
 |---|---|---|---|---|---|
 | 1 | `GET /stations` | — | UC-U01 · U02 | `get_stations` | 예측 필드 ⏳ `AI-07` |
 | 2 | `GET /stations/{stationId}` | — | UC-U03 · U04 · U05 | `get_station` | 도심만 (휴게소는 6번). 예측 필드 ⏳ `AI-07` |
-| 3 | `POST /recommendations` | — | UC-U06 | `recommend` | 15 · 30 · 60분 추천을 한 번에 응답 (🟡 잠정). 점수는 api가 요청 때 계산 — 혼잡도 · 대기는 Redis, 이동거리 · 이동시간은 Directions. ⏳ 계산식 |
-| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (출발 좌표 반올림, SER-002). ⏳ 반올림 단위 · TTL `MAP-02` |
+| 3 | `POST /recommendations` | — | UC-U06 | `recommend` | 15 · 30 · 60분 추천을 한 번에 응답 (🟡 잠정). 점수는 api가 요청 때 계산 — 혼잡도 · 대기는 Redis, 이동거리 · 이동시간은 Directions (🟡 제안: 66곳 전부 호출, [이동시간 처리](user.md#이동시간-처리)). ⏳ 계산식 |
+| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (SER-002). 🟡 제안: 3번과 같은 캐시, TTL 30분 `MAP-02` |
 | 5 | `GET /service-areas` | — | UC-U08 | `get_service_areas` | |
 | 6 | `GET /service-areas/chargers?name=&direction=` | — | UC-U08 | `get_service_area_chargers` | |
 | 7 | `POST /auth/login` | — | UC-O01 | `login` | ⏳ `admin_users` |
@@ -240,5 +241,5 @@
 | 항목 | 영향 | 담당 |
 |---|---|---|
 | 추천점수 계산식 | 3번 순위 | 전원 |
-| 이동거리 · 이동시간 처리 (`MAP-02`) — 호출할 후보 수, 실패 시 추정, 호출 제한 | 3 · 4번, `RATE_LIMITED` 기준 | 전원 |
+| 이동거리 · 이동시간 처리 (`MAP-02`) — 🟡 제안: [이동시간 처리](user.md#이동시간-처리). 남은 것: 마포구 경계 여유 거리, 호출 제한 기준 | 3 · 4번, `RATE_LIMITED` 기준 | 전원 |
 | 도착 시점 vs 예측 시점 (REC-006) | 3번 응답 구조 | 전원 |
