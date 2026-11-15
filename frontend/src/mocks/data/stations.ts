@@ -34,6 +34,9 @@ const NO_FORECAST = { 15: null, 30: null }
 
 // 충전소 이름 · 좌표는 화면 개발용 예시 (실제 수집 데이터 아님)
 // 현재 혼잡도 · 데이터 상태 · 예측 없음 등 화면 분기를 모두 볼 수 있게 구성
+// 추천 데모 시나리오 (데모 위치 = 합정역 근처 DEMO_USER_LOCATION 기준)
+// - 가장 가까운 합정(1분) · 홍대(3분)는 혼잡 → 조금 먼 망원(3분)이 대기가 짧아 1위
+// - 연남동은 지금 혼잡이지만 15분 후 여유 예측 → "15분 후"를 고르면 추천에 새로 들어옴
 const MOCK_STATIONS: MockStation[] = [
   {
     stationId: 'MOCK0001',
@@ -63,8 +66,9 @@ const MOCK_STATIONS: MockStation[] = [
     slowChargerCount: 0,
     midChargerCount: 0,
     dataQuality: 'normal',
-    chargers: [charger('01', 'available'), charger('02', 'charging')],
-    forecast: { 15: 'medium', 30: 'medium' },
+    // 가장 가까운 충전소지만 둘 다 충전 중 → 지금 혼잡, 이후에도 혼잡 예측
+    chargers: [charger('01', 'charging'), charger('02', 'charging')],
+    forecast: { 15: 'high', 30: 'high' },
   },
   {
     stationId: 'MOCK0003',
@@ -107,8 +111,9 @@ const MOCK_STATIONS: MockStation[] = [
     slowChargerCount: 0,
     midChargerCount: 0,
     dataQuality: 'normal',
-    chargers: [charger('01', 'available'), charger('02', 'available'), charger('03', 'charging')],
-    forecast: { 15: 'low', 30: 'medium' },
+    // 지금은 전부 충전 중(혼잡)이지만 곧 끝날 예정 → 15 · 30분 후 여유 예측
+    chargers: [charger('01', 'charging'), charger('02', 'charging'), charger('03', 'charging')],
+    forecast: { 15: 'low', 30: 'low' },
   },
   {
     stationId: 'MOCK0006',
