@@ -123,6 +123,8 @@ erDiagram
 
 - 컬럼은 `city_*`와 같다 (`live_status_log` 인덱스는 `(station_id, charger_id, collected_at)` + `(collection_run_id)`). 나중에 서울도 예측하게 되면 `INSERT ... SELECT`로 합치거나 `UNION ALL`로 함께 읽을 수 있다 — 마포를 빼고 수집하므로 충전기가 겹치지 않음
 - 대상: `getChargerInfo(zcode=11)` 중 삭제 제외 · 50kW 이상 · 이용제한 없음 · **버스형 제외** · **마포(`zscode` `11440`) 제외** — 마포 목록과 같은 기준. `scripts/init_live_chargers.py`로 한 번 채우고 고정해서 씀 (목록 갱신은 데모 후). 2026-11-16 로컬 실측 3,562기 · 1,561곳
+  - 원천 데이터 오류도 뺌 (2026-11-16): 이름에 "테스트"가 든 충전소(GS칼텍스 시험 등록 2곳 — 좌표 33.0, 125.0), 좌표가 서울 경계에서 1km 넘게 밖인 충전소(주소와 좌표가 다른 4곳 — 6 · 26 · 31 · 33km 밖). 경계는 프론트 지도 범위(`coverage-boundary.json`)의 서울 경계를 복사한 `scripts/seoul_boundary.json`. "운전면허시험장"처럼 "시험"은 실제 충전소라 빼지 않음. 버스 이름이어도 타입이 `11`이 아니면 그대로 둠
+  - 이미 채운 대상에는 `--prune`(목록) → `--prune --commit`(그 충전소의 상태 로그 · 충전기 · 충전소 삭제)으로 같은 규칙을 적용. collector는 회차마다 대상을 DB에서 읽어 재시작 없이 빠짐
 - `live_stations`의 완속 · 중속 개수는 같은 Info에서 셈 (`update_charger_counts.py`와 같은 기준)
 - 회차는 `collection_runs.target = 'live'`. 서울 Info는 약 8페이지라 페이지당 재시도 2회 · 전체 3분 상한
 - 용량: 회차당 약 3,562행 → 하루 약 103만 행 · **약 340MB** (행당 약 333B, 로컬 실측). 지금은 보존 기간 없음 — 디스크를 보며 정함. 일일 백업(`pg_dump -Fc`)은 반복 값이 많아 DB 크기의 약 2%라 부담 작음
