@@ -174,6 +174,37 @@ class ServiceAreaStatusLog(StatusLogColumns, Base):
     )
 
 
+# 서울 실시간 표시(마포 · 버스형 제외) - 예측 · 학습에 아직 쓰지 않음.
+# 마포(city_*)와 컬럼이 같아 나중에 서울도 예측하게 되면 합치거나(INSERT ... SELECT) 함께 읽을 수 있음(UNION ALL)
+class LiveStation(StationColumns, Base):
+    __tablename__ = "live_stations"
+
+    chargers = relationship("LiveCharger", back_populates="station")
+
+
+class LiveCharger(ChargerColumns, Base):
+    __tablename__ = "live_chargers"
+
+    station = relationship("LiveStation", back_populates="chargers")
+
+    __table_args__ = (ForeignKeyConstraint(["station_id"], ["live_stations.station_id"]),)
+
+
+class LiveStatusLog(StatusLogColumns, Base):
+    __tablename__ = "live_status_log"
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["station_id", "charger_id"],
+            ["live_chargers.station_id", "live_chargers.charger_id"],
+        ),
+        ForeignKeyConstraint(["collection_run_id"], ["collection_runs.id"]),
+        Index("ix_live_status_log_lookup", "station_id", "charger_id", "collected_at"),
+        # 재시작 때 마지막 회차 행 읽기 · 회차별 조회용 (회차당 약 3,561행)
+        Index("ix_live_status_log_run", "collection_run_id"),
+    )
+
+
 # 운영자 계정 - scripts/create_admin.py 시드로만 만듦. 가입 · 비밀번호 찾기 없음, 권한 차등 없음 (SER-001 · 004)
 # 로그인 실패 횟수는 Redis(login_fail:{login_id}, TTL)에 두므로 잠금 관련 컬럼이 없음
 class AdminUser(Base):
