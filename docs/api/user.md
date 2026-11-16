@@ -23,6 +23,8 @@
 | `updatedAt` | string | 마지막으로 수집에 성공한 시각 (README 참고) |
 | `dataQuality` | string | 경과 시간 기준 데이터 상태 (`normal` · `delayed` · `baseline`) — 기준 시각 칩용 |
 
+충전소는 **마포구(예측 · 추천 대상)** 와 **서울 다른 구(실시간 표시만)** 두 출처다. 서울 충전소는 `predictionAvailable: false`이고 예측 값이 모두 `null`이다 (2026-11-16, 서울 확대).
+
 충전 용량 · 충전기 대수는 **급속 충전기만** 센다. 버스전용(타입 11)은 충전기 목록 · 대수에서 빼고, 버스전용만 있는 충전소는 목록에서 뺀다.
 
 ### 공통 객체
@@ -51,7 +53,10 @@
 
 ## 1. 충전소 목록 — `GET /stations`
 
-지도 마커 · 검색 · 필터 · 요약 시트용 도심 충전소 전체 목록 (UC-U01 · U02). 대상이 69개소라 페이지 나누기 · 서버 필터는 없다.
+지도 마커 · 검색 · 필터 · 요약 시트용 충전소 전체 목록 (UC-U01 · U02). 마포 66곳 + 서울(마포 제외) 약 1,560곳을 한 번에 준다 — 마포가 먼저, 각각 `stationId` 순. 페이지 나누기 · 서버 필터는 없다 (응답 약 1.4MB, gzip 약 84KB — 2026-11-16 로컬 실측 74ms). 지도 범위 파라미터는 데모 후.
+
+- 최상위 `updatedAt` · `dataQuality`는 **마포 · 서울 수집 회차 중 오래된 쪽** 기준이다. 서울 회차가 아직 없으면(수집 전 · 장애) 서울 없이 마포만 주고 기준도 마포 회차다
+- 충전소별 `dataQuality`는 각자 자기 회차 기준이다
 
 **요청**: 파라미터 없음
 
@@ -94,7 +99,8 @@
 | `availableChargers` | number | 지금 `available`인 충전기 수 (MAP-003) |
 | `slowChargerCount` · `midChargerCount` | number | 같은 충전소의 완속 · 중속 개수 — 표시용, 상태 없음 |
 | `congestion` | string | **현재** 혼잡도. 지도 마커는 항상 이 값 (REC-006) |
-| `dataQuality` | string | 이 충전소의 데이터 상태 (4개 값 모두 가능) |
+| `dataQuality` | string | 이 충전소의 데이터 상태 (4개 값 모두 가능). 서울 충전소는 예측이 없으므로 `baseline`을 "상태를 확인할 수 없음"(20분 이상 지연 · 확인 비율 80% 미만)으로만 해석한다 |
+| `predictionAvailable` | boolean | 예측 제공 여부 — 마포 `true`, 서울 `false`. `false`면 `predictions`는 형식만 있고 `congestion` · 대기 · `source`가 모두 `null` → 화면은 시점 탭 대신 "예측 미제공" |
 | `chargers` | Charger[] | 필터용 (FLT-001~003) |
 | `predictions` | Prediction[] | 15 · 30분 예측. 시점 탭 전환은 프론트에서. 🟡 화면의 "지금 출발" 탭은 예측을 쓰지 않고 `congestion` · `availableChargers` · 충전기 `status`(실시간)로 표시 — 0분 예측은 보내지 않음 |
 
@@ -104,7 +110,7 @@
 
 ## 2. 충전소 상세 — `GET /stations/{stationId}`
 
-충전소 상세 화면 (UC-U03 · U04 · U05). 도심 충전소만 — 휴게소는 [6번](#6-휴게소-충전기-현황--get-service-areaschargers).
+충전소 상세 화면 (UC-U03 · U04 · U05). 마포 · 서울 충전소 모두 — 서울 충전소면 최상위 `updatedAt` · `dataQuality`가 서울 회차 기준이고 `predictionAvailable: false`. 휴게소는 [6번](#6-휴게소-충전기-현황--get-service-areaschargers).
 
 **요청**: 경로 `stationId`
 
@@ -136,7 +142,7 @@
 
 ## 3. 충전소 추천 — `POST /recommendations`
 
-현재 위치 기준 Top-3 (UC-U06). 지금 출발 · 15 · 30분 추천을 한 번에 내려준다 (🟡 잠정 — 도착 시점 vs 예측 시점 논의에 따라 바뀔 수 있음).
+현재 위치 기준 Top-3 (UC-U06). **후보는 마포 충전소만** — 서울 다른 구에 있어도 추천 결과는 마포 충전소다(서울은 예측이 없음). 지금 출발 · 15 · 30분 추천을 한 번에 내려준다 (🟡 잠정 — 도착 시점 vs 예측 시점 논의에 따라 바뀔 수 있음).
 
 **요청 본문**
 
@@ -223,7 +229,7 @@
 
 ## 4. 길찾기 — `POST /routes`
 
-선택한 도심 충전소까지의 경로 (UC-U07). 화면 주기 갱신에는 넣지 않는다.
+선택한 충전소까지의 경로 (UC-U07). 목적지는 마포 · 서울 충전소 모두 — 서버가 `stationId`로 두 출처에서 찾는다. 화면 주기 갱신에는 넣지 않는다.
 
 **요청 본문**
 

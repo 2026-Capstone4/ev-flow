@@ -47,3 +47,17 @@ body {
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
 }
+
+/*
+ * 터치 기기에서는 입력창 글자를 16px 이상으로 함
+ * iOS Safari는 16px보다 작은 입력창을 누르면 화면을 확대하고, 화면을 옮겨도 확대가 풀리지 않음
+ * (예: 로그인 입력창 15px → 대시보드가 확대된 채로 열림)
+ * @layer 밖에 둬서 Tailwind 글자 크기 클래스보다 우선함
+ */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
