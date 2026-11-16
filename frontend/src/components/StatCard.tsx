@@ -25,7 +25,15 @@ export function StatCard({
       ) : (
         <p className={`text-2xl leading-9 font-bold sm:text-[28px] ${valueClassName}`}>{value}</p>
       )}
-      {caption && <p className="mt-auto pt-1 text-xs break-keep text-text-secondary">{caption}</p>}
+      {/* 설명 자리를 미리 잡아 불러온 뒤 카드 높이가 바뀌지 않게 함
+          모바일은 카드가 좁아 설명이 두 줄까지 되므로 두 줄(36px), 그보다 넓으면 한 줄
+          설명이 없을 때 넣는 빈칸은 스크린리더가 읽지 않게 숨김 */}
+      <p
+        aria-hidden={!caption}
+        className="mt-auto min-h-9 pt-1 text-xs break-keep text-text-secondary sm:min-h-0"
+      >
+        {caption ?? ' '}
+      </p>
     </section>
   )
 }

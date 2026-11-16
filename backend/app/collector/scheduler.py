@@ -5,17 +5,20 @@ from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-from app.collector.api_client import get_charger_info, get_charger_status
+from app.collector.api_client import MAX_RETRIES, get_charger_info, get_charger_status
 from app.collector.baseline import ensure_baseline, refresh_baseline
 from app.collector.prediction import refresh_predictions
 from app.db.models import (
     CityCharger,
     CityStatusLog,
     CollectionRun,
+    LiveCharger,
+    LiveStatusLog,
     ServiceAreaCharger,
     ServiceAreaStatusLog,
 )
 from app.db.session import SessionLocal
+from app.services.status import BUS_CHARGER_TYPE
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -31,12 +34,16 @@ STATUS_PERIOD_MIN = (
 )
 INFO_EVERY_CYCLES = 6  # 5분 × 6 = 30분. 원천이 30분 배치라 더 자주 불러도 새 값이 없음
 
-# (zscode 목록, 충전기 모델, 로그 모델) - 마포구는 예측·추천 대상, 천안 휴게소는 대조군이라 테이블이 분리돼 있음.
-# 지역마다 잡 하나에 zscode 하나 - Status 호출이 실패하면 그 잡의 회차 전체를 결측으로 기록함
-# 하루 호출 수 = Status 2콜×288 + Info 2콜×48 = 672건으로 한도(1,000) 안에 들어감.
+# (조회 지역, 충전기 모델, 로그 모델, 옵션) - 마포구는 예측·추천 대상, 천안 휴게소는 대조군, 서울은 화면 표시용이라 테이블이 분리돼 있음.
+# 지역마다 잡 하나 - Status 호출이 실패하면 그 잡의 회차 전체를 결측으로 기록함
+# 하루 호출 수 = 마포 · 천안 672건 + 서울 Status 288 · Info 약 8콜×48 ≈ 672건 - 운영계정 한도는 기능별 100,000건.
+# 마포는 서울 Status(zcode=11)로 함께 받을 수 있지만 따로 부름 - 회차 기록 · 학습 데이터 형식을 흔들지 않기 위함
 JOBS = [
-    (["11440"], CityCharger, CityStatusLog),  # 마포구 급속 전체
-    (["44130"], ServiceAreaCharger, ServiceAreaStatusLog),  # 천안 휴게소
+    ({"zscode": "11440"}, CityCharger, CityStatusLog, {}),  # 마포구 급속 (버스전용 제외)
+    ({"zscode": "44130"}, ServiceAreaCharger, ServiceAreaStatusLog, {}),  # 천안 휴게소
+    # 서울(마포 · 버스형 제외) - 서울 전체를 받아 live_chargers에 있는 대상만 반영. 화면 표시용, 예측 안 함.
+    # Info가 약 8페이지라 페이지당 재시도 2회(콜당 타임아웃 약 16%, 11/15 실측) · 전체 3분 상한 - Status와 합쳐 5분 안에 끝남
+    ({"zcode": "11"}, LiveCharger, LiveStatusLog, {"info_retries": 2, "info_deadline_sec": 180}),
 ]
 
 # 공공 API 응답 시각은 KST 기준 - UTC로 변환해 timestamptz에 저장함 (BE-09)
@@ -49,11 +56,21 @@ def parse_dt(value: str | None) -> datetime | None:
     return datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=KST).astimezone(UTC)
 
 
-def fetch_all(fetch, zscode: str, **params) -> list[dict]:
+def collection_targets(chargers) -> set[tuple[str, str]]:
+    # 버스전용(chgerType 11)은 수집하지 않음 (2026-11-16 - 10/25 "수집은 유지" 결정을 바꿈).
+    # 충전기 행 · 지난 로그는 AI 이력 · FK 때문에 남김. 조회 API 조건(charger_type <> '11')과 같게 타입 없는 충전기도 뺌
+    return {
+        (c.station_id, c.charger_id)
+        for c in chargers
+        if c.charger_type is not None and c.charger_type != BUS_CHARGER_TYPE
+    }
+
+
+def fetch_all(fetch, area: dict, **params) -> list[dict]:
     all_items = []
     page_no = 1
     while True:
-        items = fetch(page_no=page_no, num_of_rows=PAGE_SIZE, zscode=zscode, **params)
+        items = fetch(page_no=page_no, num_of_rows=PAGE_SIZE, **area, **params)
         all_items.extend(items)
         if len(items) < PAGE_SIZE:
             return all_items
@@ -63,12 +80,24 @@ def fetch_all(fetch, zscode: str, **params) -> list[dict]:
 class RegionCollector:
     """한 지역(테이블 쌍)의 대상 충전기 현재 상태를 메모리에 들고 5분마다 스냅샷으로 저장함"""
 
-    def __init__(self, zscodes: list[str], charger_model, log_model):
-        self.zscodes = zscodes
+    def __init__(
+        self,
+        area: dict,  # {"zscode": "11440"} 또는 {"zcode": "11"}
+        charger_model,
+        log_model,
+        info_retries: int = MAX_RETRIES,
+        info_deadline_sec: float
+        | None = None,  # Info 전체 상한 - 없으면 페이지마다 30초 × 재시도만
+    ):
+        self.area = area
         self.charger_model = charger_model
         self.log_model = log_model
-        self.label = ",".join(zscodes)
-        self.target = log_model.__tablename__.removesuffix("_status_log")  # city / service_area
+        self.info_retries = info_retries
+        self.info_deadline_sec = info_deadline_sec
+        self.label = next(iter(area.values()))  # collection_runs.zscode에 남김 (서울은 zcode "11")
+        self.target = log_model.__tablename__.removesuffix(
+            "_status_log"
+        )  # city / service_area / live
         self.state: dict[tuple[str, str], dict] = {}  # (station_id, charger_id) -> 로그 컬럼 값
         self.loaded = False
         self.cycles_until_info = (
@@ -76,14 +105,20 @@ class RegionCollector:
         )
 
     def load_last_rows(self, db):
-        # 재시작 직후 Info(최대 30분 지연)로만 채우면 다음 배치까지 틀린 상태가 저장됨 - DB 마지막 행부터 채움
-        log = self.log_model
-        rows = (
-            db.query(log)
-            .distinct(log.station_id, log.charger_id)
-            .order_by(log.station_id, log.charger_id, log.collected_at.desc())
-            .all()
+        # 재시작 직후 Info(최대 30분 지연)로만 채우면 다음 배치까지 틀린 상태가 저장됨 - 마지막 성공 회차의 행부터 채움.
+        # 로그 전체에서 충전기별 마지막 행을 찾으면 서울(회차당 3,561행)은 재시작마다 오래 걸려서 회차 id로 읽음.
+        # 상태를 한 번 안 충전기는 이후 모든 회차에 저장되므로 마지막 성공 회차가 곧 충전기별 마지막 행
+        last_run = (
+            db.query(CollectionRun.id)
+            .filter(
+                CollectionRun.target == self.target,
+                CollectionRun.status.in_(("SUCCESS", "PARTIAL")),
+            )
+            .order_by(CollectionRun.started_at.desc())
+            .first()
         )
+        log = self.log_model
+        rows = db.query(log).filter(log.collection_run_id == last_run.id).all() if last_run else []
         for r in rows:
             self.state[(r.station_id, r.charger_id)] = {
                 "stat": r.stat,
@@ -115,18 +150,13 @@ class RegionCollector:
         return cur is None or cur["stat"] != item.get("stat")
 
     def fetch_and_apply(self, fetch, targets: set, **params) -> tuple[int, str | None]:
-        """(stat이 바뀐 충전기 수, 실패한 지역의 오류 내용 - 모두 성공하면 None)"""
-        changed, errors = 0, []
-        for zscode in self.zscodes:
-            try:
-                items = fetch_all(fetch, zscode, **params)
-            except Exception as e:
-                # 한 지역 실패가 같은 잡의 다른 지역까지 막지 않도록 분리함
-                logger.exception("%s 조회 실패 [%s] - 이번 사이클 건너뜀", fetch.__name__, zscode)
-                errors.append(f"{fetch.__name__} [{zscode}] {type(e).__name__}: {e}")
-                continue
-            changed += sum(self.apply(item, targets) for item in items)
-        return changed, "; ".join(errors) or None
+        """(stat이 바뀐 충전기 수, 실패 내용 - 성공하면 None)"""
+        try:
+            items = fetch_all(fetch, self.area, **params)
+        except Exception as e:
+            logger.exception("%s 조회 실패 [%s] - 이번 사이클 건너뜀", fetch.__name__, self.label)
+            return 0, f"{fetch.__name__} [{self.label}] {type(e).__name__}: {e}"
+        return sum(self.apply(item, targets) for item in items), None
 
     def start_run(self, db, expected_count: int) -> CollectionRun:
         # 바로 커밋해 둠 - 수집 도중 프로세스가 죽어도 RUNNING으로 남아 운영자가 확인할 수 있음 (ADM-003)
@@ -136,6 +166,9 @@ class RegionCollector:
             started_at=datetime.now(UTC),
             status="RUNNING",
             expected_count=expected_count,
+            # 대상에서 버스를 빼서 서비스 대상 수와 같음 - 버스가 섞인 과거 회차와 같은 기준으로
+            # 결측 현황(ADM-004)을 집계하려고 eligible 컬럼도 계속 채움
+            eligible_expected_count=expected_count,
         )
         db.add(run)
         db.commit()
@@ -148,6 +181,7 @@ class RegionCollector:
         run.status = status
         run.finished_at = datetime.now(UTC)
         run.matched_count = matched_count
+        run.eligible_matched_count = matched_count
         run.error_message = error
 
     def collect(self):
@@ -157,7 +191,7 @@ class RegionCollector:
             if not self.loaded:
                 self.load_last_rows(db)
                 self.loaded = True
-            targets = {(c.station_id, c.charger_id) for c in db.query(self.charger_model).all()}
+            targets = collection_targets(db.query(self.charger_model).all())
             run = self.start_run(db, len(targets))
 
             # Status를 먼저 반영해야 Info 변화 수가 'Status가 놓쳐서 Info로 보정된 건수'만 셈
@@ -181,7 +215,12 @@ class RegionCollector:
             info_changed = 0
             info_error = None
             if self.cycles_until_info <= 0:
-                info_changed, info_error = self.fetch_and_apply(get_charger_info, targets)
+                deadline = (
+                    time.monotonic() + self.info_deadline_sec if self.info_deadline_sec else None
+                )
+                info_changed, info_error = self.fetch_and_apply(
+                    get_charger_info, targets, max_retries=self.info_retries, deadline=deadline
+                )
                 if info_error is None:
                     self.cycles_until_info = INFO_EVERY_CYCLES
             self.cycles_until_info -= 1
@@ -243,8 +282,8 @@ class RegionCollector:
 
 def main():
     scheduler = BlockingScheduler()
-    for zscodes, charger_model, log_model in JOBS:
-        collector = RegionCollector(zscodes, charger_model, log_model)
+    for area, charger_model, log_model, options in JOBS:
+        collector = RegionCollector(area, charger_model, log_model, **options)
         scheduler.add_job(
             collector.collect, "interval", minutes=CYCLE_MIN, next_run_time=datetime.now()
         )

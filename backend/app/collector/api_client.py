@@ -1,4 +1,5 @@
 import logging
+import time
 
 import httpx
 
@@ -16,7 +17,8 @@ REQUEST_TIMEOUT_SEC = 30
 # 타임아웃 · 504만 1회 재시도함 - 11/1~11/9 실패가 이 둘뿐이고(Status 실패율 16.5%) 둘 다 응답 30초 언저리의
 # 같은 현상(게이트웨이 한도와 타임아웃의 경합)이라 바로 다시 부르면 통하는 경우가 있음.
 # 그 외 4xx · 5xx · 연결 오류는 다시 불러도 같은 결과라 재시도하지 않음.
-# 하루 한도 1,000건 중 정상 672건 - 실패율만큼 호출이 늘어나며(16.5%면 약 +110건), 1회로 제한해 한도를 넘지 않게 함
+# 하루 한도는 운영계정(2026-11-15 승인) 기준 기능별 100,000건 - 정상 호출은 마포 · 천안 672건 + 서울 672건이라 여유가 큼.
+# 재시도 횟수는 호출부가 정함: 마포 · 천안은 1회(아래 기본값, 11/10 결정 그대로), 서울 Info는 페이지당 2회
 MAX_RETRIES = 1
 
 logger = logging.getLogger(__name__)
@@ -35,7 +37,9 @@ def _describe(e: httpx.HTTPError) -> str:
     return f"요청 실패: {type(e).__name__}"
 
 
-def _fetch_items(url: str, params: dict) -> list[dict]:
+def _fetch_items(
+    url: str, params: dict, max_retries: int = MAX_RETRIES, deadline: float | None = None
+) -> list[dict]:
     params = {
         "serviceKey": settings.ev_service_key.get_secret_value(),
         "dataType": "JSON",
@@ -44,15 +48,22 @@ def _fetch_items(url: str, params: dict) -> list[dict]:
     # httpx 예외 메시지에는 serviceKey가 든 요청 URL이 평문으로 들어감 - 호출부의 logger.exception으로
     # 로그에 남지 않도록 원래 예외를 버리고(from None) 엔드포인트 이름 · 상태 코드만 남김
     name = url.rsplit("/", 1)[-1]
-    for attempt in range(1 + MAX_RETRIES):
+    for attempt in range(1 + max_retries):
+        timeout = REQUEST_TIMEOUT_SEC
+        # deadline(time.monotonic 기준)이 있으면 요청 타임아웃을 남은 시간으로 줄임 - 상한 직전에 시작한 요청이 30초를 넘기지 않게
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError(f"{name} 시간 상한 초과")
+            timeout = min(timeout, remaining)
         try:
-            resp = httpx.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
+            resp = httpx.get(url, params=params, timeout=timeout)
             resp.raise_for_status()
             break
         except httpx.HTTPError as e:
             reason = _describe(e)
-            if attempt < MAX_RETRIES and _is_retryable(e):
-                logger.warning("%s %s - 재시도 (%d/%d)", name, reason, attempt + 1, MAX_RETRIES)
+            if attempt < max_retries and _is_retryable(e):
+                logger.warning("%s %s - 재시도 (%d/%d)", name, reason, attempt + 1, max_retries)
                 continue
             raise RuntimeError(f"{name} {reason}") from None
 
@@ -74,13 +85,15 @@ def get_charger_info(
     num_of_rows: int = 100,
     zcode: str | None = None,
     zscode: str | None = None,
+    max_retries: int = MAX_RETRIES,
+    deadline: float | None = None,
 ) -> list[dict]:
     params = {"pageNo": page_no, "numOfRows": num_of_rows}
     if zcode:
         params["zcode"] = zcode
     if zscode:
         params["zscode"] = zscode
-    return _fetch_items(INFO_URL, params)
+    return _fetch_items(INFO_URL, params, max_retries, deadline)
 
 
 def get_charger_status(
@@ -89,6 +102,8 @@ def get_charger_status(
     num_of_rows: int = 100,
     zcode: str | None = None,
     zscode: str | None = None,
+    max_retries: int = MAX_RETRIES,
+    deadline: float | None = None,
 ) -> list[dict]:
     # period - 상태갱신 조회 범위(분), API 허용 범위 1~10
     # statUpdDt는 상태가 그대로여도 갱신되는 하트비트라 '상태 변경 시각'으로 쓰면 안 됨 - stat 변화로 판단할 것
@@ -97,4 +112,4 @@ def get_charger_status(
         params["zcode"] = zcode
     if zscode:
         params["zscode"] = zscode
-    return _fetch_items(STATUS_URL, params)
+    return _fetch_items(STATUS_URL, params, max_retries, deadline)
