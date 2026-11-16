@@ -79,6 +79,7 @@ class CollectionRun(Base):
     )  # RUNNING / SUCCESS / PARTIAL / FAILED
     api_latency_ms = Column(Integer)  # getChargerStatus 응답 지연
     expected_count = Column(Integer, nullable=False)  # 수집 대상 충전기 수
+    # 소급(is_backfilled) FAILED 회차는 상태 로그가 남아 있어도 0 - "행 없음" 판정은 실제 로그 존재로 할 것
     matched_count = Column(
         Integer, nullable=False, default=0
     )  # 상태 로그에 저장한 충전기 수 - 결측 = expected - matched
@@ -129,6 +130,8 @@ class CityStatusLog(StatusLogColumns, Base):
         ),
         ForeignKeyConstraint(["collection_run_id"], ["collection_runs.id"]),
         Index("ix_city_status_log_lookup", "station_id", "charger_id", "collected_at"),
+        # ml_read.collection_runs 뷰의 회차별 기준 시각 · 최대 id · 로그 존재 판정용 (마이그레이션 e75d10ca4bb2)
+        Index("ix_city_status_log_run", "collection_run_id", "id"),
     )
 
 
