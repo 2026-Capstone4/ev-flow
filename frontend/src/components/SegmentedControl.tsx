@@ -6,7 +6,10 @@ type SegmentedControlProps<T extends string> = {
   label: string
 }
 
-/** 대시보드 지역 · 기간 선택 (Figma 지역필터 96:287 · 기간선택 102:298) */
+/**
+ * 대시보드 지역 · 기간 선택 (Figma 지역필터 96:287 · 기간선택 102:298)
+ * 버튼 폭은 가장 긴 글자에 맞춰 모두 같게 나눔
+ */
 export function SegmentedControl<T extends string>({
   options,
   value,
@@ -17,7 +20,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="inline-flex shrink-0 rounded-md border border-border-default bg-bg-page p-1"
+      className="inline-grid shrink-0 auto-cols-fr grid-flow-col rounded-md border border-border-default bg-bg-page p-1"
     >
       {options.map((option) => {
         const isSelected = option.value === value
