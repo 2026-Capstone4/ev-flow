@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useMapView } from '@/hooks/useMapView'
 import { isInMapo } from '@/lib/coverage'
-import { toLocateFailure, type LocateFailure } from '@/lib/geolocation'
+import { isLocateFailure, toLocateFailure, type LocateFailure } from '@/lib/geolocation'
 import type { LatLng } from '@/types/geo'
 
 /** 정확도 우선, 10초 넘으면 포기, 30초 안에 잰 위치는 다시 재지 않고 씀 */
@@ -45,8 +45,9 @@ export function useCurrentLocation() {
       if (!isInMapo(location)) return { ok: false, reason: 'out-of-area' }
       setUserLocation(location)
       return { ok: true, location }
-    } catch (reason) {
-      return { ok: false, reason: reason as LocateFailure }
+    } catch (error) {
+      // 위치 측정 실패면 그 이유를, 예상 못 한 오류면 위치를 못 찾은 것으로 안내
+      return { ok: false, reason: isLocateFailure(error) ? error : 'unavailable' }
     } finally {
       setIsLocating(false)
     }

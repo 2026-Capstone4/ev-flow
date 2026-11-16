@@ -18,3 +18,8 @@ export function toLocateFailure(code: number): LocateFailure {
   // 2(위치 신호 없음)와 알 수 없는 코드는 모두 위치를 못 찾은 것으로 봄
   return 'unavailable'
 }
+
+/** catch로 잡은 값이 실패 이유인지. 코드 버그 같은 예상 못 한 오류를 걸러냄 */
+export function isLocateFailure(value: unknown): value is LocateFailure {
+  return typeof value === 'string' && Object.hasOwn(LOCATE_FAILURE_MESSAGE, value)
+}
