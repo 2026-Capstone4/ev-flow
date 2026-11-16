@@ -36,6 +36,10 @@ describe('getAdminChargerStatusLabel', () => {
     expect(getAdminChargerStatusLabel({ status: 'unknown', stat: '2' })).toBe('확인 불가')
     expect(getAdminChargerStatusLabel({ status: 'maintenance', stat: '5' })).toBe('점검 중')
   })
+
+  it('원본 코드가 없으면(null) 확인 불가', () => {
+    expect(getAdminChargerStatusLabel({ status: 'unknown', stat: null })).toBe('확인 불가')
+  })
 })
 
 describe('summarizeChargers', () => {
