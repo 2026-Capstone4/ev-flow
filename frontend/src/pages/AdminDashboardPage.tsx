@@ -44,6 +44,9 @@ const REGION_OPTIONS = (['all', 'city', 'service_area'] as const).map((value) =>
   label: ADMIN_REGION_LABEL[value],
 }))
 
+/** 지역이 '전체'일 때 비활성화된 지역 선택에 보여 줄 선택지 */
+const ALL_DISTRICT_OPTIONS = [{ value: 'all', label: '전체' }]
+
 const PERIOD_OPTIONS: { value: AdminPeriod; label: string }[] = [
   { value: 'day', label: '오늘' },
   { value: 'week', label: '최근 7일' },
@@ -189,20 +192,47 @@ function ChargerSearch({
   )
 }
 
+/** 충전 현황 표 높이 (AdminStationTable · AdminChargerTable의 h-[480px]과 같게) */
+const TABLE_HEIGHT = 480
+/**
+ * 수집 상태 카드 1장 · 2장(간격 12px 포함)이 차지하는 높이 (CollectionTargetCard 실제 크기)
+ * lg부터는 3칸 중 1칸이라 카드가 좁아 'API 응답' 줄이 두 줄이 되어 더 높음
+ */
+const TARGET_CARDS_HEIGHT_CLASS = {
+  1: 'h-[136.5px] lg:h-[156px]',
+  2: 'h-[285px] lg:h-[324px]',
+}
+
 /** 데이터가 없을 때 자리 표시 — 처음 불러오는 중이면 회색 상자, 실패면 안내 문구 */
-function Placeholder({ isError, height = 180 }: { isError: boolean; height?: number }) {
+function Placeholder({
+  isError,
+  height = 180,
+  heightClassName,
+}: {
+  isError: boolean
+  height?: number
+  /** 화면 폭마다 높이가 다를 때 height 대신 쓰는 Tailwind 높이 클래스 */
+  heightClassName?: string
+}) {
+  // 높이 클래스를 받았으면 그것을, 아니면 숫자 높이를 씀
+  const style = heightClassName ? undefined : { height }
   // 실패하고 보여 줄 이전 값도 없으면 안내 문구 (폴링이 다음 주기에 다시 시도함)
   if (isError) {
     return (
       <p
-        className="flex items-center justify-center px-5 text-sm text-text-secondary"
-        style={{ height }}
+        className={`flex items-center justify-center px-5 text-sm text-text-secondary ${heightClassName ?? ''}`}
+        style={style}
       >
         불러오지 못했습니다 · 잠시 후 자동으로 다시 시도합니다
       </p>
     )
   }
-  return <div className="mx-5 animate-pulse rounded-md bg-bg-subtle" style={{ height }} />
+  return (
+    <div
+      className={`mx-5 animate-pulse rounded-md bg-bg-subtle ${heightClassName ?? ''}`}
+      style={style}
+    />
+  )
 }
 
 export function AdminDashboardPage() {
@@ -254,16 +284,24 @@ export function AdminDashboardPage() {
             value={region}
             onChange={changeRegion}
           />
-          {/* 도심 · 휴게소를 골랐을 때만 그 안의 지역 선택을 보여 줌 */}
-          {region !== 'all' && (
-            <DistrictSelect
-              label={`${ADMIN_REGION_LABEL[region]} 지역`}
-              options={DISTRICT_OPTIONS[region]}
-              value={district}
-              onChange={setDistrict}
+          {/* 지역 선택은 늘 자리를 지켜 버튼이 밀리지 않게 함. '전체'일 때는 비활성화 */}
+          <DistrictSelect
+            label={`${ADMIN_REGION_LABEL[region]} 지역`}
+            options={region === 'all' ? ALL_DISTRICT_OPTIONS : DISTRICT_OPTIONS[region]}
+            value={district}
+            onChange={setDistrict}
+            disabled={region === 'all'}
+          />
+          {/* 늘 두 줄로 보여 주고 폭을 고정해, 문구가 바뀌어도(방금 · 59분 전 · 갱신 실패) 왼쪽 버튼이 밀리지 않게 함
+              처음 불러오는 동안 문구가 없어도 같은 크기의 자리를 비워 둠 */}
+          <div className="flex h-11 min-w-[8.5rem]">
+            <UpdateStatus
+              updatedAt={data.updatedAt}
+              isError={data.isChargersError}
+              twoLines
+              className="w-full tabular-nums"
             />
-          )}
-          <UpdateStatus updatedAt={data.updatedAt} isError={data.isChargersError} />
+          </div>
         </div>
       </header>
 
@@ -410,9 +448,12 @@ export function AdminDashboardPage() {
             <AdminChargerTable chargers={visibleChargers} updatedAt={data.updatedAt} />
           )
         ) : data.chargersLoadState === 'empty' ? (
-          <p className="px-5 py-8 text-center text-sm text-text-secondary">충전기가 없습니다</p>
+          // 표와 같은 높이 — 불러오는 중 · 없음 · 표 모두 패널 크기가 같게
+          <p className="flex h-[480px] items-center justify-center border-y border-border-default px-5 text-center text-sm text-text-secondary">
+            충전기가 없습니다
+          </p>
         ) : (
-          <Placeholder isError={data.chargersLoadState === 'error'} height={240} />
+          <Placeholder isError={data.chargersLoadState === 'error'} height={TABLE_HEIGHT} />
         )}
       </Panel>
 
@@ -430,15 +471,19 @@ export function AdminDashboardPage() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <Panel title="수집 상태">
-            <div className="flex flex-col gap-3 px-5">
-              {data.targets ? (
-                data.targets.map((target) => (
+            {data.targets ? (
+              <div className="flex flex-col gap-3 px-5">
+                {data.targets.map((target) => (
                   <CollectionTargetCard key={target.target} target={target} now={data.now} />
-                ))
-              ) : (
-                <Placeholder isError={data.isCollectionError} height={120} />
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              // 불러올 카드 수(전체는 도심 · 휴게소 2장, 나머지는 1장)만큼 자리를 잡음
+              <Placeholder
+                isError={data.isCollectionError}
+                heightClassName={TARGET_CARDS_HEIGHT_CLASS[region === 'all' ? 2 : 1]}
+              />
+            )}
           </Panel>
 
           <div className="lg:col-span-2">
