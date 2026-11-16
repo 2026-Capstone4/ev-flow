@@ -9,7 +9,6 @@ import { SearchResultRow } from '@/components/SearchResultRow'
 import { useMapView } from '@/hooks/useMapView'
 import { useSearchData } from '@/hooks/useSearchData'
 import { CONNECTOR_LABEL } from '@/lib/charger'
-import { DEMO_USER_LOCATION } from '@/lib/constants'
 import { DEFAULT_FILTERS, isDefaultFilters } from '@/lib/stationFilter'
 import type { StationSortKey } from '@/lib/stationSearch'
 import type { ConnectorType, RecommendationFilters, StatusFilter } from '@/types/station'
@@ -36,7 +35,7 @@ function parseSortKey(value: string | null): StationSortKey {
 
 export function SearchPage() {
   const navigate = useNavigate()
-  const { horizon, setHorizon, filters, setFilters } = useMapView()
+  const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
   // 검색어 · 정렬은 URL에 두어 상세에서 뒤로 와도 유지. 입력은 한글 조합이 끊기지 않게 로컬 상태로 받음
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
@@ -67,7 +66,7 @@ export function SearchPage() {
     })
 
   const { results, isError } = useSearchData({
-    origin: DEMO_USER_LOCATION,
+    origin: userLocation,
     query,
     filters,
     horizon,

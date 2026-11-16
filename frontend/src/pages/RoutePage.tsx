@@ -5,11 +5,12 @@ import { BackButton } from '@/components/BackButton'
 import { Button } from '@/components/Button'
 import { MapFallback } from '@/components/MapFallback'
 import { useMyLocationMarker, useStationMarkers } from '@/hooks/useMapMarkers'
+import { useMapView } from '@/hooks/useMapView'
 import { useNaverMap } from '@/hooks/useNaverMap'
 import { useRouteData } from '@/hooks/useRouteData'
 import { useRouteOverlay } from '@/hooks/useRouteOverlay'
 import { formatWaitRange, NO_PREDICTION_LABEL } from '@/lib/congestion'
-import { DEMO_USER_LOCATION, MAPO_CENTER } from '@/lib/constants'
+import { MAPO_CENTER } from '@/lib/constants'
 import { getHorizonWhen, parseHorizon } from '@/lib/horizon'
 import {
   detectPlatform,
@@ -33,6 +34,7 @@ function openNaverMapApp(url: string, platform: MobilePlatform) {
 
 export function RoutePage() {
   const navigate = useNavigate()
+  const { userLocation } = useMapView()
   const { stationId = '' } = useParams()
   const [searchParams] = useSearchParams()
   const horizon = parseHorizon(searchParams.get('horizon'))
@@ -45,17 +47,12 @@ export function RoutePage() {
     isRouteError,
     isRouteUnavailable,
     retryRoute,
-  } = useRouteData(DEMO_USER_LOCATION, stationId, horizon)
+  } = useRouteData(userLocation, stationId, horizon)
 
   const stations = useMemo(() => (station ? [station] : undefined), [station])
   useStationMarkers(map, stations)
-  useMyLocationMarker(map, DEMO_USER_LOCATION)
-  useRouteOverlay(
-    map,
-    route?.path,
-    station ? [DEMO_USER_LOCATION, station] : [],
-    ROUTE_SHEET_HEIGHT,
-  )
+  useMyLocationMarker(map, userLocation)
+  useRouteOverlay(map, route?.path, station ? [userLocation, station] : [], ROUTE_SHEET_HEIGHT)
 
   const platform = detectPlatform(navigator.userAgent)
   const naverMapUrl = station

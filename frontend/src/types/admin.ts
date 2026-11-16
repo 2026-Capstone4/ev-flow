@@ -44,8 +44,8 @@ export type AdminCharger = {
   stationName: string
   chargerId: string
   status: ChargerStatus
-  /** API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 구분용 */
-  stat: string
+  /** API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 구분용. 마지막 성공 수집에 그 충전기가 없으면 null */
+  stat: string | null
   todayOccupancyRate: number | null
   /** API의 상태 갱신 시각 (참고용) */
   statUpdatedAt: string | null
