@@ -85,6 +85,10 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1
     environment:
       MODEL_DIR: /models
+      # 추천 모듈의 읽기 전용 접속 (docs/database.md ml_read) - .env 전체를 넘기지 않고 이 값만 전달
+      # 비어 있으면 DB를 읽지 않는 기존 동작 그대로
+      EVFLOW_ML_READONLY_DSN: ${EVFLOW_ML_READONLY_DSN:-}
+      EVFLOW_POSTGRES_SCHEMA: ml_read
     # 모델 파일은 저장소 · 이미지에 넣지 않고 서버의 ml/models/에 둠 (AI-02) - 교체 후 ml 재시작
     volumes:
       - ../ml/models:/models:ro
