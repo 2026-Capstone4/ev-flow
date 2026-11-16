@@ -19,6 +19,7 @@ import { useMapView } from '@/hooks/useMapView'
 import { IS_GEOLOCATION_ENABLED, MAPO_CENTER } from '@/lib/constants'
 import { LOCATE_FAILURE_MESSAGE } from '@/lib/geolocation'
 import { countActiveFilters } from '@/lib/stationFilter'
+import type { LatLng } from '@/types/geo'
 import type { Station } from '@/types/station'
 
 const RECOMMEND_MESSAGE = {
@@ -73,12 +74,17 @@ export function MapHomePage() {
   }, [notice])
 
   const { locate, isLocating } = useCurrentLocation()
+  const panTo = (target: LatLng) => map?.panTo(new window.naver.maps.LatLng(target.lat, target.lng))
   const handleLocate = async () => {
+    // 기능이 꺼져 있으면 GPS 없이 지금 기준 위치(시연 위치)로 지도만 옮김
+    if (!IS_GEOLOCATION_ENABLED) {
+      panTo(userLocation)
+      return
+    }
     const result = await locate()
     // 찾았으면 그 위치로, 마포구 밖이면 지금 추천 기준 위치로 지도를 옮김
-    if (map && (result.ok || result.reason === 'out-of-area')) {
-      const target = result.ok ? result.location : userLocation
-      map.panTo(new window.naver.maps.LatLng(target.lat, target.lng))
+    if (result.ok || result.reason === 'out-of-area') {
+      panTo(result.ok ? result.location : userLocation)
     }
     // 못 쓴 이유는 잠깐 안내 (권한 거부 · HTTPS 아님 · 마포구 밖 등)
     if (!result.ok) setNotice({ id: Date.now(), message: LOCATE_FAILURE_MESSAGE[result.reason] })
@@ -151,20 +157,18 @@ export function MapHomePage() {
           }`}
         >
           {/* 현재 위치 버튼. 시트 위에 붙어 함께 움직이고, 시트를 펼치면 숨김 */}
-          {IS_GEOLOCATION_ENABLED && (
-            <div
-              style={{ opacity: 1 - expandProgress }}
-              className={`absolute right-4 bottom-full mb-3 ${isSheetExpanded ? 'pointer-events-none' : ''} ${
-                isSheetAnimating && !sheetDrag.isDragging ? 'transition-opacity duration-200' : ''
-              }`}
-            >
-              <LocateButton
-                isLocating={isLocating}
-                onClick={handleLocate}
-                tabIndex={isSheetExpanded ? -1 : undefined}
-              />
-            </div>
-          )}
+          <div
+            style={{ opacity: 1 - expandProgress }}
+            className={`absolute right-4 bottom-full mb-3 ${isSheetExpanded ? 'pointer-events-none' : ''} ${
+              isSheetAnimating && !sheetDrag.isDragging ? 'transition-opacity duration-200' : ''
+            }`}
+          >
+            <LocateButton
+              isLocating={isLocating}
+              onClick={handleLocate}
+              tabIndex={isSheetExpanded ? -1 : undefined}
+            />
+          </div>
           {/* 손잡이 · 헤더를 끌어 펼치고 접음. 카드 영역은 탭으로 상세 이동이라 제외 */}
           <div
             onPointerDown={sheetDrag.onPointerDown}
