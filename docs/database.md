@@ -152,7 +152,7 @@ AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰
 - 스키마 `ml_read` — `public`에 형식이 다른 `collection_runs` 테이블이 있어 분리. ml은 `EVFLOW_POSTGRES_SCHEMA=ml_read`
 - 읽기 역할 `evflow_ml_reader` — `ml_read` 조회 권한만 있음(원본 테이블 직접 조회 불가), 기본 읽기 전용 트랜잭션.
   마이그레이션은 NOLOGIN으로만 만들고, 로그인 · 비밀번호는 서버에서 직접 설정 (`\password evflow_ml_reader` → `ALTER ROLE evflow_ml_reader LOGIN`).
-  DSN은 서버 `.env`(`EVFLOW_ML_READONLY_DSN`)에만 둔다
+  DSN은 서버 `.env`(`EVFLOW_ML_READONLY_DSN`, 호스트 `postgres:5432`)에만 둔다. compose가 ml에 이 값과 `EVFLOW_POSTGRES_SCHEMA`만 넘기고 `.env` 전체는 넘기지 않음
 - 범위: **도심(마포)만**, **버스전용(`charger_type = '11'`) 제외**, **Status 전환(2026-10-03 19:16 KST) 이후 로그만**
   - 전환 이전 행은 Info 원본(최대 30분 지연)이라 AI 학습용 복원본과 다름. 이력 범위는 AI 팀의 최소 이력 기간 답을 받은 뒤 조정 예정
 - `inventory_version` = 고정값 `city_20260923` — 충전기 목록을 바꾸면 새 마이그레이션으로 값을 올리고 AI 팀에 공지
