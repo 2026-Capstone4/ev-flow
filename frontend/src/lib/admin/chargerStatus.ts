@@ -11,7 +11,7 @@ export function getAdminChargerStatusLabel(charger: Pick<AdminCharger, 'status' 
   if (charger.stat === '1') return '통신 이상'
   // 원본 코드 9 = 상태미확인
   if (charger.stat === '9') return '상태 미확인'
-  // 0 등 그 밖의 코드, 또는 20분 넘게 수집이 끊겨 확인 불가가 된 경우
+  // 0 등 그 밖의 코드, 원본 코드가 없는(null) 경우, 또는 20분 넘게 수집이 끊겨 확인 불가가 된 경우
   return CHARGER_STATUS_LABEL.unknown
 }
 

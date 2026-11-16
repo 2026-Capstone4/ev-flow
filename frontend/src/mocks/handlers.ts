@@ -341,28 +341,33 @@ const authHandlers = [
 ]
 
 /**
- * 운영자 대시보드 API - 백엔드에 아직 없어서 전체 · 혼합 모드 모두 Mock.
+ * 운영자 대시보드 10~13번 (이용률 · 충전기 목록 · 수집 상태 · 결측 현황) - 전체 Mock에서만 씀.
+ * 혼합 모드는 실제 서버가 응답 (백엔드 #72)
+ */
+const dashboardHandlers = [
+  adminGet('/admin/utilization', checkMockSession, ({ region, period }, now) =>
+    buildUtilization(region, period, now),
+  ),
+  adminGet('/admin/chargers', checkMockSession, ({ region }, now) => ({
+    updatedAt: toKstIso(now),
+    chargers: buildAdminChargers(region, now),
+  })),
+  adminGet('/admin/collection-status', checkMockSession, ({ region }, now) => ({
+    targets: buildCollectionTargets(region, now),
+  })),
+  adminGet('/admin/missing-stats', checkMockSession, ({ region, period }, now) =>
+    buildMissingStats(region, period, now),
+  ),
+]
+
+/**
+ * 운영자 대시보드 14번 보정 건수 - 모델 연동 전이라 백엔드에 없어서(404) 전체 · 혼합 모드 모두 Mock.
  * 로그인 확인 방법만 모드에 따라 받아서 씀
  */
-function createDashboardHandlers(isLoggedIn: SessionCheck) {
-  return [
-    adminGet('/admin/utilization', isLoggedIn, ({ region, period }, now) =>
-      buildUtilization(region, period, now),
-    ),
-    adminGet('/admin/chargers', isLoggedIn, ({ region }, now) => ({
-      updatedAt: toKstIso(now),
-      chargers: buildAdminChargers(region, now),
-    })),
-    adminGet('/admin/collection-status', isLoggedIn, ({ region }, now) => ({
-      targets: buildCollectionTargets(region, now),
-    })),
-    adminGet('/admin/missing-stats', isLoggedIn, ({ region, period }, now) =>
-      buildMissingStats(region, period, now),
-    ),
-    adminGet('/admin/imputed-count', isLoggedIn, ({ period }, now) =>
-      buildImputedCount(period, now),
-    ),
-  ]
+function createImputedCountHandler(isLoggedIn: SessionCheck) {
+  return adminGet('/admin/imputed-count', isLoggedIn, ({ period }, now) =>
+    buildImputedCount(period, now),
+  )
 }
 
 /**
@@ -390,14 +395,15 @@ export const handlers = [
   ...createUnimplementedHandlers(async () => STATIONS),
   ...serviceAreaHandlers,
   ...authHandlers,
-  ...createDashboardHandlers(checkMockSession),
+  ...dashboardHandlers,
+  createImputedCountHandler(checkMockSession),
 ]
 
 /**
- * VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 길찾기 · 운영자 대시보드)만 Mock, 나머지는 실제 서버로.
- * 운영자 로그인은 실제 서버 계정으로 하고, 대시보드 Mock은 실제 로그인 여부를 확인한 뒤 응답함
+ * VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 길찾기 · 대시보드 보정 건수)만 Mock, 나머지는 실제 서버로.
+ * 운영자 로그인 · 대시보드 10~13번은 실제 서버가 응답하고, 보정 건수 Mock은 실제 로그인 여부를 확인한 뒤 응답함
  */
 export const partialHandlers = [
   ...createUnimplementedHandlers(fetchRealStations),
-  ...createDashboardHandlers(checkRealSession),
+  createImputedCountHandler(checkRealSession),
 ]
