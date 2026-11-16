@@ -86,7 +86,7 @@ export function SearchPage() {
             onChange={(event) => changeQuery(event.target.value)}
             placeholder="충전소 이름·주소 검색"
             aria-label="충전소 검색"
-            className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
+            className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:font-normal placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
             <button

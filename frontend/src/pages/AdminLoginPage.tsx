@@ -73,7 +73,7 @@ export function AdminLoginPage() {
             onChange={(event) => setLoginId(event.target.value)}
             autoComplete="username"
             autoFocus
-            className="rounded-sm border border-border-default px-3 py-2.5 text-[15px] font-normal outline-none focus:border-brand-primary"
+            className="rounded-sm border border-border-default px-3 py-2.5 text-base font-normal outline-none focus:border-brand-primary"
           />
         </label>
         <div className="flex flex-col gap-1.5 text-[13px] font-medium">
@@ -86,7 +86,7 @@ export function AdminLoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               // 오른쪽 보기 버튼 자리만큼 안쪽 여백. Edge 기본 보기 버튼은 겹치지 않게 숨김
-              className="w-full rounded-sm border border-border-default py-2.5 pr-11 pl-3 text-[15px] font-normal outline-none focus:border-brand-primary [&::-ms-reveal]:hidden"
+              className="w-full rounded-sm border border-border-default py-2.5 pr-11 pl-3 text-base font-normal outline-none focus:border-brand-primary [&::-ms-reveal]:hidden"
             />
             <button
               type="button"
