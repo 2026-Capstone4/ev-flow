@@ -30,14 +30,19 @@ class ChargerState:
     stat_upd_dt: datetime | None = None
 
 
-def latest_success_run(db: Session, target: str) -> CollectionRun:
+def find_latest_success_run(db: Session, target: str) -> CollectionRun | None:
     """상태 로그를 저장한 최근 수집(SUCCESS · PARTIAL) - started_at이 응답 updatedAt"""
-    run = db.scalar(
+    return db.scalar(
         select(CollectionRun)
         .where(CollectionRun.target == target, CollectionRun.status.in_(("SUCCESS", "PARTIAL")))
         .order_by(CollectionRun.started_at.desc())
         .limit(1)
     )
+
+
+def latest_success_run(db: Session, target: str) -> CollectionRun:
+    """find_latest_success_run과 같고, 없으면 503"""
+    run = find_latest_success_run(db, target)
     if run is None:
         raise ApiError(503, "DATA_UNAVAILABLE", "충전 상태 데이터를 불러올 수 없습니다.")
     return run
