@@ -18,13 +18,14 @@
 
 | 구분 | 테이블 | 범위 | 용도 |
 |---|---|---|---|
-| 도심 | `city_stations` · `city_chargers` · `city_status_log` | 서울 마포구 급속 69개소 · 190기 | 예측 · 추천 대상 (버스 전용 14기 제외 — [주의](#데이터-사용-시-주의)) |
+| 도심 | `city_stations` · `city_chargers` · `city_status_log` | 서울 마포구 급속 69개소 · 190기 (버스 전용 14기는 2026-11-16부터 수집 안 함 → 66개소 · 176기) | 예측 · 추천 대상 (버스 전용 제외 — [주의](#데이터-사용-시-주의)) |
 | 휴게소 | `service_area_stations` · `service_area_chargers` · `service_area_status_log` | 천안 경부선 휴게소 4곳 · 9 statId · 27기 | 대조군 — **학습 · 추천 대상 아님** |
-| 공통 | `collection_runs` | 도심 · 휴게소 수집 회차마다 1행 | 수집 성공 · 실패 · 결측 기록 (운영자 대시보드, 사용자 응답 `updatedAt`) |
+| 서울 | `live_stations` · `live_chargers` · `live_status_log` | 서울(마포 제외) 급속 약 1,561곳 · 3,562기 (버스형 제외) | 지도 실시간 표시만 — **예측 · 학습 대상 아님** ([아래](#서울-live_--실시간-표시용)) |
+| 공통 | `collection_runs` | 도심 · 휴게소 · 서울 수집 회차마다 1행 | 수집 성공 · 실패 · 결측 기록 (운영자 대시보드, 사용자 응답 `updatedAt`) |
 | 운영자 | `admin_users` | 운영자 계정 (스크립트로만 생성) | 운영자 화면 로그인 — 다른 테이블과 관계 없음 |
 
-- 두 묶음은 컬럼이 같고, `service_area_stations`에만 `service_area_name` · `route` · `direction`이 더 있다.
-- 테이블명에 지역명을 넣지 않음 — 수집 지역이 바뀌어도 스키마를 유지하기 위함.
+- 세 묶음은 컬럼이 같고, `service_area_stations`에만 `service_area_name` · `route` · `direction`이 더 있다.
+- 테이블명에 지역명을 넣지 않음 — 수집 지역이 바뀌어도 스키마를 유지하기 위함. 서울은 지역이 아니라 용도(`live_`, 실시간 표시)로 지음.
 - `alembic_version`은 마이그레이션 버전 관리용 (데이터 아님).
 
 ---
@@ -94,15 +95,15 @@ erDiagram
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | `id` | int PK | 일련번호 |
-| `target` | varchar(20) | `city` · `service_area` — 상태 로그 테이블 접두어 |
-| `zscode` | varchar(50) | 조회 지역 코드 (`11440` · `44130`) |
+| `target` | varchar(20) | `city` · `service_area` · `live` — 상태 로그 테이블 접두어 |
+| `zscode` | varchar(50) | 조회 지역 코드 (`11440` · `44130`, 서울은 시도 코드 `zcode` `11`) |
 | `started_at` | timestamptz | 수집 시작 시각. 소급 행은 그 회차의 `collected_at` |
 | `finished_at` | timestamptz | 수집 종료 시각 — 실행 중이거나 소급 행이면 NULL |
 | `status` | varchar(10) | `RUNNING` · `SUCCESS` · `PARTIAL` · `FAILED` (아래 표) |
 | `api_latency_ms` | int | `getChargerStatus` 응답 지연 — 소급 행은 NULL |
 | `expected_count` | int | 수집 대상 충전기 수 |
 | `matched_count` | int | 상태 로그에 저장한 충전기 수. **결측 = `expected_count − matched_count`** |
-| `eligible_expected_count` | int · NULL 허용 | 서비스 대상(버스전용 제외) 충전기 수 — 운영자 결측 현황 기준. 위 두 값에는 버스전용 14기가 섞여 있음 |
+| `eligible_expected_count` | int · NULL 허용 | 서비스 대상(버스전용 제외) 충전기 수 — 운영자 결측 현황 기준. 2026-11-16 collector 이전 도심 회차는 위 두 값에 버스전용 14기가 섞여 있음 (이후는 수집 대상에서 빼서 같은 값) |
 | `eligible_matched_count` | int · NULL 허용 | 그중 상태 로그에 저장한 수 (`FAILED`는 0). 두 컬럼 도입(2026-11-16) 이전 회차는 `scripts/backfill_eligible_counts.py`로 채움 — 채우기 전에는 NULL |
 | `error_message` | text | 실패 내용 (엔드포인트 · 지역 · HTTP 코드) — 소급 행은 NULL |
 | `is_backfilled` | boolean | 기존 상태 로그로 만든 소급 행 — 실제 호출 기록이 아님 |
@@ -115,6 +116,16 @@ erDiagram
 | `FAILED` | Status 호출 실패 또는 DB 저장 오류 | **저장 안 함** |
 
 인덱스: `(target, started_at)`.
+
+### 서울 `live_*` — 실시간 표시용
+
+서울(마포 제외) 급속 충전기를 마포와 **같은 방식(5분 스냅샷)** 으로 수집한다. 지도에 실시간 상태만 보여 주고 예측 · 추천 · 학습에는 쓰지 않는다. 마이그레이션 `8642c296d6ff`.
+
+- 컬럼은 `city_*`와 같다 (`live_status_log` 인덱스는 `(station_id, charger_id, collected_at)` + `(collection_run_id)`). 나중에 서울도 예측하게 되면 `INSERT ... SELECT`로 합치거나 `UNION ALL`로 함께 읽을 수 있다 — 마포를 빼고 수집하므로 충전기가 겹치지 않음
+- 대상: `getChargerInfo(zcode=11)` 중 삭제 제외 · 50kW 이상 · 이용제한 없음 · **버스형 제외** · **마포(`zscode` `11440`) 제외** — 마포 목록과 같은 기준. `scripts/init_live_chargers.py`로 한 번 채우고 고정해서 씀 (목록 갱신은 데모 후). 2026-11-16 로컬 실측 3,562기 · 1,561곳
+- `live_stations`의 완속 · 중속 개수는 같은 Info에서 셈 (`update_charger_counts.py`와 같은 기준)
+- 회차는 `collection_runs.target = 'live'`. 서울 Info는 약 8페이지라 페이지당 재시도 2회 · 전체 3분 상한
+- 용량: 회차당 약 3,562행 → 하루 약 103만 행 · **약 340MB** (행당 약 333B, 로컬 실측). 지금은 보존 기간 없음 — 디스크를 보며 정함. 일일 백업(`pg_dump -Fc`)은 반복 값이 많아 DB 크기의 약 2%라 부담 작음
 
 ### `admin_users` — 운영자 계정
 
@@ -233,7 +244,7 @@ AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰
 - **2026-09-23 ~ 2026-10-03 19:16 구간 `stat`**: 복원값 — [decisions.md](decisions.md) 2026-10-22 항목 참고.
 - **휴게소 테이블은 대조군**이므로 학습 · 추천에 섞지 않는다.
 - **상태가 불안정한 충전기**: 기후에너지환경부 6개소 17기(`ME19A245-21·22`, `ME19A246-21·22`, `ME19A265-21·22`, `ME19A601-21~26`, `ME21B180-01`, `ME21B412-01~04`)는 원천 데이터 문제로 30분마다 `2`↔`9`를 반복한다. 그 사이에도 충전 세션이 있어 고장으로 보지 않는다. `ME19A265-21` · `ME19A601-21·22`는 2026-11-07 추가 — 2026-10-08 ~ 11-07 `2`↔`9` 전환 481 · 289 · 289회 (기존 14기 669 ~ 1,346회, 나머지 충전기 최대 67회)
-- **버스 전용 충전기**: `charger_type = '11'`인 도심 14기(`PK000186` 12기, `JA110208-01`, `JA110211-01`)는 버스 차고지 충전기라 **예측 · 추천 · 학습 대상에서 제외**한다(수집은 계속함 — [decisions.md](decisions.md) 2026-10-25 항목). 대상 충전기는 `city_chargers` 중 `charger_type <> '11'`인 66개소 · 176기.
+- **버스 전용 충전기**: `charger_type = '11'`인 도심 14기(`PK000186` 12기, `JA110208-01`, `JA110211-01`)는 버스 차고지 충전기라 **예측 · 추천 · 학습 대상에서 제외**한다. 2026-10-25 ~ 11-16에는 수집은 계속했고, **2026-11-16 collector부터는 수집도 하지 않는다** — 그 뒤로 이 14기의 로그가 없다 ([decisions.md](decisions.md) 2026-11-16 항목). 충전기 행 · 지난 로그는 남겨 둠. 대상 충전기는 `city_chargers` 중 `charger_type <> '11'`인 66개소 · 176기.
 - **결측 회차 (`collection_runs` 도입 이후)**: Status 호출이 실패한 회차는 상태 로그가 없어 5분 격자에 빈칸이 생긴다. 빈칸이 결측인지는 `collection_runs.status = 'FAILED'`로 확인한다. 도입 시점은 `is_backfilled = false`인 첫 행의 `started_at`.
 - **결측 회차 (그 이전, 소급 추정)**: 이전 collector는 Status 호출이 실패해도 직전 상태를 새 `collected_at`으로 저장했다. 소급 스크립트(`scripts/backfill_collection_runs.py`)가 전환 이후 회차 중 `max(stat_upd_dt)`가 직전 회차보다 늘지 않은 회차를 실패로 추정해 `FAILED` · `is_backfilled = true` · `matched_count = 0`으로 표시했다. 그 회차의 행은 남아 있고 `collection_run_id`로 연결된다 (추출본 `is_failed_cycle = true`). 전환 이전 회차는 추정할 수 없어 모두 `SUCCESS`로 두었다.
   - 결과 (2026-11-01 17:41 KST까지): 전환 이후 8,334회차 중 도심 748회차(9.0%) · 휴게소 780회차(9.4%). **10/7 2회를 빼면 전부 10/23 이후** — 공공 API 응답이 10초 타임아웃을 넘긴 것(`ReadTimeout`)이 원인 ([decisions.md](decisions.md) 2026-11-01)

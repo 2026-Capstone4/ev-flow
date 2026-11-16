@@ -14,6 +14,8 @@ from scripts.restore_pre_switch import get_engine
 #   대상 수 = 회차 대상 수 - 지금 서비스 대상이 아닌 충전기 수 (그동안 충전기 목록이 바뀌지 않았는지 요약에서 확인)
 #   저장 수 = 그 회차 상태 로그 중 서비스 대상 행 수. FAILED는 0 (소급 FAILED 회차의 행은 직전 상태를 이어 쓴 값)
 # 상태 로그 전체를 한 번 훑음 - 서버에서 수십 초 걸릴 수 있음. 진행 중인(RUNNING) 회차는 건드리지 않음
+# "회차 대상 수 - 버스 수"는 버스까지 수집하던 이전 collector 회차 전제. 2026-11-16 collector부터는 버스를 수집하지 않고
+# 회차를 시작할 때 두 값을 바로 채우므로(NULL이 아님) 이 스크립트의 대상이 되지 않음
 #
 #   python scripts/backfill_eligible_counts.py            채울 결과만 요약 (적용 후 롤백)
 #   python scripts/backfill_eligible_counts.py --commit   채움
