@@ -1,17 +1,16 @@
 import { ArrowDown, ArrowUp, Search, X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { AdminChargerTable } from '@/components/AdminChargerTable'
+import { AdminPageHeader, AdminPanel, AdminPlaceholder, ColorSwatch } from '@/components/AdminPanel'
+import { AdminRegionFilter } from '@/components/AdminRegionFilter'
 import { AdminStationTable } from '@/components/AdminStationTable'
 import { CollectionHealthLabel } from '@/components/CollectionHealthLabel'
-import { CollectionTargetCard } from '@/components/CollectionTargetCard'
-import { DistrictSelect } from '@/components/DistrictSelect'
 import { FilterChip } from '@/components/FilterChip'
 import { RateBarChart } from '@/components/RateBarChart'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { StatCard } from '@/components/StatCard'
 import { UpdateStatus } from '@/components/UpdateStatus'
-import { useAdminDashboardData } from '@/hooks/useAdminDashboardData'
-import { COLLECTION_SECTION_ID, useSectionHash } from '@/hooks/useSectionHash'
+import { useAdminStatusData } from '@/hooks/useAdminStatusData'
 import {
   CHARGER_SORT_KEYS,
   DEFAULT_SORT_DIRECTION,
@@ -31,26 +30,11 @@ import {
 import {
   formatPeriodRange,
   getOccupancyLevel,
-  MISSING_WARNING_RATE,
-  toMissingRows,
   toUtilizationRows,
   type OccupancyLevel,
 } from '@/lib/admin/charts'
-import { ADMIN_REGION_LABEL, DISTRICT_OPTIONS, formatPercent } from '@/lib/admin/common'
-import type { AdminPeriod, AdminRegion } from '@/types/admin'
-
-const REGION_OPTIONS = (['all', 'city', 'service_area'] as const).map((value) => ({
-  value,
-  label: ADMIN_REGION_LABEL[value],
-}))
-
-/** 지역이 '전체'일 때 비활성화된 지역 선택에 보여 줄 선택지 */
-const ALL_DISTRICT_OPTIONS = [{ value: 'all', label: '전체' }]
-
-const PERIOD_OPTIONS: { value: AdminPeriod; label: string }[] = [
-  { value: 'day', label: '오늘' },
-  { value: 'week', label: '최근 7일' },
-]
+import { formatPercent } from '@/lib/admin/common'
+import type { AdminRegion } from '@/types/admin'
 
 const STATUS_VIEW_OPTIONS = (['station', 'charger'] as const).map((value) => ({
   value,
@@ -64,45 +48,6 @@ const OCCUPANCY_COLOR: Record<OccupancyLevel, string> = {
   high: 'var(--color-congestion-busy)',
 }
 const occupancyColor = (rate: number) => OCCUPANCY_COLOR[getOccupancyLevel(rate) ?? 'low']
-const MISSING_WARNING_COLOR = 'var(--color-congestion-busy)'
-const missingColor = (rate: number) =>
-  rate >= MISSING_WARNING_RATE ? MISSING_WARNING_COLOR : 'var(--color-brand-primary)'
-
-/** 범례용 색 네모 — 차트 막대와 같은 색을 글자 대신 보여 줌 */
-function ColorSwatch({ color, label }: { color: string; label: string }) {
-  return (
-    <span
-      role="img"
-      aria-label={label}
-      className="inline-block size-2.5 shrink-0 rounded-[2px] align-[-1px]"
-      style={{ backgroundColor: color }}
-    />
-  )
-}
-
-/**
- * 흰 카드 틀 — 제목 오른쪽에 부가 설명 · 버튼을 둘 수 있음
- * 제목이 문자열이면 h2로, 그 밖(전환 버튼 등)이면 받은 그대로 제목 자리에 둠
- */
-function Panel({
-  title,
-  aside,
-  children,
-}: {
-  title: ReactNode
-  aside?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <section className="flex min-w-0 flex-col gap-4 rounded-lg border border-border-default bg-bg-page py-5">
-      <header className="flex flex-wrap items-center justify-between gap-2 px-5">
-        {typeof title === 'string' ? <h2 className="text-[15px] font-bold">{title}</h2> : title}
-        {aside}
-      </header>
-      {children}
-    </section>
-  )
-}
 
 /** 정렬 칩 묶음. 고른 칩은 '기준 · 방향'으로 보이고, 다시 누르면 방향이 뒤집힘 */
 function SortChips<K extends SortKey>({
@@ -194,52 +139,9 @@ function ChargerSearch({
 
 /** 충전 현황 표 높이 (AdminStationTable · AdminChargerTable의 h-[480px]과 같게) */
 const TABLE_HEIGHT = 480
-/**
- * 수집 상태 카드 1장 · 2장(간격 12px 포함)이 차지하는 높이 (CollectionTargetCard 실제 크기)
- * lg부터는 3칸 중 1칸이라 카드가 좁아 'API 응답' 줄이 두 줄이 되어 더 높음
- */
-const TARGET_CARDS_HEIGHT_CLASS = {
-  1: 'h-[136.5px] lg:h-[156px]',
-  2: 'h-[285px] lg:h-[324px]',
-}
-
-/** 데이터가 없을 때 자리 표시 — 처음 불러오는 중이면 회색 상자, 실패면 안내 문구 */
-function Placeholder({
-  isError,
-  height = 180,
-  heightClassName,
-}: {
-  isError: boolean
-  height?: number
-  /** 화면 폭마다 높이가 다를 때 height 대신 쓰는 Tailwind 높이 클래스 */
-  heightClassName?: string
-}) {
-  // 높이 클래스를 받았으면 그것을, 아니면 숫자 높이를 씀
-  const style = heightClassName ? undefined : { height }
-  // 실패하고 보여 줄 이전 값도 없으면 안내 문구 (폴링이 다음 주기에 다시 시도함)
-  if (isError) {
-    return (
-      <p
-        className={`flex items-center justify-center px-5 text-sm text-text-secondary ${heightClassName ?? ''}`}
-        style={style}
-      >
-        불러오지 못했습니다 · 잠시 후 자동으로 다시 시도합니다
-      </p>
-    )
-  }
-  return (
-    <div
-      className={`mx-5 animate-pulse rounded-md bg-bg-subtle ${heightClassName ?? ''}`}
-      style={style}
-    />
-  )
-}
-
-export function AdminDashboardPage() {
+export function AdminStatusPage() {
   const [region, setRegion] = useState<AdminRegion>('all')
-  // 도심 · 휴게소 안의 지역 (zscode). 지금은 지역마다 한 곳만 수집해서 어느 값이든 같은 데이터가 나옴
   const [district, setDistrict] = useState('all')
-  const [period, setPeriod] = useState<AdminPeriod>('day')
   // 충전 현황 패널: 충전소별 · 충전기별 보기와 보기마다 따로 기억하는 정렬
   const [statusView, setStatusView] = useState<StatusView>('station')
   const [stationSort, setStationSort] = useState<StationSort>({
@@ -252,58 +154,35 @@ export function AdminDashboardPage() {
   })
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const data = useAdminDashboardData(region, period, chargerSort, stationSort)
+  const data = useAdminStatusData(region, chargerSort, stationSort)
 
-  // 지역을 바꾸면 그 안의 지역 선택은 전체로 되돌림 (도심 · 휴게소의 선택지가 서로 달라서)
-  function changeRegion(next: AdminRegion) {
-    setRegion(next)
-    setDistrict('all')
-  }
   // 정렬된 목록에서 검색어에 맞는 줄만 표에 보여 줌 (검색어는 두 보기가 함께 씀)
   const visibleStations = filterByStationName(data.sortedStations, searchQuery)
   const visibleChargers = filterByStationName(data.sortedChargers, searchQuery)
   const visibleCount = statusView === 'station' ? visibleStations.length : visibleChargers.length
   const caption = SORT_CAPTION[statusView === 'station' ? stationSort.key : chargerSort.key]
   const { summary } = data
-  // 사이드바 강조를 지금 보는 영역(운영 현황 · 데이터 수집)에 맞춤
-  useSectionHash(COLLECTION_SECTION_ID)
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[26px] font-bold">운영 현황</h1>
-          <p className="text-[13px] text-text-secondary">
-            충전소별, 충전기별 운영 상태 실시간 확인
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <SegmentedControl
-            label="지역"
-            options={REGION_OPTIONS}
-            value={region}
-            onChange={changeRegion}
+      <AdminPageHeader title="운영 현황" description="충전소별, 충전기별 운영 상태 실시간 확인">
+        <AdminRegionFilter
+          region={region}
+          district={district}
+          onRegionChange={setRegion}
+          onDistrictChange={setDistrict}
+        />
+        {/* 늘 두 줄로 보여 주고 폭을 고정해, 문구가 바뀌어도(방금 · 59분 전 · 갱신 실패) 왼쪽 버튼이 밀리지 않게 함
+            처음 불러오는 동안 문구가 없어도 같은 크기의 자리를 비워 둠 */}
+        <div className="flex h-11 min-w-[8.5rem]">
+          <UpdateStatus
+            updatedAt={data.updatedAt}
+            isError={data.isChargersError}
+            twoLines
+            className="w-full tabular-nums"
           />
-          {/* 지역 선택은 늘 자리를 지켜 버튼이 밀리지 않게 함. '전체'일 때는 비활성화 */}
-          <DistrictSelect
-            label={`${ADMIN_REGION_LABEL[region]} 지역`}
-            options={region === 'all' ? ALL_DISTRICT_OPTIONS : DISTRICT_OPTIONS[region]}
-            value={district}
-            onChange={setDistrict}
-            disabled={region === 'all'}
-          />
-          {/* 늘 두 줄로 보여 주고 폭을 고정해, 문구가 바뀌어도(방금 · 59분 전 · 갱신 실패) 왼쪽 버튼이 밀리지 않게 함
-              처음 불러오는 동안 문구가 없어도 같은 크기의 자리를 비워 둠 */}
-          <div className="flex h-11 min-w-[8.5rem]">
-            <UpdateStatus
-              updatedAt={data.updatedAt}
-              isError={data.isChargersError}
-              twoLines
-              className="w-full tabular-nums"
-            />
-          </div>
         </div>
-      </header>
+      </AdminPageHeader>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
@@ -338,14 +217,14 @@ export function AdminDashboardPage() {
           value={data.collectionHealth && <CollectionHealthLabel health={data.collectionHealth} />}
           caption={
             data.imputed
-              ? `${period === 'day' ? '오늘' : '최근 7일'} 결측 대체 예측 ${data.imputed.imputedCount.toLocaleString('ko-KR')}건`
+              ? `오늘 결측 대체 예측 ${data.imputed.imputedCount.toLocaleString('ko-KR')}건`
               : undefined
           }
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel
+        <AdminPanel
           title="시간대별 이용률 (오늘)"
           aside={
             <span className="flex items-center gap-1 text-xs text-text-secondary">
@@ -366,10 +245,10 @@ export function AdminDashboardPage() {
               />
             </div>
           ) : (
-            <Placeholder isError={data.isHourlyError} />
+            <AdminPlaceholder isError={data.isHourlyError} />
           )}
-        </Panel>
-        <Panel
+        </AdminPanel>
+        <AdminPanel
           title="요일별 평균 이용률 (최근 4주)"
           aside={
             data.weekly && (
@@ -388,12 +267,12 @@ export function AdminDashboardPage() {
               />
             </div>
           ) : (
-            <Placeholder isError={data.isWeeklyError} />
+            <AdminPlaceholder isError={data.isWeeklyError} />
           )}
-        </Panel>
+        </AdminPanel>
       </div>
 
-      <Panel
+      <AdminPanel
         title={
           // 제목 자리에 보기 전환 — 고른 쪽 이름이 곧 패널 제목
           <SegmentedControl
@@ -453,91 +332,9 @@ export function AdminDashboardPage() {
             충전기가 없습니다
           </p>
         ) : (
-          <Placeholder isError={data.chargersLoadState === 'error'} height={TABLE_HEIGHT} />
+          <AdminPlaceholder isError={data.chargersLoadState === 'error'} height={TABLE_HEIGHT} />
         )}
-      </Panel>
-
-      {/* 사이드바 '데이터 수집' 링크가 이 영역으로 이동 */}
-      <section id={COLLECTION_SECTION_ID} className="flex scroll-mt-6 flex-col gap-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold">데이터 수집</h2>
-          <SegmentedControl
-            label="기간"
-            options={PERIOD_OPTIONS}
-            value={period}
-            onChange={setPeriod}
-          />
-        </header>
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Panel title="수집 상태">
-            {data.targets ? (
-              <div className="flex flex-col gap-3 px-5">
-                {data.targets.map((target) => (
-                  <CollectionTargetCard key={target.target} target={target} now={data.now} />
-                ))}
-              </div>
-            ) : (
-              // 불러올 카드 수(전체는 도심 · 휴게소 2장, 나머지는 1장)만큼 자리를 잡음
-              <Placeholder
-                isError={data.isCollectionError}
-                heightClassName={TARGET_CARDS_HEIGHT_CLASS[region === 'all' ? 2 : 1]}
-              />
-            )}
-          </Panel>
-
-          <div className="lg:col-span-2">
-            <Panel
-              title={`결측률 (${period === 'day' ? '오늘 시간대별' : '최근 7일'})`}
-              aside={
-                data.missing && (
-                  <span className="flex items-center gap-1 text-xs text-text-secondary">
-                    {formatPeriodRange(data.missing.from, data.missing.to)} ·
-                    <ColorSwatch color={MISSING_WARNING_COLOR} label="빨강" />
-                    {formatPercent(MISSING_WARNING_RATE)} 이상
-                  </span>
-                )
-              }
-            >
-              {data.missing ? (
-                <div className="px-5">
-                  <RateBarChart
-                    data={toMissingRows(data.missing.series)}
-                    getColor={missingColor}
-                    tickInterval={period === 'day' ? 5 : 0}
-                    maxRate={0.1}
-                    ariaLabel="기간별 수집 결측률 막대 차트"
-                  />
-                </div>
-              ) : (
-                <Placeholder isError={data.isMissingError} />
-              )}
-              <p className="px-5 text-[13px] text-text-secondary">
-                결측 대체 예측{' '}
-                {data.imputed ? (
-                  <>
-                    <strong className="text-text-primary">
-                      {data.imputed.imputedCount.toLocaleString('ko-KR')}건
-                    </strong>{' '}
-                    / 전체 {data.imputed.totalCount.toLocaleString('ko-KR')}건 (
-                    {formatPercent(
-                      data.imputed.totalCount
-                        ? data.imputed.imputedCount / data.imputed.totalCount
-                        : null,
-                      1,
-                    )}
-                    ) · 도심만
-                  </>
-                ) : data.isImputedError ? (
-                  '불러오지 못했습니다'
-                ) : (
-                  '불러오는 중…'
-                )}
-              </p>
-            </Panel>
-          </div>
-        </div>
-      </section>
+      </AdminPanel>
     </div>
   )
 }

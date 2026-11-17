@@ -43,3 +43,9 @@ export function isStale(at: string | null, reference: Date) {
   if (!at) return true
   return reference.getTime() - new Date(at).getTime() > STALE_AFTER_MS
 }
+
+/** 운영자 화면 지역 전환 선택지 (전체 · 도심 · 휴게소) */
+export const ADMIN_REGION_OPTIONS = (['all', 'city', 'service_area'] as const).map((value) => ({
+  value,
+  label: ADMIN_REGION_LABEL[value],
+}))
