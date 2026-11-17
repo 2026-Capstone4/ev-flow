@@ -23,6 +23,7 @@ function station(chargers: Charger[], congestion: CurrentCongestion = 'medium'):
     dataQuality: 'normal',
     chargers,
     predictions: [],
+    predictionAvailable: true,
   }
 }
 
