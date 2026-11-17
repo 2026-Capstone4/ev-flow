@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+from sqlalchemy.dialects import postgresql
 
 # app.config가 import 시점에 필수 설정을 읽음 - .env가 없는 환경(CI)에서도 돌도록 가짜 값을 넣음
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
@@ -11,8 +12,10 @@ os.environ.setdefault("EV_SERVICE_KEY", "test")
 from app.collector import api_client  # noqa: E402
 from app.collector.scheduler import (  # noqa: E402
     JOBS,
+    ORPHANED_RUN_ERROR,
     PAGE_SIZE,
     RegionCollector,
+    close_orphaned_runs,
     collection_targets,
     fetch_all,
 )
@@ -117,3 +120,34 @@ def test_deadline_shrinks_timeout_and_stops(fake_get, monkeypatch):
     with pytest.raises(RuntimeError, match="시간 상한 초과"):
         api_client.get_charger_info(deadline=99.0)
     assert calls == []  # 상한이 지났으면 요청하지 않음
+
+
+# --- 시작 시 끝나지 않은 회차 정리 (2026-11-17) ---
+
+
+def test_close_orphaned_runs_marks_running_as_failed():
+    class FakeDb:
+        def __init__(self):
+            self.statements, self.committed = [], False
+
+        def execute(self, stmt):
+            self.statements.append(stmt)
+            return SimpleNamespace(rowcount=1)
+
+        def commit(self):
+            self.committed = True
+
+    db = FakeDb()
+    assert close_orphaned_runs(db) == 1
+    assert db.committed
+    (stmt,) = db.statements
+    compiled = stmt.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+    assert sql.startswith("UPDATE collection_runs SET")
+    assert "WHERE collection_runs.status = %(status_1)s" in sql
+    assert "finished_at" not in sql  # 끝난 시각은 모름 - 비워 둠
+    params = compiled.params
+    assert params["status_1"] == "RUNNING"
+    assert params["status"] == "FAILED"
+    assert params["matched_count"] == params["eligible_matched_count"] == 0
+    assert params["error_message"] == ORPHANED_RUN_ERROR

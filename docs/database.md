@@ -98,7 +98,7 @@ erDiagram
 | `target` | varchar(20) | `city` · `service_area` · `live` — 상태 로그 테이블 접두어 |
 | `zscode` | varchar(50) | 조회 지역 코드 (`11440` · `44130`, 서울은 시도 코드 `zcode` `11`) |
 | `started_at` | timestamptz | 수집 시작 시각. 소급 행은 그 회차의 `collected_at` |
-| `finished_at` | timestamptz | 수집 종료 시각 — 실행 중이거나 소급 행이면 NULL |
+| `finished_at` | timestamptz | 수집 종료 시각 — 실행 중이거나 소급 행, 시작 때 정리한 중단 회차(아래 `FAILED`)면 NULL |
 | `status` | varchar(10) | `RUNNING` · `SUCCESS` · `PARTIAL` · `FAILED` (아래 표) |
 | `api_latency_ms` | int | `getChargerStatus` 응답 지연 — 소급 행은 NULL |
 | `expected_count` | int | 수집 대상 충전기 수 |
@@ -110,10 +110,10 @@ erDiagram
 
 | `status` | 조건 | 상태 로그 |
 |---|---|---|
-| `RUNNING` | 수집 중 (끝나지 않고 남아 있으면 프로세스가 도중에 죽은 것) | — |
+| `RUNNING` | 수집 중. 프로세스가 도중에 멈춰 남은 회차는 collector가 다음에 시작할 때 `FAILED`로 바꿈 (2026-11-17) | — |
 | `SUCCESS` | Status 성공, (Info 회차면) Info 성공, 대상 전부 저장 | 저장 |
 | `PARTIAL` | Status 성공, Info 보정 실패 또는 상태를 모르는 충전기 있음 | 저장 |
-| `FAILED` | Status 호출 실패 또는 DB 저장 오류 | **저장 안 함** |
+| `FAILED` | Status 호출 실패 또는 DB 저장 오류, 또는 끝내지 못한 회차(`error_message` "수집 중단 …", `finished_at` NULL) | **저장 안 함** |
 
 인덱스: `(target, started_at)`.
 

@@ -1,16 +1,16 @@
 import { LogOut } from 'lucide-react'
-import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
+import { Suspense } from 'react'
+import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { isUnauthorized } from '@/api/errors'
 import { Button } from '@/components/Button'
 import { useAuthMeQuery, useLogoutMutation } from '@/hooks/useAdminAuth'
-import { COLLECTION_SECTION_ID, type SectionLinkState } from '@/hooks/useSectionHash'
 import { formatClock } from '@/lib/formatUpdatedAt'
 import type { AdminLoginState } from '@/pages/AdminLoginPage'
 
-/** 사이드바 메뉴. hash가 빈 문자열이면 대시보드 맨 위(운영 현황) */
+/** 사이드바 메뉴 — 메뉴마다 화면이 따로 있음 */
 const NAV_ITEMS = [
-  { label: '운영 현황', hash: '' },
-  { label: '데이터 수집', hash: `#${COLLECTION_SECTION_ID}` },
+  { label: '운영 현황', to: '/admin' },
+  { label: '데이터 수집', to: '/admin/collection' },
 ]
 
 /**
@@ -75,24 +75,23 @@ export function AdminLayout() {
             로그아웃
           </button>
         </div>
-        {/* 두 메뉴 모두 같은 대시보드 화면 — 주소의 #해시로 지금 보는 영역을 구분해 강조 */}
+        {/* 지금 보는 화면의 메뉴를 강조 (NavLink가 aria-current="page"도 붙여 줌) */}
         <nav className="flex gap-1 lg:flex-col">
-          {NAV_ITEMS.map((item) => {
-            const isActive = location.hash === item.hash
-            return (
-              <Link
-                key={item.label}
-                to={{ pathname: '/admin', hash: item.hash }}
-                state={{ scroll: true } satisfies SectionLinkState}
-                aria-current={isActive ? 'location' : undefined}
-                className={`rounded-sm px-3 py-2.5 text-sm ${
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              // /admin이 /admin/collection에서도 켜지지 않게 주소가 정확히 같을 때만 강조
+              end
+              className={({ isActive }) =>
+                `rounded-sm px-3 py-2.5 text-sm ${
                   isActive ? 'bg-brand-primary font-bold' : 'font-medium text-text-on-brand/70'
-                }`}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
         <div className="mt-auto hidden flex-col gap-2 border-t border-text-on-brand/15 pt-4 lg:flex">
           <p className="text-sm font-medium">{admin.name}</p>
@@ -116,7 +115,10 @@ export function AdminLayout() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6 lg:px-8 lg:py-8">
-        <Outlet />
+        {/* 화면 코드를 받는 동안 빈 화면 대신 안내 문구 (사이드바는 그대로 둠) */}
+        <Suspense fallback={<p className="text-sm text-text-secondary">화면 불러오는 중…</p>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
