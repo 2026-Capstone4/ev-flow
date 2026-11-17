@@ -12,12 +12,16 @@ const SEOUL_OPACITY = 0.15
 /** 마포구 테두리. 브랜드 색(--color-brand-primary), 지도 SDK는 CSS 변수를 못 읽어 값으로 넣음 */
 const MAPO_STROKE_COLOR = '#2563eb'
 
-/** 지도를 아무리 줄여도 바깥 채움이 끊기지 않게 한반도 주변을 넉넉히 덮는 사각형 (반시계) */
+/**
+ * 최소 줌 8까지 줄여도 바깥 채움이 끊기지 않게 서울 주변을 덮는 사각형 (반시계).
+ * 너무 크면 줌 20에서 픽셀 좌표가 브라우저 한계(약 1,670만 px)를 넘어 구멍이 사라지고 화면 전체가 회색이 됨.
+ * 가로 14도는 줌 20에서 약 1,040만 px
+ */
 const OUTER_BOUNDS: [number, number][] = [
-  [115, 28],
-  [140, 28],
-  [140, 45],
-  [115, 45],
+  [120, 33],
+  [134, 33],
+  [134, 42],
+  [120, 42],
 ]
 
 const [seoulFeature, mapoFeature] = coverageBoundary.features

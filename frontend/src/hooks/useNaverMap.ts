@@ -4,6 +4,11 @@ import type { LatLng } from '@/types/geo'
 
 /** 이보다 더 축소하지 못하게 막음. 줌 8이면 수도권 전체 정도가 보임 */
 const MIN_ZOOM = 8
+/**
+ * 이보다 더 확대하지 못하게 막음. 줌 19면 건물 · 주차장 입구까지 보여 충전소 찾기에 충분함.
+ * 줌 20 이상에서는 서비스 범위 다각형(useCoverageMask)의 픽셀 좌표가 너무 커져 화면 전체가 회색이 될 수 있음
+ */
+const MAX_ZOOM = 19
 
 type NaverMapStatus = 'loading' | 'ready' | 'error' | 'no-client-id'
 
@@ -44,6 +49,7 @@ export function useNaverMap({ center, zoom = 14 }: UseNaverMapOptions) {
           center: new maps.LatLng(center.lat, center.lng),
           zoom,
           minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
           scaleControl: false,
           mapDataControl: false,
           // 하단 시트에 가리지 않도록 로고를 위로 이동 (로고는 가리면 안 됨)
