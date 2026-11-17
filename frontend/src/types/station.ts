@@ -55,6 +55,8 @@ export type Station = {
   chargers: Charger[]
   /** 시점 순서대로. 화면은 0(지금) · 15 · 30분만 씀 (서버가 60분을 보내도 무시) */
   predictions: Prediction[]
+  /** 예측 제공 여부. 마포 true, 서울 다른 구 false (false면 predictions 값이 모두 null) */
+  predictionAvailable: boolean
 }
 
 export type StationsResponse = {

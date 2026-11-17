@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
+import { DevZoomBadge } from '@/components/DevZoomBadge'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
@@ -122,6 +123,13 @@ export function MapHomePage() {
           <div ref={containerRef} className="size-full" aria-label="충전소 지도" />
         </div>
         {status !== 'ready' && <MapFallback status={status} />}
+
+        {/* 개발 모드에서만 지금 줌 표시. 배포 빌드에서는 코드째 빠짐 */}
+        {import.meta.env.DEV && (
+          <div className="absolute top-[76px] right-4">
+            <DevZoomBadge map={map} />
+          </div>
+        )}
 
         {/* 상단 검색창 · 갱신 상태 */}
         <div className="absolute inset-x-4 top-4 flex flex-col items-start gap-2">
