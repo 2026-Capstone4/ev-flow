@@ -150,7 +150,7 @@ export function MapHomePage() {
           onTransitionEnd={(event) => {
             if (event.target === event.currentTarget) setIsSheetAnimating(false)
           }}
-          className={`absolute inset-x-0 bottom-0 flex max-h-[calc(100%-120px)] flex-col items-center gap-3 rounded-t-[20px] bg-bg-page px-4 pt-2.5 pb-4 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] ${
+          className={`absolute inset-x-0 bottom-0 flex max-h-[calc(100%-120px)] flex-col items-center gap-3 rounded-t-[20px] bg-bg-page px-4 pt-2.5 pb-3 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] ${
             isSheetAnimating && !sheetDrag.isDragging
               ? 'transition-transform duration-200 ease-out'
               : ''
