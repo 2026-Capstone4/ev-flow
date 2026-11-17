@@ -8,6 +8,7 @@ import { MapNotice } from '@/components/MapNotice'
 import { RecommendCard } from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
+import { ZoomInNotice } from '@/components/ZoomInNotice'
 import { useCoverageMask } from '@/hooks/useCoverageMask'
 import { useCurrentLocation } from '@/hooks/useCurrentLocation'
 import { useMapHomeData } from '@/hooks/useMapHomeData'
@@ -40,7 +41,7 @@ export function MapHomePage() {
     () => (location.state as { expandSheet?: boolean } | null)?.expandSheet === true,
   )
 
-  const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 13 })
+  const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 14 })
   const { stations, updatedAt, isStationsError, recommendations, recommendState } = useMapHomeData(
     userLocation,
     horizon,
@@ -62,7 +63,7 @@ export function MapHomePage() {
   )
 
   useCoverageMask(map)
-  useStationMarkers(map, stations, handleMarkerSelect)
+  const { isZoomedOut } = useStationMarkers(map, stations, handleMarkerSelect)
   useMyLocationMarker(map, userLocation)
 
   // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
@@ -130,6 +131,12 @@ export function MapHomePage() {
           />
           <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
           {notice && <MapNotice key={notice.id} message={notice.message} />}
+          {/* 너무 멀리 봐서 마커를 숨긴 동안은 확대하라고 계속 안내. 왼쪽 정렬 줄에서 혼자 가운데로 */}
+          {isZoomedOut && (
+            <div className="mt-2 self-center">
+              <ZoomInNotice />
+            </div>
+          )}
         </div>
 
         <button
