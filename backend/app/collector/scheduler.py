@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from sqlalchemy import update
 
 from app.collector.api_client import MAX_RETRIES, get_charger_info, get_charger_status
 from app.collector.baseline import ensure_baseline, refresh_baseline
@@ -159,7 +160,7 @@ class RegionCollector:
         return sum(self.apply(item, targets) for item in items), None
 
     def start_run(self, db, expected_count: int) -> CollectionRun:
-        # 바로 커밋해 둠 - 수집 도중 프로세스가 죽어도 RUNNING으로 남아 운영자가 확인할 수 있음 (ADM-003)
+        # 바로 커밋해 둠 - 수집 도중 프로세스가 죽어도 기록이 남음 (ADM-003). 남은 RUNNING은 다음 시작 때 FAILED로 정리
         run = CollectionRun(
             target=self.target,
             zscode=self.label,
@@ -274,13 +275,45 @@ class RegionCollector:
                     db.rollback()
                     # run.id를 읽으면 DB를 다시 조회하므로 로그에 넣지 않음 - DB 장애 중이면 여기서 또 실패함
                     logger.exception(
-                        "수집 실행 기록 실패 [%s] - 이번 실행은 RUNNING으로 남음", self.label
+                        "수집 실행 기록 실패 [%s] - 이번 실행은 RUNNING으로 남음 (재시작 때 FAILED로 정리)",
+                        self.label,
                     )
         finally:
             db.close()
 
 
+# 시작 시점의 RUNNING은 이전 프로세스가 끝내지 못한 회차임 - collector는 컨테이너 하나 · 프로세스 하나이고,
+# 재시작(deploy.sh --with-collector)은 기존 컨테이너를 멈춘 뒤 새로 띄우므로 이 시점에 진행 중인 회차는 없음.
+# 상태 로그는 회차 결과와 한 트랜잭션으로 커밋하므로 끝나지 않은 회차에는 로그가 없음 → 로그 없는 FAILED와 같음.
+# 남겨 두면 결측 집계 · ML 실패 회차 목록에서 빠져 설명 없는 빈 구간이 됨. 끝난 시각은 모르므로 finished_at은 비워 둠
+ORPHANED_RUN_ERROR = "수집 중단 - 회차를 끝내기 전에 수집기가 멈춤 (재시작 시 정리, 상태 로그 없음)"
+
+
+def close_orphaned_runs(db) -> int:
+    result = db.execute(
+        update(CollectionRun)
+        .where(CollectionRun.status == "RUNNING")
+        .values(
+            status="FAILED",
+            matched_count=0,
+            eligible_matched_count=0,
+            error_message=ORPHANED_RUN_ERROR,
+        )
+    )
+    db.commit()
+    return result.rowcount
+
+
 def main():
+    # 정리에 실패해도 수집은 시작함 - DB가 잠깐 안 되는 경우 재시작을 반복하지 않게
+    try:
+        with SessionLocal() as db:
+            closed = close_orphaned_runs(db)
+        if closed:
+            logger.warning("끝나지 않은 회차 %d건을 FAILED로 정리함", closed)
+    except Exception:
+        logger.exception("끝나지 않은 회차 정리 실패 - 수집은 계속함")
+
     scheduler = BlockingScheduler()
     for area, charger_model, log_model, options in JOBS:
         collector = RegionCollector(area, charger_model, log_model, **options)
