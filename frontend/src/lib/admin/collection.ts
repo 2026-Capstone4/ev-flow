@@ -31,3 +31,11 @@ export function getCollectionHealth(
   // 끊긴 건 없지만 실패가 있으면 일부 실패
   return healths.includes('partial') ? 'partial' : 'normal'
 }
+
+/** 결측률 설명 — 데이터 수집 화면 결측률 패널 제목 ⓘ 말풍선 */
+export const MISSING_RATE_TOOLTIP =
+  '수집할 때마다 받아야 할 충전기 상태 중 받지 못한 비율이에요. 진행 중인 수집은 빼고 계산하고, 3% 이상이면 빨간 막대로 표시해요.'
+
+/** 결측 대체 예측 설명 — 결측률 패널 아래 문구 ⓘ 말풍선 */
+export const IMPUTED_TOOLTIP =
+  '혼잡도를 예측할 때 입력 데이터가 비어 있어서 모델이 빈 구간을 채운 값으로 예측한 건수예요. 예측은 도심 충전소만 해요.'

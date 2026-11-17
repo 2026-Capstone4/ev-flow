@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AdminLayout } from '@/app/AdminLayout'
 import { MapViewProvider } from '@/app/MapViewProvider'
@@ -12,9 +12,12 @@ import { RoutePage } from '@/pages/RoutePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { StationDetailPage } from '@/pages/StationDetailPage'
 
-// 대시보드는 차트 라이브러리(Recharts)가 커서 운영자가 들어올 때만 따로 받음 — 사용자 화면 첫 로딩에 포함하지 않음
-const AdminDashboardPage = lazy(() =>
-  import('@/pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })),
+// 운영자 화면은 차트 라이브러리(Recharts)가 커서 운영자가 들어올 때만 따로 받음 — 사용자 화면 첫 로딩에 포함하지 않음
+const AdminStatusPage = lazy(() =>
+  import('@/pages/AdminStatusPage').then((module) => ({ default: module.AdminStatusPage })),
+)
+const AdminCollectionPage = lazy(() =>
+  import('@/pages/AdminCollectionPage').then((module) => ({ default: module.AdminCollectionPage })),
 )
 
 export function App() {
@@ -32,17 +35,8 @@ export function App() {
             {/* 운영자 화면. /admin 아래는 AdminLayout이 로그인 여부를 먼저 확인함 */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminLayout />}>
-              <Route
-                index
-                element={
-                  // 대시보드 코드를 받는 동안 빈 화면 대신 안내 문구
-                  <Suspense
-                    fallback={<p className="text-sm text-text-secondary">대시보드 불러오는 중…</p>}
-                  >
-                    <AdminDashboardPage />
-                  </Suspense>
-                }
-              />
+              <Route index element={<AdminStatusPage />} />
+              <Route path="collection" element={<AdminCollectionPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
