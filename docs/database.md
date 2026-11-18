@@ -8,6 +8,7 @@
 - [테이블 관계](#테이블-관계)
 - [테이블](#테이블)
 - [ml 읽기 전용 뷰 (`ml_read`)](#ml-읽기-전용-뷰-ml_read)
+- [ml 체크포인트 저장소 (`ml_checkpoint`)](#ml-체크포인트-저장소-ml_checkpoint)
 - [코드표](#코드표)
 - [수집 방식](#수집-방식)
 - [데이터 사용 시 주의](#데이터-사용-시-주의)
@@ -191,6 +192,37 @@ AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰
 | `data_region` · `inventory_version` | `'city'` · 고정값 |
 
 로컬 측정 (서버 복사본 10/3~10/24, 108만 행): 모듈 `load_run` 5.4초 · 프로세스 최대 메모리 약 900MB — 전체 이력을 한 번에 읽으면 이력 범위가 메모리를 좌우함. 서버는 9/23부터라 더 크므로(11/17 기준 약 271만 행) 전체 이력 모드로 읽지 않음
+
+---
+
+## ml 체크포인트 저장소 (`ml_checkpoint`)
+
+AI 추천 모듈의 대기 예측이 과거 이력을 매번 읽지 않도록, 기점부터 회차 직전까지의 요약 상태를 회차마다 게시해 두는 곳. ml은 요청한 회차의 체크포인트 0 ~ 1행 + 최근 원시 로그(약 70분)만 읽는다. 마이그레이션 `7c5eec7b9ab4` — AI v3.1 `sql/001_checkpoint_store.sql` · `003_role_grants.sql`을 그대로 옮김.
+
+- 원천 뷰(`ml_read`)와 스키마를 분리함 — 뷰를 다시 만드는 마이그레이션과 섞이지 않게
+- 체크포인트는 원천에서 언제든 다시 만들 수 있음 (최초 구축 약 3.5분, 2026-11-17 AI 실측)
+
+| 표 · 함수 | 내용 |
+|---|---|
+| `history_checkpoints` | 회차별 체크포인트 9열 — `checkpoint_key`(= `run_id` 문자열) · `run_id` · `boundary_at`(요약/최근 로그 경계) · `content_sha256` · `payload`(jsonb) · `source_revision` · `max_status_pk` · `is_valid` · `published_at` |
+| `history_source_revision` | 한 행(`singleton = 1`)의 `revision` — 시작값 0. 체크포인트는 같은 revision일 때만 유효 |
+| `history_revision_events` | revision을 올린 기록 (언제부터 영향 · 사유 · 계정) |
+| `lock_source_revision()` | 게시 중 revision 공유 잠금 — 게시와 정정이 엇갈리지 않게 |
+| `invalidate_history(changed_from, reason)` | 과거 원천을 고칠 때 **같은 트랜잭션에서** 호출 → revision +1 · 모든 체크포인트 무효 · 기록 |
+
+`invalidate_history`를 호출하는 곳:
+- collector 시작 시 남은 `RUNNING` 정리(`close_orphaned_runs`) — 도심 회차가 1건 이상 바뀌면 그중 가장 이른 `started_at`으로 호출. 함수가 없으면(마이그레이션 전) 건너뜀
+- 과거 상태 로그 · 회차를 고치는 스크립트를 새로 만들면 같은 방식으로 호출해야 함
+- 충전기 목록(`inventory_version`)을 바꿀 때는 호출하지 않고 새 버전으로 체크포인트를 새로 구축
+
+역할 (모두 NOLOGIN으로 만듦 — 로그인 · 비밀번호는 서버에서 직접, `evflow_ml_reader`와 같은 방식)
+
+| 역할 | 권한 | 쓰는 곳 |
+|---|---|---|
+| `evflow_ckpt_reader` | `ml_read` 뷰 4개 · `history_source_revision` 읽기, 기본 읽기 전용 트랜잭션 | producer 계산 |
+| `evflow_ckpt_writer` | `history_checkpoints` 읽기 · INSERT · UPDATE, `history_source_revision` 읽기, `lock_source_revision()` 실행 | producer 게시 |
+| `evflow_ml_reader` | 기존 `ml_read` + `history_checkpoints` · `history_source_revision` 읽기 (쓰기 권한이 있으면 모듈이 시작을 거부함) | ml 서빙 |
+| `evflow` (소유자) | 전부 — `invalidate_history` 실행 포함 | collector |
 
 ---
 

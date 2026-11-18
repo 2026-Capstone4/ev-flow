@@ -1,4 +1,5 @@
-import type { Charger, RecommendationFilters, Station } from '@/types/station'
+import { findPrediction } from '@/lib/horizon'
+import type { Charger, HorizonMinutes, RecommendationFilters, Station } from '@/types/station'
 
 // 지도 필터(프론트)와 추천 후보(서버)가 같은 규칙을 씀 — docs/api/README.md "필터 판정 규칙"
 
@@ -32,11 +33,21 @@ function matchesCharger(charger: Charger, filters: RecommendationFilters) {
   )
 }
 
-export function matchesFilters(station: Station, filters: RecommendationFilters) {
-  // 혼잡 제외는 현재 혼잡도 기준. 확인 불가(unknown)는 남김
+/**
+ * 충전소가 필터를 통과하는지. horizon은 혼잡 제외를 판정할 시점 (0 = 지금 출발)
+ * 혼잡 제외가 아니면 시점을 보지 않음
+ */
+export function matchesFilters(
+  station: Station,
+  filters: RecommendationFilters,
+  horizon: HorizonMinutes,
+) {
+  // 혼잡 제외: 지금 운영 불가인 곳은 시점과 상관없이 빼고, 고른 시점의 혼잡도가 '혼잡'인 곳도 뺌
+  // 지금 출발은 현재 혼잡도, 15 · 30분 후는 예측 혼잡도로 봄. 확인 불가 · 예측 없음은 남김
   if (
     filters.statusFilter === 'exclude_high' &&
-    (station.congestion === 'high' || station.congestion === 'unavailable')
+    (station.congestion === 'unavailable' ||
+      findPrediction(station, horizon)?.congestion === 'high')
   ) {
     return false
   }

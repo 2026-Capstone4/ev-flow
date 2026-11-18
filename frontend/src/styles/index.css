@@ -34,6 +34,15 @@
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 20px;
+
+  /* 지도 홈 필터 패널이 검색창 아래로 내려오며 나타남 */
+  --animate-panel-down: panel-down 160ms ease-out;
+  @keyframes panel-down {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
 }
 
 html,

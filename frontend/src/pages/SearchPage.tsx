@@ -1,33 +1,22 @@
 import { X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { BackButton } from '@/components/BackButton'
 import { Button } from '@/components/Button'
 import { FilterChip } from '@/components/FilterChip'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { SearchResultRow } from '@/components/SearchResultRow'
+import { FilterRow, StationFilterOptions } from '@/components/StationFilterOptions'
 import { useMapView } from '@/hooks/useMapView'
 import { useSearchData } from '@/hooks/useSearchData'
-import { CONNECTOR_LABEL } from '@/lib/charger'
 import { DEFAULT_FILTERS, isDefaultFilters } from '@/lib/stationFilter'
 import type { StationSortKey } from '@/lib/stationSearch'
-import type { ConnectorType, RecommendationFilters, StatusFilter } from '@/types/station'
 
-// 급속 · 초급속은 FLT-002 속도 필터의 100 · 200kW 기준
-const CAPACITY_OPTIONS: { label: string; value: 100 | 200 }[] = [
-  { label: '급속', value: 100 },
-  { label: '초급속', value: 200 },
-]
-const STATUS_OPTIONS: { label: string; value: Exclude<StatusFilter, 'all'> }[] = [
-  { label: '사용 가능만', value: 'available_only' },
-  { label: '혼잡 제외', value: 'exclude_high' },
-]
 const SORT_OPTIONS: { label: string; value: StationSortKey }[] = [
   { label: '추천순', value: 'recommended' },
   { label: '거리순', value: 'distance' },
   { label: '대기 짧은순', value: 'wait' },
 ]
-const CONNECTOR_OPTIONS = Object.keys(CONNECTOR_LABEL) as ConnectorType[]
 
 function parseSortKey(value: string | null): StationSortKey {
   return SORT_OPTIONS.find((option) => option.value === value)?.value ?? 'recommended'
@@ -55,15 +44,6 @@ export function SearchPage() {
     setQuery(value)
     updateParams({ q: value })
   }
-
-  const updateFilters = (next: Partial<RecommendationFilters>) =>
-    setFilters({ ...filters, ...next })
-  const toggleConnector = (type: ConnectorType) =>
-    updateFilters({
-      connectorTypes: filters.connectorTypes.includes(type)
-        ? filters.connectorTypes.filter((t) => t !== type)
-        : [...filters.connectorTypes, type],
-    })
 
   const { results, isError } = useSearchData({
     origin: userLocation,
@@ -103,41 +83,7 @@ export function SearchPage() {
 
       <section className="flex shrink-0 flex-col items-start gap-3 border-b border-border-default px-4 pt-2 pb-4">
         <HorizonSelector value={horizon} onChange={setHorizon} />
-        <FilterRow label="충전 속도">
-          {CAPACITY_OPTIONS.map(({ label, value }) => (
-            <FilterChip
-              key={value}
-              label={label}
-              isSelected={filters.minCapacityKw === value}
-              onClick={() =>
-                updateFilters({ minCapacityKw: filters.minCapacityKw === value ? null : value })
-              }
-            />
-          ))}
-        </FilterRow>
-        {/* Figma 04에는 없지만 명세 FLT-001 커넥터 필터 */}
-        <FilterRow label="커넥터">
-          {CONNECTOR_OPTIONS.map((type) => (
-            <FilterChip
-              key={type}
-              label={CONNECTOR_LABEL[type]}
-              isSelected={filters.connectorTypes.includes(type)}
-              onClick={() => toggleConnector(type)}
-            />
-          ))}
-        </FilterRow>
-        <FilterRow label="상태">
-          {STATUS_OPTIONS.map(({ label, value }) => (
-            <FilterChip
-              key={value}
-              label={label}
-              isSelected={filters.statusFilter === value}
-              onClick={() =>
-                updateFilters({ statusFilter: filters.statusFilter === value ? 'all' : value })
-              }
-            />
-          ))}
-        </FilterRow>
+        <StationFilterOptions filters={filters} onChange={setFilters} />
         <FilterRow label="정렬">
           {SORT_OPTIONS.map(({ label, value }) => (
             <FilterChip
@@ -194,17 +140,6 @@ export function SearchPage() {
           </p>
         )}
       </main>
-    </div>
-  )
-}
-
-function FilterRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex w-full items-start gap-2">
-      <span className="w-14 shrink-0 py-1.5 text-[13px] font-medium text-text-secondary">
-        {label}
-      </span>
-      <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   )
 }

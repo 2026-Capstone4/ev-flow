@@ -89,8 +89,12 @@ export function buildRecommendations(
   filters: RecommendationFilters = DEFAULT_FILTERS,
 ): HorizonRecommendations {
   // 운영 불가 충전소는 필터와 상관없이 후보에서 뺌 (필터 판정 규칙)
+  // 혼잡 제외는 이 시점의 혼잡도로 판정해서 시점마다 후보가 달라질 수 있음
   const candidates = stations
-    .filter((station) => station.congestion !== 'unavailable' && matchesFilters(station, filters))
+    .filter(
+      (station) =>
+        station.congestion !== 'unavailable' && matchesFilters(station, filters, horizon),
+    )
     .map((station) => toCandidate(station, horizon, origin))
     .filter((candidate): candidate is Candidate => candidate !== null)
   // 필터에 맞는 충전소가 하나도 없으면 빈 추천 - 추천 시트의 "결과 없음" 상태로 이어짐
