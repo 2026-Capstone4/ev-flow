@@ -15,7 +15,7 @@ import type {
 
 type MockStation = Omit<
   Station,
-  'totalChargers' | 'availableChargers' | 'congestion' | 'predictions'
+  'totalChargers' | 'availableChargers' | 'congestion' | 'predictions' | 'predictionAvailable'
 > & {
   /** 예측 시점별 혼잡도. null이면 그 시점 예측 · 기준선 없음. 지금(0분)은 현재 혼잡도로 만듦 */
   forecast: Record<Exclude<HorizonMinutes, 0>, PredictedCongestion | null>
@@ -243,6 +243,8 @@ function toStation({ forecast, ...station }: MockStation): Station {
         ? toCurrentPrediction(congestion)
         : toPrediction(horizon, forecast[horizon], station.dataQuality),
     ),
+    // 목업 충전소는 모두 마포라 예측 대상
+    predictionAvailable: true,
   }
 }
 

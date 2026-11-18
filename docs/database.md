@@ -149,14 +149,15 @@ erDiagram
 
 ## ml 읽기 전용 뷰 (`ml_read`)
 
-AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰만 읽는다. 마이그레이션 `e75d10ca4bb2`.
+AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰만 읽는다. 마이그레이션 `e75d10ca4bb2`(생성) · `bf1eb7afd713`(이력 기점 9/23).
 
 - 스키마 `ml_read` — `public`에 형식이 다른 `collection_runs` 테이블이 있어 분리. ml은 `EVFLOW_POSTGRES_SCHEMA=ml_read`
 - 읽기 역할 `evflow_ml_reader` — `ml_read` 조회 권한만 있음(원본 테이블 직접 조회 불가), 기본 읽기 전용 트랜잭션.
   마이그레이션은 NOLOGIN으로만 만들고, 로그인 · 비밀번호는 서버에서 직접 설정 (`\password evflow_ml_reader` → `ALTER ROLE evflow_ml_reader LOGIN`).
   DSN은 서버 `.env`(`EVFLOW_ML_READONLY_DSN`, 호스트 `postgres:5432`)에만 둔다. compose가 ml에 이 값과 `EVFLOW_POSTGRES_SCHEMA`만 넘기고 `.env` 전체는 넘기지 않음
-- 범위: **도심(마포)만**, **버스전용(`charger_type = '11'`) 제외**, **Status 전환(2026-10-03 19:16 KST) 이후 로그만**
-  - 전환 이전 행은 Info 원본(최대 30분 지연)이라 AI 학습용 복원본과 다름. 이력 범위는 AI 팀의 최소 이력 기간 답을 받은 뒤 조정 예정
+- 범위: **도심(마포)만**, **버스전용(`charger_type = '11'`) 제외**, **첫 관측(2026-09-23 06:09:27.818124 UTC = 15:09 KST)부터**
+  - 전환 이전(~2026-10-03 19:16:03 KST) 행은 2026-10-22 `restore_pre_switch.py`로 `stat`을 복원값으로 바꾼 행이라 AI 학습 데이터와 같음 (11/18 서버 확인: 515,680행 · AI 측정값과 일치)
+  - 기점은 AI 체크포인트에 바인딩됨 → 바꾸면 체크포인트 전체 재구축 + AI 팀 공지. ml은 체크포인트 + 최근 원시 로그만 읽고 전체 이력을 한 번에 읽지 않음
 - `inventory_version` = 고정값 `city_20260923` — 충전기 목록을 바꾸면 새 마이그레이션으로 값을 올리고 AI 팀에 공지
 
 ### `ml_read.collection_runs` — 도심 수집 회차 (`target = 'city'`만)
@@ -169,7 +170,7 @@ AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰
 | `evidence_cutoff_at` | 그 회차 로그의 `collected_at` (한 회차는 한 값) — 로그가 없으면 NULL |
 | `max_status_pk` | 그 회차 로그의 최대 `id` — 회차 순서와 id 순서가 같음 |
 | `failed_without_rows` | `FAILED`이면서 그 회차 로그가 실제로 없음 — 소급 `FAILED`(10/7~11/1)는 로그가 있어 `false` |
-| `history_start_at` | 고정 `2026-10-03 10:16:00+00` |
+| `history_start_at` | 고정 `2026-09-23 06:09:27.818124+00` (도심 첫 관측) |
 | `history_complete` | `true` |
 | `inventory_version` | 고정값 |
 
@@ -185,11 +186,11 @@ AI 추천 모듈(ml 컨테이너)이 읽는 뷰. 원본 테이블 대신 이 뷰
 | `source_log_id` · `status_pk` | `city_status_log.id` |
 | `station_id` · `charger_id` · `stat` · 시각 5개 | 원본 그대로 (`current_charge_start_dt`도 원본 — 충전 중이 아닐 때 값이 있으면 모듈이 무시) |
 | `charging_elapsed_minutes` | `stat = '3'`이고 시작 시각 ≤ 수집 시각일 때 (수집 시각 − 충전 시작) 분, 아니면 NULL |
-| `is_restored` | 항상 `false` (전환 이전 행이 없음) |
+| `is_restored` | `collected_at < 2026-10-03 10:16:03+00` (전환 이전 복원 행, `export_dataset.py`와 같은 기준 · 정확히 경계인 행은 `false`) |
 | `collection_run_id` · `collection_status` · `is_failed_cycle` | 회차 id · 회차 `status` · 회차가 `FAILED`인지 |
 | `data_region` · `inventory_version` | `'city'` · 고정값 |
 
-로컬 측정 (서버 복사본 10/3~10/24, 108만 행): 모듈 `load_run` 5.4초 · 프로세스 최대 메모리 약 900MB — 이력 범위가 메모리를 좌우함
+로컬 측정 (서버 복사본 10/3~10/24, 108만 행): 모듈 `load_run` 5.4초 · 프로세스 최대 메모리 약 900MB — 전체 이력을 한 번에 읽으면 이력 범위가 메모리를 좌우함. 서버는 9/23부터라 더 크므로(11/17 기준 약 271만 행) 전체 이력 모드로 읽지 않음
 
 ---
 

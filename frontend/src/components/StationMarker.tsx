@@ -23,6 +23,8 @@ export function StationMarker({
 }: StationMarkerProps) {
   return (
     <div
+      // 지도 탭 처리에서 숫자 마커를 누른 건지 가려낼 때 씀 (useStationMarkers)
+      data-station-marker
       aria-label={`사용 가능 ${availableChargers}/${totalChargers}대, ${getCongestionLabel(congestion)}`}
       className={`inline-flex cursor-pointer items-center whitespace-nowrap rounded-full border-2 border-white px-2 py-1 text-[13px] font-bold text-text-on-brand drop-shadow-[0_2px_2px_rgba(0,0,0,0.25)] ${MARKER_CLASS[congestion]}`}
     >

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
+import { DevZoomBadge } from '@/components/DevZoomBadge'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
@@ -8,6 +9,7 @@ import { MapNotice } from '@/components/MapNotice'
 import { RecommendCard } from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
+import { ZoomInNotice } from '@/components/ZoomInNotice'
 import { useCoverageMask } from '@/hooks/useCoverageMask'
 import { useCurrentLocation } from '@/hooks/useCurrentLocation'
 import { useMapHomeData } from '@/hooks/useMapHomeData'
@@ -40,7 +42,7 @@ export function MapHomePage() {
     () => (location.state as { expandSheet?: boolean } | null)?.expandSheet === true,
   )
 
-  const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 13 })
+  const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 14 })
   const { stations, updatedAt, isStationsError, recommendations, recommendState } = useMapHomeData(
     userLocation,
     horizon,
@@ -62,7 +64,7 @@ export function MapHomePage() {
   )
 
   useCoverageMask(map)
-  useStationMarkers(map, stations, handleMarkerSelect)
+  const { isZoomedOut } = useStationMarkers(map, stations, handleMarkerSelect)
   useMyLocationMarker(map, userLocation)
 
   // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
@@ -122,6 +124,13 @@ export function MapHomePage() {
         </div>
         {status !== 'ready' && <MapFallback status={status} />}
 
+        {/* 개발 모드에서만 지금 줌 표시. 배포 빌드에서는 코드째 빠짐 */}
+        {import.meta.env.DEV && (
+          <div className="absolute top-[76px] right-4">
+            <DevZoomBadge map={map} />
+          </div>
+        )}
+
         {/* 상단 검색창 · 갱신 상태 */}
         <div className="absolute inset-x-4 top-4 flex flex-col items-start gap-2">
           <SearchBar
@@ -130,6 +139,12 @@ export function MapHomePage() {
           />
           <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
           {notice && <MapNotice key={notice.id} message={notice.message} />}
+          {/* 너무 멀리 봐서 마커를 숨긴 동안은 확대하라고 계속 안내. 왼쪽 정렬 줄에서 혼자 가운데로 */}
+          {isZoomedOut && (
+            <div className="mt-2 self-center">
+              <ZoomInNotice />
+            </div>
+          )}
         </div>
 
         <button
@@ -150,7 +165,7 @@ export function MapHomePage() {
           onTransitionEnd={(event) => {
             if (event.target === event.currentTarget) setIsSheetAnimating(false)
           }}
-          className={`absolute inset-x-0 bottom-0 flex max-h-[calc(100%-120px)] flex-col items-center gap-3 rounded-t-[20px] bg-bg-page px-4 pt-2.5 pb-4 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] ${
+          className={`absolute inset-x-0 bottom-0 flex max-h-[calc(100%-120px)] flex-col items-center gap-3 rounded-t-[20px] bg-bg-page px-4 pt-2.5 pb-3 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] ${
             isSheetAnimating && !sheetDrag.isDragging
               ? 'transition-transform duration-200 ease-out'
               : ''
