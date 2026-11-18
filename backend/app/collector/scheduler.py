@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-from sqlalchemy import update
+from sqlalchemy import text, update
 
 from app.collector.api_client import MAX_RETRIES, get_charger_info, get_charger_status
 from app.collector.baseline import ensure_baseline, refresh_baseline
@@ -288,9 +288,17 @@ class RegionCollector:
 # 남겨 두면 결측 집계 · ML 실패 회차 목록에서 빠져 설명 없는 빈 구간이 됨. 끝난 시각은 모르므로 finished_at은 비워 둠
 ORPHANED_RUN_ERROR = "수집 중단 - 회차를 끝내기 전에 수집기가 멈춤 (재시작 시 정리, 상태 로그 없음)"
 
+# 도심 회차를 RUNNING → FAILED로 바꾸면 ml 체크포인트가 이어받은 과거 근거(실패 회차)가 바뀜 →
+# 같은 트랜잭션에서 invalidate_history를 호출해 revision을 올리고 체크포인트를 전부 무효로 함 (AI v3.1 회신 D1).
+# 게시된 경계와 비교하지 않고 실제로 바뀐 행이 있으면 항상 호출 - 최초 구축 중인 체크포인트도 놓치지 않게.
+# ml_read는 도심만 보므로 휴게소 · 서울 회차만 정리됐으면 호출하지 않음
+CHECKPOINT_TARGET = "city"
+INVALIDATE_HISTORY_FN = "ml_checkpoint.invalidate_history(timestamptz,text)"
+ORPHANED_RUN_HISTORY_REASON = "collector 재시작 시 수집 중단 회차 정리 (#89)"
+
 
 def close_orphaned_runs(db) -> int:
-    result = db.execute(
+    closed = db.execute(
         update(CollectionRun)
         .where(CollectionRun.status == "RUNNING")
         .values(
@@ -299,9 +307,23 @@ def close_orphaned_runs(db) -> int:
             eligible_matched_count=0,
             error_message=ORPHANED_RUN_ERROR,
         )
-    )
+        .returning(CollectionRun.target, CollectionRun.started_at)
+    ).all()
+    city_starts = [started_at for target, started_at in closed if target == CHECKPOINT_TARGET]
+    # 함수가 없으면(마이그레이션 7c5eec7b9ab4 전 · 로컬 DB) 무효로 할 체크포인트도 없으므로 건너뜀
+    if (
+        city_starts
+        and db.execute(
+            text("SELECT to_regprocedure(:fn) IS NOT NULL"), {"fn": INVALIDATE_HISTORY_FN}
+        ).scalar()
+    ):
+        revision = db.execute(
+            text("SELECT ml_checkpoint.invalidate_history(:changed_from, :reason)"),
+            {"changed_from": min(city_starts), "reason": ORPHANED_RUN_HISTORY_REASON},
+        ).scalar()
+        logger.warning("ml 체크포인트 무효화 - revision %s로 올림, 재구축 필요", revision)
     db.commit()
-    return result.rowcount
+    return len(closed)
 
 
 def main():

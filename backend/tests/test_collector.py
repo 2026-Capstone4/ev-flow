@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import httpx
@@ -13,6 +14,7 @@ from app.collector import api_client  # noqa: E402
 from app.collector.scheduler import (  # noqa: E402
     JOBS,
     ORPHANED_RUN_ERROR,
+    ORPHANED_RUN_HISTORY_REASON,
     PAGE_SIZE,
     RegionCollector,
     close_orphaned_runs,
@@ -125,29 +127,87 @@ def test_deadline_shrinks_timeout_and_stops(fake_get, monkeypatch):
 # --- 시작 시 끝나지 않은 회차 정리 (2026-11-17) ---
 
 
+class OrphanDb:
+    """close_orphaned_runs용 가짜 세션 - UPDATE는 closed 행을 돌려주고, 함수 존재 여부 · revision을 흉내 냄"""
+
+    def __init__(self, closed, has_fn=True):
+        self.closed, self.has_fn = closed, has_fn
+        self.calls, self.committed = [], False
+
+    def execute(self, stmt, params=None):
+        self.calls.append((stmt, params))
+        sql = str(stmt)
+        if "to_regprocedure" in sql:
+            value = self.has_fn
+        elif "invalidate_history" in sql:
+            value = 7
+        else:
+            value = None
+        return SimpleNamespace(all=lambda: self.closed, scalar=lambda: value)
+
+    def commit(self):
+        self.committed = True
+        self.calls.append(("COMMIT", None))
+
+    def invalidations(self):
+        return [p for s, p in self.calls if "invalidate_history(:changed_from" in str(s)]
+
+
+T0 = datetime(2026, 11, 16, 6, 56, tzinfo=UTC)
+T1 = datetime(2026, 11, 16, 6, 51, tzinfo=UTC)
+T2 = datetime(2026, 11, 16, 6, 40, tzinfo=UTC)
+
+
 def test_close_orphaned_runs_marks_running_as_failed():
-    class FakeDb:
-        def __init__(self):
-            self.statements, self.committed = [], False
-
-        def execute(self, stmt):
-            self.statements.append(stmt)
-            return SimpleNamespace(rowcount=1)
-
-        def commit(self):
-            self.committed = True
-
-    db = FakeDb()
+    db = OrphanDb([("service_area", T0)])
     assert close_orphaned_runs(db) == 1
     assert db.committed
-    (stmt,) = db.statements
+    stmt, _ = db.calls[0]
     compiled = stmt.compile(dialect=postgresql.dialect())
     sql = str(compiled)
     assert sql.startswith("UPDATE collection_runs SET")
     assert "WHERE collection_runs.status = %(status_1)s" in sql
-    assert "finished_at" not in sql  # 끝난 시각은 모름 - 비워 둠
+    assert "RETURNING collection_runs.target, collection_runs.started_at" in sql
+    assert "finished_at" not in sql.split("RETURNING")[0]  # 끝난 시각은 모름 - 비워 둠
     params = compiled.params
     assert params["status_1"] == "RUNNING"
     assert params["status"] == "FAILED"
     assert params["matched_count"] == params["eligible_matched_count"] == 0
     assert params["error_message"] == ORPHANED_RUN_ERROR
+
+
+# --- 정리한 도심 회차가 있으면 ml 체크포인트 무효화 (AI v3.1 D1, 2026-11-18) ---
+
+
+def test_close_orphaned_runs_invalidates_checkpoints_for_city_runs():
+    # 서울 회차(T2)가 가장 이르지만 ml_read에 없으므로 기준은 도심 회차 중 가장 이른 T1
+    db = OrphanDb([("city", T0), ("live", T2), ("city", T1)])
+    assert close_orphaned_runs(db) == 3
+    assert db.invalidations() == [{"changed_from": T1, "reason": ORPHANED_RUN_HISTORY_REASON}]
+    # 정리 UPDATE와 같은 트랜잭션 - 무효화가 커밋보다 먼저, 커밋은 한 번
+    order = [str(s) for s, _ in db.calls]
+    invalidate_at = next(i for i, s in enumerate(order) if "invalidate_history(:changed_from" in s)
+    assert order.count("COMMIT") == 1
+    assert invalidate_at < order.index("COMMIT")
+
+
+def test_close_orphaned_runs_skips_invalidation_without_city_runs():
+    db = OrphanDb([("service_area", T0), ("live", T1)])
+    assert close_orphaned_runs(db) == 2
+    assert len(db.calls) == 2  # UPDATE · COMMIT뿐 - 함수 존재 확인도 하지 않음
+    assert db.committed
+
+
+def test_close_orphaned_runs_skips_invalidation_when_store_missing():
+    # 마이그레이션 전 · 로컬 DB - 함수가 없으면 무효로 할 체크포인트도 없음
+    db = OrphanDb([("city", T0)], has_fn=False)
+    assert close_orphaned_runs(db) == 1
+    assert db.invalidations() == []
+    assert db.committed
+
+
+def test_close_orphaned_runs_does_nothing_when_no_running():
+    db = OrphanDb([])
+    assert close_orphaned_runs(db) == 0
+    assert len(db.calls) == 2  # UPDATE · COMMIT뿐
+    assert db.committed
