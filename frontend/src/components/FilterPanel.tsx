@@ -61,10 +61,10 @@ export function FilterPanel({
       className="flex w-full animate-panel-down flex-col gap-3 rounded-md bg-bg-page px-4 pt-4 pb-3 shadow-[0_4px_16px_rgba(0,0,0,0.16)]"
     >
       <StationFilterOptions filters={draft} onChange={setDraft} />
-      {/* 지도는 실시간만 보여 주고(추천 충전소는 예외로 항상 표시), 15 · 30분 후 예측으로 거르는 건 검색 화면에서 함 */}
+      {/* 지도는 실시간만 보여 주고(추천 충전소는 예외로 항상 형광 파랑으로 표시), 15 · 30분 후 예측으로 거르는 건 검색 화면에서 함 */}
       <p className="text-xs text-text-secondary">
-        지도는 지금 상태 기준이고, 추천 충전소는 조건과 상관없이 보여요. 15·30분 후 예측으로
-        찾으려면 검색을 이용해 주세요.
+        지도는 지금 상태 기준이고, 추천 충전소는 조건과 상관없이 파란색으로 보여요. 15·30분 후
+        예측으로 찾으려면 검색을 이용해 주세요.
       </p>
       <div className="mt-1 flex gap-2">
         <Button
