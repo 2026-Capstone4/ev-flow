@@ -56,7 +56,9 @@ jobs:
 
           # 세 점(...) 비교: 브랜치가 갈라진 지점부터 PR 브랜치에서 바뀐 파일만 뽑음
           # (develop에 나중에 들어온 다른 PR의 변경은 섞이지 않음)
-          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          # core.quotePath=false: 기본값이면 한글 경로를 "backend/…\354…"처럼 따옴표로 감싸
+          # 아래 ^(backend/…) 판정에서 빠짐 (마이그레이션 파일 이름이 한글 — #93 · #95에서 BE 검사가 건너뛰어짐)
+          changed=$(git -c core.quotePath=false diff --name-only "$BASE_SHA...$HEAD_SHA")
           echo "바뀐 파일:"
           echo "$changed"
 
