@@ -1,9 +1,9 @@
-import { ArrowDown, ArrowUp, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, Search, X } from 'lucide-react'
 import { useState } from 'react'
 import { AdminChargerTable } from '@/components/AdminChargerTable'
 import { AdminPageHeader, AdminPanel, AdminPlaceholder, ColorSwatch } from '@/components/AdminPanel'
 import { AdminRegionFilter } from '@/components/AdminRegionFilter'
-import { AdminStationTable } from '@/components/AdminStationTable'
+import { AdminStationTable, type StationReturnPoint } from '@/components/AdminStationTable'
 import { CollectionHealthLabel } from '@/components/CollectionHealthLabel'
 import { FilterChip } from '@/components/FilterChip'
 import { RateBarChart } from '@/components/RateBarChart'
@@ -137,6 +137,27 @@ function ChargerSearch({
   )
 }
 
+/**
+ * 충전기별 보기에서 지금 보고 있는 충전소. 칩 어디를 눌러도 충전소별 보기로 돌아감
+ * 전체 충전기는 위쪽 보기 전환으로 볼 수 있어서 선택만 푸는 버튼은 따로 두지 않음
+ */
+function SelectedStationChip({ stationName, onBack }: { stationName: string; onBack: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={`충전소별 상태로 돌아가기 (${stationName})`}
+      onClick={onBack}
+      className="inline-flex h-[33px] max-w-64 items-center gap-1 rounded-full border border-brand-primary bg-brand-primary-bg pr-3 pl-2.5 text-[13px] font-bold text-brand-primary"
+    >
+      <ArrowLeft size={14} aria-hidden className="shrink-0" />
+      <span className="truncate">{stationName}</span>
+    </button>
+  )
+}
+
+/** 충전소별 표에서 고른 충전소. 돌아올 때 그 줄 위치를 되살리려고 rowOffset도 기억 */
+type SelectedStation = StationReturnPoint & { stationName: string }
+
 /** 충전 현황 표 높이 (AdminStationTable · AdminChargerTable의 h-[480px]과 같게) */
 const TABLE_HEIGHT = 480
 export function AdminStatusPage() {
@@ -154,11 +175,18 @@ export function AdminStatusPage() {
   })
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // 충전소별 표에서 누른 충전소. 충전기별 보기에서는 그 충전소만 거르고, 돌아온 뒤에는 돌아갈 줄 위치로 씀
+  const [selectedStation, setSelectedStation] = useState<SelectedStation | null>(null)
   const data = useAdminStatusData(region, chargerSort, stationSort)
 
+  // 충전기별 보기에서 충전소를 골라 들어왔으면 그 충전소의 충전기만 보여 줌
+  const isStationPicked = statusView === 'charger' && selectedStation !== null
   // 정렬된 목록에서 검색어에 맞는 줄만 표에 보여 줌 (검색어는 두 보기가 함께 씀)
+  // 충전소를 골라 들어왔으면 검색어 대신 충전소 ID로 거름 — 이름이 겹치는 다른 충전소가 섞이지 않게
   const visibleStations = filterByStationName(data.sortedStations, searchQuery)
-  const visibleChargers = filterByStationName(data.sortedChargers, searchQuery)
+  const visibleChargers = isStationPicked
+    ? data.sortedChargers.filter((charger) => charger.stationId === selectedStation.stationId)
+    : filterByStationName(data.sortedChargers, searchQuery)
   const visibleCount = statusView === 'station' ? visibleStations.length : visibleChargers.length
   const caption = SORT_CAPTION[statusView === 'station' ? stationSort.key : chargerSort.key]
   const { summary } = data
@@ -169,7 +197,11 @@ export function AdminStatusPage() {
         <AdminRegionFilter
           region={region}
           district={district}
-          onRegionChange={setRegion}
+          onRegionChange={(next) => {
+            // 지역이 바뀌면 고른 충전소가 목록에서 빠질 수 있어서 선택을 풂
+            setSelectedStation(null)
+            setRegion(next)
+          }}
           onDistrictChange={setDistrict}
         />
         {/* 늘 두 줄로 보여 주고 폭을 고정해, 문구가 바뀌어도(방금 · 59분 전 · 갱신 실패) 왼쪽 버튼이 밀리지 않게 함
@@ -279,7 +311,11 @@ export function AdminStatusPage() {
             label="충전 현황 보기"
             options={STATUS_VIEW_OPTIONS}
             value={statusView}
-            onChange={setStatusView}
+            onChange={(view) => {
+              // 위 전환으로 직접 바꾸면 고른 충전소 없이 전체 목록을 보여 줌
+              setSelectedStation(null)
+              setStatusView(view)
+            }}
           />
         }
         aside={
@@ -290,16 +326,25 @@ export function AdminStatusPage() {
             ) : (
               <SortChips keys={CHARGER_SORT_KEYS} sort={chargerSort} onChange={setChargerSort} />
             )}
-            <ChargerSearch
-              isOpen={isSearchOpen}
-              query={searchQuery}
-              onOpen={() => setIsSearchOpen(true)}
-              onClose={() => {
-                setSearchQuery('')
-                setIsSearchOpen(false)
-              }}
-              onQueryChange={setSearchQuery}
-            />
+            {/* 충전소를 골라 들어왔으면 검색 자리에 그 충전소 칩. 검색어는 그대로 두었다가 돌아가면 다시 보임 */}
+            {isStationPicked ? (
+              <SelectedStationChip
+                stationName={selectedStation.stationName}
+                // 선택은 남겨 둬서 충전소별 표가 그 줄 위치로 돌아가게 함
+                onBack={() => setStatusView('station')}
+              />
+            ) : (
+              <ChargerSearch
+                isOpen={isSearchOpen}
+                query={searchQuery}
+                onOpen={() => setIsSearchOpen(true)}
+                onClose={() => {
+                  setSearchQuery('')
+                  setIsSearchOpen(false)
+                }}
+                onQueryChange={setSearchQuery}
+              />
+            )}
           </div>
         }
       >
@@ -316,10 +361,14 @@ export function AdminStatusPage() {
             <AdminStationTable
               stations={visibleStations}
               updatedAt={data.updatedAt}
-              onSelect={(station) => {
-                // 충전소를 누르면 충전기별 보기로 넘어가서 그 충전소를 검색한 상태로 보여 줌
-                setSearchQuery(station.stationName)
-                setIsSearchOpen(true)
+              returnTo={selectedStation}
+              onSelect={(station, rowOffset) => {
+                // 충전소를 누르면 충전기별 보기로 넘어가서 그 충전소의 충전기만 보여 줌. 검색어는 건드리지 않음
+                setSelectedStation({
+                  stationId: station.stationId,
+                  stationName: station.stationName,
+                  rowOffset,
+                })
                 setStatusView('charger')
               }}
             />
