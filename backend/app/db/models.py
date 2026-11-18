@@ -132,6 +132,8 @@ class CityStatusLog(StatusLogColumns, Base):
         Index("ix_city_status_log_lookup", "station_id", "charger_id", "collected_at"),
         # ml_read.collection_runs 뷰의 회차별 기준 시각 · 최대 id · 로그 존재 판정용 (마이그레이션 e75d10ca4bb2)
         Index("ix_city_status_log_run", "collection_run_id", "id"),
+        # ml 회차 검증(기점~cutoff 중 마지막 행)을 역순 1행으로 찾게 함 - lookup 인덱스로는 전체 이력을 읽음 (12f829425bd5)
+        Index("ix_city_status_log_collected", "collected_at", "id"),
     )
 
 
