@@ -23,7 +23,9 @@ export function useSearchData({ origin, query, filters, horizon, sortKey }: UseS
   const results = useMemo(() => {
     if (!stations) return undefined
     const matched = stations
-      .filter((station) => matchesQuery(station, query) && matchesFilters(station, filters))
+      .filter(
+        (station) => matchesQuery(station, query) && matchesFilters(station, filters, horizon),
+      )
       .map((station) => ({
         station,
         distanceMeters: getDistanceMeters(origin, station),

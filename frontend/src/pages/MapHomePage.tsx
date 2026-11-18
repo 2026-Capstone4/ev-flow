@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { DevZoomBadge } from '@/components/DevZoomBadge'
+import { FilterPanel } from '@/components/FilterPanel'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
@@ -35,7 +36,7 @@ const NOTICE_DURATION_MS = 3000
 export function MapHomePage() {
   const navigate = useNavigate()
   // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
-  const { horizon, setHorizon, filters, userLocation } = useMapView()
+  const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
   // 길찾기 화면의 "다른 추천 충전소 보기"로 오면 추천 시트를 펼친 채로 시작
   const location = useLocation()
   const [isSheetExpanded, setIsSheetExpanded] = useState(
@@ -43,11 +44,8 @@ export function MapHomePage() {
   )
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 14 })
-  const { stations, updatedAt, isStationsError, recommendations, recommendState } = useMapHomeData(
-    userLocation,
-    horizon,
-    filters,
-  )
+  const { stations, allStations, updatedAt, isStationsError, recommendations, recommendState } =
+    useMapHomeData(userLocation, horizon, filters)
 
   // 마커는 시점이 바뀔 때마다 다시 만들지 않도록 최신 시점만 ref로 읽음
   const horizonRef = useRef(horizon)
@@ -66,6 +64,12 @@ export function MapHomePage() {
   useCoverageMask(map)
   const { isZoomedOut } = useStationMarkers(map, stations, handleMarkerSelect)
   useMyLocationMarker(map, userLocation)
+
+  // 필터 버튼은 검색 화면으로 가지 않고 검색창 아래에 필터 패널을 엶. 지도는 덮지 않음
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const filterButtonAreaRef = useRef<HTMLDivElement>(null)
+  // 패널이 바깥 누름 · Esc 감지를 다시 붙이지 않게 같은 함수를 넘김
+  const closeFilter = useCallback(() => setIsFilterOpen(false), [])
 
   // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
   const [notice, setNotice] = useState<{ id: number; message: string } | null>(null)
@@ -133,10 +137,29 @@ export function MapHomePage() {
 
         {/* 상단 검색창 · 갱신 상태 */}
         <div className="absolute inset-x-4 top-4 flex flex-col items-start gap-2">
-          <SearchBar
-            activeFilterCount={countActiveFilters(filters)}
-            onClick={() => navigate('/search')}
-          />
+          {/* 패널은 검색창 기준으로 띄워서 아래 갱신 상태 · 안내를 밀어내지 않고 덮음 */}
+          <div ref={filterButtonAreaRef} className="relative w-full">
+            <SearchBar
+              activeFilterCount={countActiveFilters(filters)}
+              isFilterOpen={isFilterOpen}
+              onSearchClick={() => navigate('/search')}
+              onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
+            />
+            {isFilterOpen && (
+              <div className="absolute inset-x-0 top-full z-20 mt-2">
+                <FilterPanel
+                  filters={filters}
+                  allStations={allStations}
+                  ignoreRef={filterButtonAreaRef}
+                  onClose={closeFilter}
+                  onApply={(next) => {
+                    setFilters(next)
+                    setIsFilterOpen(false)
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
           {notice && <MapNotice key={notice.id} message={notice.message} />}
           {/* 너무 멀리 봐서 마커를 숨긴 동안은 확대하라고 계속 안내. 왼쪽 정렬 줄에서 혼자 가운데로 */}
