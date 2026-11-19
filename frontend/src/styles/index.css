@@ -1,7 +1,7 @@
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 @import 'tailwindcss';
 
-/* Figma Variables(Color · Size)와 같은 이름으로 맞춤 */
+/* Figma Variables(Color · Size)와 같은 이름으로 맞춤. 색 값의 기준은 lib/theme.ts(웹 · 앱 공용) - 바꿀 때 같이 고침 */
 @theme {
   --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
 
