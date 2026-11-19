@@ -179,7 +179,7 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
   - 이 PR은 파일 이동 + import 경로 수정만 하고 짧게 끝냄 (기능 변경 섞지 않기). 진행 중에는 다른 프론트 브랜치를 새로 따지 않음
   - 0단계 중 `useMapMarkers` 판단 함수 빼기는 마커 관련 브랜치가 병합된 뒤에 함 (2026-11-19 완료). 실험 브랜치 `exp/fe-gl-map`은 병합하지 않으므로 이 변경과 충돌해도 둠
 
-### 2단계: Expo 앱 골격 — 진행 중 (골격 PR 2026-11-19)
+### 2단계: Expo 앱 골격 — ✅ 완료 (2026-11-20)
 
 골격 PR 결과 (`feat/app-expo-skeleton`)
 - `mobile/`(`ev-flow-mobile`): Expo SDK 58 · React 19.3 · RN 0.88 · Expo Router(`src/app/`) · dev build(`expo-dev-client`). 워크스페이스에 `mobile` 추가
@@ -193,16 +193,22 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
 - 쿼리: `src/app-setup/queryClient.ts` — core `DEFAULT_QUERY_OPTIONS` + `AppState` → `focusManager`, `NetInfo` → `onlineManager`. 앱이 백그라운드면 폴링 멈추고, 돌아오면 낡은 데이터를 바로 새로 받음
 - 검사: `mobile`에 `lint` · `format:check` · `typecheck` 스크립트 → 루트 `pnpm -r`과 CI FE 검사에 포함 (CI 변경 판정에 `mobile/` 추가). iOS 빌드는 CI에서 안 함
 - 첫 화면(`src/app/index.tsx`)은 골격 확인용 — core `useStationsQuery`로 충전소 수 · 갱신 문구를 띄움. 3단계에서 지도 홈으로 바꿈
-- 확인 (2026-11-19, iPhone 17 Pro 시뮬레이터 · dev build): 실제 서버에서 충전소 1,622곳 · 갱신 문구가 뜨고, Pretendard · lucide 아이콘 · 색 토큰이 적용됨. 백그라운드 → 복귀 때 폴링 멈춤 · 재개는 아직 직접 확인 안 함
+- 확인 (2026-11-19, iPhone 17 Pro 시뮬레이터 · dev build): 실제 서버에서 충전소 1,622곳 · 갱신 문구가 뜨고, Pretendard · lucide 아이콘 · 색 토큰이 적용됨. 백그라운드 → 복귀 때 폴링 멈춤 · 재개는 아래 포커스 PR에서 확인
 - 로컬 빌드 주의: CocoaPods가 `LANG`이 UTF-8이 아니면 `pod install`에서 실패함 → `export LANG=en_US.UTF-8` 후 `pnpm --dir mobile ios`
 
-화면 포커스별 폴링 중단 — 방식 정함, 다음 PR(`fe`, core 수정)
+화면 포커스별 폴링 중단 — 완료 (`feat/fe-screen-focus-polling`, 2026-11-19)
 - RN 스택은 이전 화면을 살려 두므로 화면이 가려져도 그 화면의 쿼리가 계속 폴링함
-- TanStack Query 5의 `subscribed` 옵션을 씀: `false`면 그 화면의 구독(폴링 타이머 포함)을 끊고, 캐시 값은 그대로 남음. 다시 `true`가 되면 낡은 데이터를 새로 받음
-- core에 "지금 이 화면이 보이는지" 컨텍스트(기본값 `true` → 웹은 그대로)를 두고, core 쿼리 훅이 `subscribed`로 넘김. 앱은 화면마다 `useIsFocused()` 값을 넣어 줌
-- `freezeOnBlur`(화면 그리기만 멈춤)로는 쿼리 타이머가 안 멈춰서 쓰지 않음
+  - React Navigation의 Activity(가려진 화면 효과 정리)는 기본값이 꺼져 있고, `freezeOnBlur`는 그리기만 멈춰서 쿼리 타이머가 안 멈춤 → 둘 다 쓰지 않음
+- core `app/screenActive.ts`: `ScreenActiveContext`(기본값 `true` → Provider가 없는 웹은 그대로)
+- core 쿼리 훅이 이 값을 TanStack Query `subscribed`로 넘김. `false`면 그 화면의 구독(폴링 타이머 포함)을 끊고 캐시 값은 그대로, 다시 `true`면 낡은 데이터를 바로 새로 받고 폴링 재개
+  - 길찾기(`useRouteQuery`)는 빼 둠 — 폴링이 없어 끊을 게 없고, 다시 구독할 때 실패한 경로를 자동으로 또 부르게 됨 (재시도 버튼으로만 부르는 규칙)
+- 앱: `src/app-setup/ScreenActiveLayout.tsx`가 `useIsFocused()` 값을 Provider로 넣음. 루트 `Stack`의 `screenLayout`으로 모든 화면에 씌움 (화면 파일마다 감쌀 필요 없음)
+- 앱 타입 검사: core 소스가 core 폴더의 React 18 타입을 잡아 앱 JSX(React 19)와 안 맞음 → `mobile/tsconfig.json` `paths`로 `react` 타입을 앱 것 한 벌로 맞춤
+  - Metro는 기본으로 tsconfig `paths`를 모듈 찾기에도 써서 `react`를 `@types/react`에서 찾다가 번들이 깨짐 → `app.config.ts` `experiments.tsconfigPaths: false`
+- 테스트: core `hooks/useServiceAreasQuery.test.tsx` (Provider 없음 = 폴링, 가려지면 멈춤 · 값 유지, 다시 보이면 받고 재개)
+- 확인 (시뮬레이터, 임시로 폴링 3초 + 요청 로그): 두 번째 화면을 연 15초 동안 홈의 `stations` 요청 0번(보이는 화면 `service-areas`만 5번), 돌아오면 `stations` 재개 · 떠난 화면 요청 멈춤. 앱을 백그라운드로 보낸 12초 동안 요청 0번, 돌아오면 바로 재개
 
-Mock — 완료 (`fe`, core · 웹 · 앱 수정)
+Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 사용자 화면 Mock 데이터(충전소 · 추천 · 길찾기 · 휴게소)를 `packages/core/src/mocks/`로 옮김. 운영자 Mock(`admin.ts`)은 웹에만 남김
 - 추천 응답 만들기(호출 제한 429 · 마포구 밖 422 · 충전소 못 받음 503 · Top 3)를 `mocks/mockApi.ts`로 빼서 웹 MSW 핸들러와 앱이 같이 씀
 - 앱: `mocks/axiosMock.ts`의 `enableRecommendationsMock()`이 공용 `api`의 adapter를 감싸 `POST /recommendations`만 Mock으로 답하고, 나머지는 원래 adapter로 실제 서버에 보냄. 추천 후보는 실제 서버 충전소에 기준선 예측을 채워 씀 (웹 혼합 모드와 같음)
@@ -210,7 +216,7 @@ Mock — 완료 (`fe`, core · 웹 · 앱 수정)
 - 확인 (2026-11-20): core 테스트(추천 200 · 다른 요청은 실제 서버로 · 422 · 503 · 429 + Retry-After), 웹 전체 Mock에서 추천 200 · 422 · 11번째 429, 시뮬레이터에서 실제 충전소 1,622곳 + 실제 충전소 기준 추천 1위가 뜸
 
 남은 것
-- 화면 포커스별 폴링 중단 (위 방식, core 수정이라 `fe` PR)
+- 없음. 2단계 끝 → 3단계 지도 검증
 
 계획 (당시 그대로)
 
@@ -245,7 +251,7 @@ Mock — 완료 (`fe`, core · 웹 · 앱 수정)
 
 1. 충전소 상세, 휴게소 목록 · 상세, 검색 — 응답 모양 확정, 다시 고칠 일 적음
 2. 지도 홈 + 추천 Top 3 시트
-3. 길찾기 (폴리라인 · 딥링크) — 추천 · 길찾기 API가 실제로 붙은 뒤
+3. 길찾기 (폴리라인 · 딥링크) — 길찾기 API는 연동됨 (#121), 추천 API가 실제로 붙은 뒤
 
 각 화면은 기존 `use*Data` 훅을 그대로 쓰고 JSX만 새로 씀.
 

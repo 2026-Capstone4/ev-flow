@@ -8,6 +8,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { queryClient, setupQueryManagers } from '../app-setup/queryClient'
+import { ScreenActiveLayout } from '../app-setup/ScreenActiveLayout'
 import { API_BASE_URL, IS_RECOMMENDATIONS_MOCK } from '../lib/config'
 
 // 첫 요청 전에 API 주소를 앱용 절대 URL로 바꾸고, 앱 상태 · 네트워크를 쿼리에 연결함
@@ -23,7 +24,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <MapViewProvider>
-          <Stack screenOptions={{ headerShown: false }} />
+          {/* 화면마다 보이는지 여부를 쿼리 훅에 알려서 가려진 화면은 폴링을 멈춤 */}
+          <Stack
+            screenOptions={{ headerShown: false }}
+            screenLayout={({ children }) => <ScreenActiveLayout>{children}</ScreenActiveLayout>}
+          />
           <StatusBar style="dark" />
         </MapViewProvider>
       </QueryClientProvider>
