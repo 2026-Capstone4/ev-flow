@@ -155,7 +155,7 @@ export function RoutePage() {
             variant={isRouteError ? 'primary' : 'secondary'}
             onClick={showOtherRecommendations}
           >
-            다른 추천 충전소 보기
+            AI 추천 충전소 보기
           </Button>
         </section>
       </main>
