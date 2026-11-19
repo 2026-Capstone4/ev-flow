@@ -90,8 +90,12 @@ export function SearchPage() {
         </div>
       </header>
 
-      <section className="flex shrink-0 flex-col items-start gap-3 border-b border-border-default px-4 pt-2 pb-4">
-        <HorizonSelector value={horizon} onChange={setHorizon} />
+      {/* 시점은 모든 결과의 예측 기준을 바꾸는 필수 선택이라, 결과를 줄이는 필터 칩과 따로 세그먼트로 둠 */}
+      <div className="shrink-0 border-b border-border-default px-4 pt-2 pb-3">
+        <HorizonSelector value={horizon} onChange={setHorizon} variant="inline" />
+      </div>
+
+      <section className="flex shrink-0 flex-col items-start gap-3 border-b border-border-default px-4 pt-3 pb-4">
         <StationFilterOptions filters={filters} onChange={setFilters} />
         <FilterRow label="정렬">
           {SORT_OPTIONS.map(({ label, value }) => (
