@@ -39,6 +39,9 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
+    // tsconfig.json의 paths는 타입 검사용(React 타입 한 벌)이라 Metro가 실제 모듈 찾기에 쓰지 않게 끔
+    // 켜 두면 react를 @types/react 폴더에서 찾다가 번들이 실패함
+    tsconfigPaths: false,
   },
 }
 
