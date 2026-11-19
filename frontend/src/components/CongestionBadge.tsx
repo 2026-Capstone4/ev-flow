@@ -13,12 +13,14 @@ const BADGE_CLASS: Record<CurrentCongestion | 'none', string> = {
 type CongestionBadgeProps = {
   /** 현재 혼잡도 또는 예측 혼잡도. null은 예측 없음 */
   congestion: CurrentCongestion | null
+  /** 놓이는 곳에 맞춰 높이 등을 덧붙일 때 씀 */
+  className?: string
 }
 
-export function CongestionBadge({ congestion }: CongestionBadgeProps) {
+export function CongestionBadge({ congestion, className = '' }: CongestionBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-sm px-2 py-1 text-xs font-bold ${BADGE_CLASS[congestion ?? 'none']}`}
+      className={`inline-flex items-center rounded-sm px-2 py-1 text-xs font-bold ${BADGE_CLASS[congestion ?? 'none']} ${className}`}
     >
       {getCongestionLabel(congestion)}
     </span>
