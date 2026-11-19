@@ -6,6 +6,9 @@ type MockServiceArea = {
   name: string
   route: string
   direction: Direction
+  address: string
+  lat: number
+  lng: number
   dataQuality: DataQuality
   chargers: Omit<ServiceAreaCharger, 'chargingStartedAt'>[]
 }
@@ -21,12 +24,15 @@ function charger(
   return { stationId, operator, chargerId, status, connectorTypes, capacityKw }
 }
 
-// 휴게소 · 운영기관 이름은 화면 개발용 예시 (실제 수집 데이터 아님)
+// 휴게소 · 운영기관 이름은 화면 개발용 예시 (실제 수집 데이터 아님). 주소 · 좌표도 망향 외에는 대략값
 const MOCK_SERVICE_AREAS: MockServiceArea[] = [
   {
     name: '천안삼거리휴게소',
     route: '경부',
     direction: 'up',
+    address: '충청남도 천안시 동남구 삼룡동',
+    lat: 36.7913,
+    lng: 127.1757,
     dataQuality: 'normal',
     chargers: [
       charger('MOCKSA01', '한국도로공사', '01', 'available'),
@@ -37,6 +43,9 @@ const MOCK_SERVICE_AREAS: MockServiceArea[] = [
     name: '입장거봉포도휴게소',
     route: '경부',
     direction: 'up',
+    address: '충청남도 천안시 서북구 입장면',
+    lat: 36.9036,
+    lng: 127.2036,
     dataQuality: 'normal',
     chargers: [
       charger('MOCKSA02', '한국도로공사', '01', 'charging'),
@@ -47,6 +56,9 @@ const MOCK_SERVICE_AREAS: MockServiceArea[] = [
     name: '망향휴게소',
     route: '경부',
     direction: 'down',
+    address: '충청남도 천안시 서북구 성거읍 돌다리길 23-37',
+    lat: 36.8541795,
+    lng: 127.1804275,
     dataQuality: 'normal',
     chargers: [
       charger('MOCKSA03', '한국도로공사', '01', 'available'),
@@ -59,6 +71,9 @@ const MOCK_SERVICE_AREAS: MockServiceArea[] = [
     name: '천안호두휴게소',
     route: '경부',
     direction: 'down',
+    address: '충청남도 천안시 동남구 광덕면',
+    lat: 36.7342,
+    lng: 127.1478,
     dataQuality: 'missing',
     chargers: [
       charger('MOCKSA05', '한국도로공사', '01', 'available'),
@@ -96,9 +111,9 @@ export const SERVICE_AREAS: ServiceArea[] = MOCK_SERVICE_AREAS.map(toServiceArea
 export function findServiceAreaChargers(name: string, direction: Direction, now: Date) {
   const area = MOCK_SERVICE_AREAS.find((a) => a.name === name && a.direction === direction)
   if (!area) return null
-  const { totalChargers, availableChargers, route } = toServiceArea(area)
+  const { totalChargers, availableChargers, route, address, lat, lng } = toServiceArea(area)
   return {
-    serviceArea: { name, route, direction, totalChargers, availableChargers },
+    serviceArea: { name, route, direction, address, lat, lng, totalChargers, availableChargers },
     chargers: area.chargers.map((c, index) => ({
       ...c,
       chargingStartedAt:

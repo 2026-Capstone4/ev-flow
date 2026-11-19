@@ -12,25 +12,11 @@ import { useRouteOverlay } from '@/hooks/useRouteOverlay'
 import { formatWaitRange, NO_PREDICTION_LABEL } from '@/lib/congestion'
 import { MAPO_CENTER } from '@/lib/constants'
 import { getHorizonWhen, parseHorizon } from '@/lib/horizon'
-import {
-  detectPlatform,
-  getNaverCarRouteUrl,
-  NAVER_MAP_APP_STORE_URL,
-  type MobilePlatform,
-} from '@/lib/naverMapLink'
+import { detectPlatform, getNaverCarRouteUrl, openNaverMapApp } from '@/lib/naverMapLink'
 import { formatDistance } from '@/lib/stationSearch'
 
 /** 경로 시트 높이 대략값. 경로가 시트에 가리지 않게 지도를 맞출 때 씀 */
 const ROUTE_SHEET_HEIGHT = 280
-
-// iOS는 앱이 없으면 아무 일도 일어나지 않아, 잠시 뒤에도 화면이 그대로면 App Store로 보냄 (NCP 가이드 방식)
-function openNaverMapApp(url: string, platform: MobilePlatform) {
-  window.location.href = url
-  if (platform !== 'ios') return
-  setTimeout(() => {
-    if (document.visibilityState === 'visible') window.location.href = NAVER_MAP_APP_STORE_URL
-  }, 1500)
-}
 
 export function RoutePage() {
   const navigate = useNavigate()
@@ -139,16 +125,12 @@ export function RoutePage() {
                   />
                 )}
               </div>
-              {/* 경로를 찾는 동안은 안내 버튼 자리에 진행 중 표시 */}
+              {/* 경로를 찾는 동안은 안내 버튼 자리에 진행 중 표시. 휴대폰은 네이버 지도 앱, PC는 네이버 지도 웹을 새 탭으로 엶 */}
               {route ? (
-                naverMapUrl ? (
+                naverMapUrl && (
                   <Button onClick={() => openNaverMapApp(naverMapUrl, platform)}>
                     네이버 지도로 안내받기
                   </Button>
-                ) : (
-                  <p className="rounded-sm bg-bg-subtle px-3 py-2.5 text-center text-[13px] text-text-secondary">
-                    휴대폰에서 열면 네이버 지도 앱으로 안내받을 수 있어요
-                  </p>
                 )
               ) : (
                 <Button disabled aria-busy className="gap-2">
