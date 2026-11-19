@@ -1,3 +1,5 @@
+import { formatWaitTime } from '@ev-flow/core/lib/rateLimit'
+
 /** 로그인 실패 안내 문구. code는 서버 에러 code, 응답이 없었으면 null */
 export function getLoginErrorMessage(code: string | null, retryAfterSeconds: number | null) {
   // 아이디 · 비밀번호 불일치 (401)
@@ -7,9 +9,7 @@ export function getLoginErrorMessage(code: string | null, retryAfterSeconds: num
     // 남은 시간을 모르면 시간 없이 안내
     if (retryAfterSeconds === null)
       return '로그인 시도가 많아 잠겼습니다. 잠시 후 다시 시도해 주세요.'
-    const wait =
-      retryAfterSeconds < 60 ? `${retryAfterSeconds}초` : `${Math.ceil(retryAfterSeconds / 60)}분`
-    return `로그인 시도가 많아 잠겼습니다. ${wait} 후 다시 시도해 주세요.`
+    return `로그인 시도가 많아 잠겼습니다. ${formatWaitTime(retryAfterSeconds)} 후 다시 시도해 주세요.`
   }
   // 빈 값 등 요청 형식 오류 (422)
   if (code === 'VALIDATION_ERROR') return '아이디와 비밀번호를 입력해 주세요.'

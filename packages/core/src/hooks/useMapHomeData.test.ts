@@ -20,6 +20,10 @@ describe('getRecommendState', () => {
     )
   })
 
+  it('429 RATE_LIMITED 오류면 rate_limited', () => {
+    expect(getRecommendState('error', responseError(429, 'RATE_LIMITED'))).toBe('rate_limited')
+  })
+
   it('다른 오류는 error 그대로', () => {
     expect(getRecommendState('error', responseError(503, 'DATA_UNAVAILABLE'))).toBe('error')
   })

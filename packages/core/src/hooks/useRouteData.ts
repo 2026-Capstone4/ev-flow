@@ -1,4 +1,4 @@
-import { getApiErrorCode } from '../api/errors'
+import { getApiErrorCode, getRetryAfterSeconds } from '../api/errors'
 import { useRouteQuery, useStationQuery } from './useStationsQuery'
 import { findPrediction } from '../lib/horizon'
 import type { LatLng } from '../types/geo'
@@ -22,6 +22,10 @@ export function useRouteData(origin: LatLng, stationId: string, horizon: Horizon
     isRouteError: routeQuery.isError,
     /** true면 재시도 버튼 대신 다른 충전소를 고르도록 안내 */
     isRouteUnavailable: routeErrorCode !== null && ROUTE_UNAVAILABLE_CODES.includes(routeErrorCode),
+    /** true면 호출이 너무 잦아(429 RATE_LIMITED) 잠시 후 다시 하라고 안내. 재시도 버튼은 남김 */
+    isRouteRateLimited: routeErrorCode === 'RATE_LIMITED',
+    /** 호출 제한일 때 다시 시도할 수 있기까지 남은 초. 모르면 null */
+    routeRetryAfterSeconds: getRetryAfterSeconds(routeQuery.error),
     retryRoute: () => routeQuery.refetch(),
   }
 }

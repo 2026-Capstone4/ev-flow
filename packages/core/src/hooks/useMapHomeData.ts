@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
-import { getApiErrorCode } from '../api/errors'
+import { getApiErrorCode, getRetryAfterSeconds } from '../api/errors'
 import { useRecommendationsQuery, useStationsQuery } from './useStationsQuery'
 import { getListLoadState, type ListLoadState } from '../lib/loadState'
 import { matchesFilters } from '../lib/stationFilter'
 import type { LatLng } from '../types/geo'
 import type { HorizonMinutes, RecommendationFilters } from '../types/station'
 
-/** 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area)이 더해짐 */
-export type RecommendState = ListLoadState | 'out_of_area'
+/** 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area) · 호출 제한(rate_limited)이 더해짐 */
+export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
 export function useMapHomeData(
@@ -54,13 +54,22 @@ export function useMapHomeData(
       getListLoadState(recommendations, recommendationsQuery.isError),
       recommendationsQuery.error,
     ),
+    /** 호출 제한(rate_limited)일 때 다시 시도할 수 있기까지 남은 초. 모르면 null */
+    recommendRetryAfterSeconds: getRetryAfterSeconds(recommendationsQuery.error),
   }
 }
 
-/** 추천 오류가 마포구 밖(422 OUT_OF_SERVICE_AREA)이면 일반 오류와 다른 안내를 띄우도록 상태를 나눔 */
+/**
+ * 추천 오류를 서버 code로 나눠 일반 오류와 다른 안내를 띄움.
+ * 마포구 밖(422 OUT_OF_SERVICE_AREA) · 호출 제한(429 RATE_LIMITED)
+ */
 export function getRecommendState(listState: ListLoadState, error: unknown): RecommendState {
-  // 오류 상태이고 서버가 마포구 밖이라고 알려 준 경우만 out_of_area, 나머지는 목록 상태 그대로
-  if (listState === 'error' && getApiErrorCode(error) === 'OUT_OF_SERVICE_AREA')
-    return 'out_of_area'
+  // 오류가 아니면(마지막 정상값이 있는 경우 포함) 목록 상태 그대로
+  if (listState !== 'error') return listState
+  const code = getApiErrorCode(error)
+  // 서버가 마포구 밖이라고 알려 주면 마포구만 지원한다는 안내
+  if (code === 'OUT_OF_SERVICE_AREA') return 'out_of_area'
+  // 추천 호출이 너무 잦으면 잠시 후 다시 하라는 안내
+  if (code === 'RATE_LIMITED') return 'rate_limited'
   return listState
 }
