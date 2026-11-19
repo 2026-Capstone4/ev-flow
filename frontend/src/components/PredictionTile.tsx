@@ -7,12 +7,16 @@ type PredictionTileProps = {
   prediction: Prediction
   isSelected: boolean
   onSelect: () => void
-  /** 대기시간 자리에 대신 보여줄 글자 (지금 출발: 사용 가능 2/4대) */
+  /** 대기시간 자리에 대신 보여줄 글자 (지금 출발: 사용 가능 2/4대). 없고 대기시간도 없으면 'AI 예측' */
   caption?: string
 }
 
 /** 상세 화면 "시간대별 혼잡 예측"의 한 칸 */
 export function PredictionTile({ prediction, isSelected, onSelect, caption }: PredictionTileProps) {
+  // 지금 출발은 사용 가능 대수, 그 외는 예상 대기시간. 둘 다 없으면 null
+  const waitText =
+    caption ?? formatWaitTime(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes)
+
   return (
     <button
       type="button"
@@ -31,11 +35,14 @@ export function PredictionTile({ prediction, isSelected, onSelect, caption }: Pr
         {getHorizonLabel(prediction.horizonMinutes)}
       </span>
       <CongestionBadge congestion={prediction.congestion} />
-      <span className="text-xs font-medium">
-        {caption ??
-          formatWaitTime(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes) ??
-          '-'}
-      </span>
+      {/* 보여 줄 대기시간이 없으면 보라색 'AI 예측'으로 강조 */}
+      {waitText ? (
+        <span className="text-xs font-medium">{waitText}</span>
+      ) : (
+        <span className="text-xs font-semibold text-ai">
+          <span aria-hidden="true">✦ </span>AI 예측
+        </span>
+      )}
     </button>
   )
 }
