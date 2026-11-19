@@ -44,8 +44,15 @@ export function MapHomePage() {
   )
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 14 })
-  const { stations, allStations, updatedAt, isStationsError, recommendations, recommendState } =
-    useMapHomeData(userLocation, horizon, filters)
+  const {
+    stations,
+    allStations,
+    updatedAt,
+    isStationsError,
+    recommendations,
+    recommendedIds,
+    recommendState,
+  } = useMapHomeData(userLocation, horizon, filters)
 
   // 마커는 시점이 바뀔 때마다 다시 만들지 않도록 최신 시점만 ref로 읽음
   const horizonRef = useRef(horizon)
@@ -62,7 +69,7 @@ export function MapHomePage() {
   )
 
   useCoverageMask(map)
-  const { isZoomedOut } = useStationMarkers(map, stations, handleMarkerSelect)
+  const { isZoomedOut } = useStationMarkers(map, stations, handleMarkerSelect, recommendedIds)
   useMyLocationMarker(map, userLocation)
 
   // 필터 버튼은 검색 화면으로 가지 않고 검색창 아래에 필터 패널을 엶. 지도는 덮지 않음
@@ -222,7 +229,11 @@ export function MapHomePage() {
               <span className="h-1 w-10 rounded-[2px] bg-border-default" />
             </button>
             <div className="flex w-full items-center justify-between">
-              <h2 className="text-[17px] font-bold">추천 충전소</h2>
+              {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
+              <h2 className="flex items-center gap-1.5 text-[17px] font-bold">
+                <span aria-hidden className="size-2.5 rounded-full bg-marker-recommended" />
+                추천 충전소
+              </h2>
               <HorizonSelector value={horizon} onChange={setHorizon} />
             </div>
           </div>

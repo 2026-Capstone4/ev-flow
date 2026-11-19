@@ -13,6 +13,8 @@ import type { Station } from '@/types/station'
 const DOT_MAX_ZOOM = 13
 /** 점 사이에 섞인 마포 숫자 마커가 점에 가리지 않게 위로 올림 */
 const MAPO_Z_INDEX = 1
+/** 추천 충전소 마커는 겹쳐도 다른 마커에 가리지 않게 가장 위로 */
+const RECOMMENDED_Z_INDEX = 2
 /** 이 줌 이하에서는 마커를 숨김. 줌 11이면 서울 대부분이 화면에 들어와 1,600여 개를 모두 그리게 됨 */
 const HIDDEN_MAX_ZOOM = 11
 /** 색 점을 누르면 이 줌으로 확대해 숫자 마커를 보여 줌 (지도 첫 화면과 같은 줌) */
@@ -22,19 +24,27 @@ const TAP_MOVE_TOLERANCE = 8
 const TAP_MAX_DURATION = 500
 
 // 네이버 지도 마커는 HTML 문자열만 받으므로 React 컴포넌트를 정적 마크업으로 변환
-function toMarkerHtml(station: Station) {
+function toMarkerHtml(station: Station, isRecommended: boolean) {
   return renderToStaticMarkup(
     createElement(StationMarker, {
       availableChargers: station.availableChargers,
       totalChargers: station.totalChargers,
       congestion: station.congestion,
+      isRecommended,
     }),
   )
 }
 
-// 이 충전소를 HTML 숫자 마커 대신 캔버스 색 점으로 그릴지. 마포(predictionAvailable)는 점 구간에서도 숫자로 그림
-function isDotStation(map: naver.maps.Map, station: Station) {
-  return map.getZoom() <= DOT_MAX_ZOOM && !station.predictionAvailable
+// 이 충전소를 HTML 숫자 마커 대신 캔버스 색 점으로 그릴지. 마포(predictionAvailable) · 추천은 점 구간에서도 숫자로 그림
+function isDotStation(map: naver.maps.Map, station: Station, isRecommended: boolean) {
+  return map.getZoom() <= DOT_MAX_ZOOM && !station.predictionAvailable && !isRecommended
+}
+
+// 마커 겹침 순서. 추천 > 마포 > 나머지
+function toZIndex(station: Station, isRecommended: boolean) {
+  // 추천이면 가장 위
+  if (isRecommended) return RECOMMENDED_Z_INDEX
+  return station.predictionAvailable ? MAPO_Z_INDEX : 0
 }
 
 function isHiddenZoom(map: naver.maps.Map) {
@@ -47,13 +57,13 @@ function isSdkDisabled() {
 }
 
 // 마커 모양을 정하는 값만 이어 붙인 키 - 키가 같으면 아이콘을 다시 만들지 않음
-function toMarkerKey(station: Station) {
-  return `${station.availableChargers}/${station.totalChargers}/${station.congestion}`
+function toMarkerKey(station: Station, isRecommended: boolean) {
+  return `${station.availableChargers}/${station.totalChargers}/${station.congestion}/${isRecommended}`
 }
 
-function toMarkerIcon(station: Station): naver.maps.HtmlIcon {
+function toMarkerIcon(station: Station, isRecommended: boolean): naver.maps.HtmlIcon {
   return {
-    content: `<div style="transform: translate(-50%, -50%)">${toMarkerHtml(station)}</div>`,
+    content: `<div style="transform: translate(-50%, -50%)">${toMarkerHtml(station, isRecommended)}</div>`,
   }
 }
 
@@ -100,12 +110,14 @@ function isInView(station: Station, view: ViewBounds) {
  * 전부 지우고 다시 만들면 충전소가 많을 때 폴링마다 화면이 멈칫함.
  * 서울 전역은 수천 곳이라 화면(+ 여유) 안의 충전소만 보이게 하고, 멀리 볼 때는 HTML 마커 대신
  * 캔버스 하나에 색 점으로 그리고(끄는 도중 버벅임 방지), 더 멀리 보면 숨김.
- * 숨겼는지(isZoomedOut)를 돌려줘 화면에서 확대 안내를 띄우게 함
+ * 숨겼는지(isZoomedOut)를 돌려줘 화면에서 확대 안내를 띄우게 함.
+ * recommendedIds에 든 충전소(추천 Top 3)는 형광 파랑으로 그리고 다른 마커 위에 올림
  */
 export function useStationMarkers(
   map: naver.maps.Map | null,
   stations: Station[] | undefined,
   onSelect?: (station: Station) => void,
+  recommendedIds?: ReadonlySet<string>,
 ) {
   const entriesRef = useRef(new Map<string, MarkerEntry>())
   // 클릭 처리는 최신 함수만 ref로 읽음 - 함수가 바뀌어도 마커를 다시 만들지 않음
@@ -200,10 +212,11 @@ export function useStationMarkers(
 
     stations.forEach((station) => {
       nextIds.add(station.stationId)
+      const isRecommended = recommendedIds?.has(station.stationId) ?? false
       // 너무 멀리 보면 화면 안이라도 그리지 않음
       const isInScreen = !isHidden && isInView(station, view)
       // 점으로 그릴 충전소는 캔버스로 넘기고 HTML 마커는 숨김
-      const isDot = isInScreen && isDotStation(map, station)
+      const isDot = isInScreen && isDotStation(map, station, isRecommended)
       if (isDot) dots.push(station)
       const isVisible = isInScreen && !isDot
       const entry = entries.get(station.stationId)
@@ -215,8 +228,8 @@ export function useStationMarkers(
           map,
           position: new maps.LatLng(station.lat, station.lng),
           title: station.name,
-          icon: toMarkerIcon(station),
-          zIndex: station.predictionAvailable ? MAPO_Z_INDEX : 0,
+          icon: toMarkerIcon(station, isRecommended),
+          zIndex: toZIndex(station, isRecommended),
         })
         // 클릭 시점의 최신 충전소 정보를 넘기도록 목록에서 다시 꺼냄
         const listener = maps.Event.addListener(marker, 'click', () => {
@@ -227,7 +240,7 @@ export function useStationMarkers(
           marker,
           listener,
           station,
-          key: toMarkerKey(station),
+          key: toMarkerKey(station, isRecommended),
           isShown: true,
         })
         return
@@ -243,10 +256,12 @@ export function useStationMarkers(
         return
       }
 
-      // 사용 가능 대수 · 혼잡도가 바뀐 마커만 아이콘을 새로 그림
-      const key = toMarkerKey(station)
+      // 사용 가능 대수 · 혼잡도 · 추천 여부가 바뀐 마커만 아이콘을 새로 그림
+      const key = toMarkerKey(station, isRecommended)
       if (entry.key !== key) {
-        entry.marker.setIcon(toMarkerIcon(station))
+        entry.marker.setIcon(toMarkerIcon(station, isRecommended))
+        // 추천이 되거나 빠지면 겹침 순서도 맞춰 줌
+        entry.marker.setZIndex(toZIndex(station, isRecommended))
         entry.key = key
       }
       // 좌표 · 이름은 거의 바뀌지 않지만 바뀌었으면 맞춰 줌
@@ -273,7 +288,7 @@ export function useStationMarkers(
     })
 
     dotLayerRef.current?.setStations(dots)
-  }, [map, stations, viewVersion])
+  }, [map, stations, viewVersion, recommendedIds])
 
   // 지도 이동 · 확대가 끝날 때마다(viewVersion) 다시 그려지므로 그때의 줌으로 판단
   return { isZoomedOut: map ? isHiddenZoom(map) : false }
