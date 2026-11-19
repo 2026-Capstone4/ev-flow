@@ -218,6 +218,8 @@
 - 다시 호출하는 조건:
   - 마지막 요청 좌표에서 **500m 이상** 움직임 (프론트가 요청 좌표를 바꿈), 또는 캐시 TTL이 지남
   - 최소 간격 **5분**
+- 호출 제한: IP당 분당 10회 — 넘으면 429 `RATE_LIMITED` + `Retry-After` (2026-11-19 김무겸 · 장승민 합의)
+- 하루 예산: 서버 전체 Directions 실제 호출 2,000회/일(KST) — 넘으면 Directions를 부르지 않고 직선거리 추정 + `travelTimeSource: "estimate"` (길찾기는 503 `ROUTE_QUOTA_EXCEEDED`). 출발 좌표를 바꿔 캐시를 피하는 IP 하나가 한도를 다 쓰지 못하게 함 (2026-11-19 합의)
 - 호출량: 위치 1번에 20회. 추천 화면을 켜둔 사용자 1명이 1시간에 약 40회 → 월 한도 60,000회로 약 1,500시간 (TTL 5분이면 약 240회 · 250시간)
 - **마포구 밖**이면 Directions를 부르지 않고 422 `OUT_OF_SERVICE_AREA` (`message`: "현재 충전소 추천 기능은 마포구만 지원해요"). 판정은 서버가 마포구 행정 경계로 한다. ⏳ 경계 밖 여유 거리(예: 1km) 미정
 - 개발 환경에서는 Directions 대신 직선거리 추정만 쓴다 (한도 보호)
@@ -254,11 +256,16 @@
 |---|---|---|
 | `path` | number[][] | 경로 좌표 `[위도, 경도]` 배열 — 지도에 선으로 그림. Directions 원본(`[경도, 위도]`)에서 순서를 바꿔 보냄 |
 
-같은 출발지(반올림) · 목적지는 캐시 결과를 쓴다 (⏳ 반올림 단위 · TTL `MAP-02`).
+같은 출발지(반올림) · 목적지는 캐시 결과를 쓴다 — 출발 좌표 소수 4자리(약 10m) + `stationId`, TTL 30분. 3번 추천과 같은 캐시라 추천 → 길찾기에 추가 호출이 없다 (`MAP-02`, 2026-11-19).
+
+- 이미 충전소에 있으면(Directions가 출발지 = 도착지로 응답) `travelTimeMinutes: 0` · `distanceMeters: 0` · 두 점 경로. 그 밖에는 1분 미만도 1분
+- 출발 좌표가 한국 범위(위도 33~39 · 경도 124~132) 밖이면 422 `VALIDATION_ERROR` — Directions를 부르지 않음
+- 호출 제한: IP당 분당 10회 (캐시 적중 포함) — 넘으면 429 `RATE_LIMITED` + `Retry-After`
+- 하루 예산: 서버 전체 Directions 실제 호출 2,000회/일(KST, 월 60,000회 ÷ 30일) — 넘으면 503 `ROUTE_QUOTA_EXCEEDED`
 
 길찾기 화면의 "네이버 지도로 안내받기"는 프론트가 목적지(이름 · 좌표)를 네이버 지도 앱으로 넘긴다 — 출발지는 넘기지 않아 앱이 실제 현재 위치에서 안내한다. 서버 요청은 없다.
 
-**에러**: 404 `STATION_NOT_FOUND` · 404 `ROUTE_NOT_FOUND` · 429 `RATE_LIMITED` · 502 `ROUTE_PROVIDER_ERROR` · 503 `ROUTE_QUOTA_EXCEEDED`
+**에러**: 404 `STATION_NOT_FOUND` · 404 `ROUTE_NOT_FOUND` · 422 `VALIDATION_ERROR` · 429 `RATE_LIMITED` · 502 `ROUTE_PROVIDER_ERROR` · 503 `ROUTE_QUOTA_EXCEEDED`
 
 ---
 

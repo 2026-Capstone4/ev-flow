@@ -1,8 +1,10 @@
-from fastapi import Cookie, Depends
+from fastapi import Cookie, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.session import get_db
 from app.services import auth as auth_service
+from app.services import rate_limit
 from app.services.auth import COOKIE_NAME, AdminSession
 
 
@@ -13,3 +15,8 @@ def require_admin(
     db: Session = Depends(get_db),
 ) -> AdminSession:
     return auth_service.authenticate(db, token)
+
+
+# 길찾기 호출 제한 - 라우터에서 dependencies=[Depends(limit_routes)]로 붙임. 추천도 scope만 바꿔 같은 방식
+def limit_routes(request: Request) -> None:
+    rate_limit.check("routes", auth_service.client_ip(request), settings.route_rate_limit_per_min)
