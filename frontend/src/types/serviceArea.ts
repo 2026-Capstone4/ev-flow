@@ -14,6 +14,10 @@ export type ServiceArea = {
   name: string
   route: string
   direction: Direction
+  /** 대표 충전소의 주소 · 좌표. 네이버 지도 길안내 목적지 */
+  address: string
+  lat: number
+  lng: number
   totalChargers: number
   availableChargers: number
   /** 상태별 충전기 수 */
@@ -38,7 +42,14 @@ export type ServiceAreaChargersResponse = {
   dataQuality: ResponseDataQuality
   serviceArea: Pick<
     ServiceArea,
-    'name' | 'route' | 'direction' | 'totalChargers' | 'availableChargers'
+    | 'name'
+    | 'route'
+    | 'direction'
+    | 'address'
+    | 'lat'
+    | 'lng'
+    | 'totalChargers'
+    | 'availableChargers'
   >
   chargers: ServiceAreaCharger[]
 }

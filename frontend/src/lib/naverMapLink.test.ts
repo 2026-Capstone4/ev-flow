@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectPlatform, getNaverCarRouteUrl } from '@/lib/naverMapLink'
+import { detectPlatform, getNaverCarRouteUrl, toWebMercator } from '@/lib/naverMapLink'
 
 describe('detectPlatform', () => {
   it('UA로 Android · iOS · 그 외를 구분함', () => {
@@ -32,7 +32,20 @@ describe('getNaverCarRouteUrl', () => {
     expect(url).toContain('package=com.nhn.android.nmap')
   })
 
-  it('PC는 앱을 열 수 없어 null', () => {
-    expect(getNaverCarRouteUrl(options, 'other')).toBeNull()
+  it('PC는 네이버 지도 웹 길찾기 주소 (도착지만, 미터 좌표 · 이름 인코딩)', () => {
+    expect(getNaverCarRouteUrl(options, 'other')).toBe(
+      `https://map.naver.com/p/directions/-/14126654.89,4516877.95,${encodeURIComponent('망원동 충전소')},,PLACE_POI/-/car`,
+    )
+  })
+})
+
+describe('toWebMercator', () => {
+  it('경위도 0은 원점, 서울시청은 지구 반지름 공식으로 구한 값과 1m 안으로 맞음', () => {
+    const origin = toWebMercator({ lat: 0, lng: 0 })
+    expect(origin.x).toBeCloseTo(0)
+    expect(origin.y).toBeCloseTo(0)
+    const { x, y } = toWebMercator({ lat: 37.5665, lng: 126.978 })
+    expect(x).toBeCloseTo(14135126.3, 0)
+    expect(y).toBeCloseTo(4518366.5, 0)
   })
 })
