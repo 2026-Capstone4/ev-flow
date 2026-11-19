@@ -7,6 +7,7 @@ import { HorizonSelector } from '@/components/HorizonSelector'
 import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
 import { MapNotice } from '@/components/MapNotice'
+import { OnboardingDialog } from '@/components/OnboardingDialog'
 import { RecommendCard } from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
@@ -21,6 +22,7 @@ import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useMapView } from '@/hooks/useMapView'
 import { IS_GEOLOCATION_ENABLED, MAPO_CENTER } from '@/lib/constants'
 import { LOCATE_FAILURE_MESSAGE } from '@/lib/geolocation'
+import { hasSeenOnboarding, markOnboardingSeen } from '@/lib/onboarding'
 import { countActiveFilters } from '@/lib/stationFilter'
 import type { LatLng } from '@/types/geo'
 import type { Station } from '@/types/station'
@@ -71,6 +73,14 @@ export function MapHomePage() {
   useCoverageMask(map)
   const { isZoomedOut } = useStationMarkers(map, stations, handleMarkerSelect, recommendedIds)
   useMyLocationMarker(map, userLocation)
+
+  // 처음 들어온 사용자에게만 사용법 안내를 띄움. 본 기록은 브라우저(localStorage)에 남김
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !hasSeenOnboarding())
+  /** 안내를 닫으면 본 것으로 기록해서 다음 방문부터는 띄우지 않음 */
+  const closeOnboarding = useCallback(() => {
+    markOnboardingSeen()
+    setIsOnboardingOpen(false)
+  }, [])
 
   // 필터 버튼은 검색 화면으로 가지 않고 검색창 아래에 필터 패널을 엶. 지도는 덮지 않음
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -272,6 +282,7 @@ export function MapHomePage() {
         </section>
       </main>
       <BottomTab />
+      {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
     </div>
   )
 }
