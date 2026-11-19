@@ -30,9 +30,9 @@
   /* 운영 불가는 확인 불가(데이터 부족)와 구분되게 더 어두운 회색 */
   --color-congestion-unavailable: #4b5563;
   --color-congestion-unavailable-bg: #e5e7eb;
-  /* 지도에서 추천 Top 3 충전소 마커. 혼잡도 색과 겹치지 않는 형광 파랑, 밝은 바탕이라 글자는 진한 남색 */
-  --color-marker-recommended: #00c2ff;
-  --color-marker-recommended-text: #0b2545;
+  /* 지도에서 추천 Top 3 충전소 마커. 혼잡도 색과 겹치지 않는 형광 파랑, 글자는 다른 마커처럼 흰색 */
+  --color-marker-recommended: #00a8e8;
+  --color-marker-recommended-text: #ffffff;
 
   --radius-sm: 6px;
   --radius-md: 12px;
