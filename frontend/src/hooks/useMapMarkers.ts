@@ -2,23 +2,20 @@ import { createElement, useEffect, useRef, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { StationMarker } from '@/components/StationMarker'
 import myLocationIcon from '@/assets/my-location.svg'
+import {
+  DOT_TAP_ZOOM,
+  isDotStation,
+  isHiddenZoom,
+  isInView,
+  toMarkerKey,
+  toViewBounds,
+  toZIndex,
+  type ViewBounds,
+} from '@/lib/mapMarkers'
 import { createStationDotLayer, type StationDotLayer } from '@/lib/stationDotLayer'
 import type { LatLng } from '@/types/geo'
 import type { Station } from '@/types/station'
 
-/**
- * 이 줌 이하에서는 숫자 대신 색 점(캔버스)으로 그림. 줌 13 ≈ 모바일 화면 가로 6km, 알약끼리 겹치기 시작함.
- * 마포(예측 · 추천 대상)는 이 구간에서도 숫자를 유지
- */
-const DOT_MAX_ZOOM = 13
-/** 점 사이에 섞인 마포 숫자 마커가 점에 가리지 않게 위로 올림 */
-const MAPO_Z_INDEX = 1
-/** 추천 충전소 마커는 겹쳐도 다른 마커에 가리지 않게 가장 위로 */
-const RECOMMENDED_Z_INDEX = 2
-/** 이 줌 이하에서는 마커를 숨김. 줌 11이면 서울 대부분이 화면에 들어와 1,600여 개를 모두 그리게 됨 */
-const HIDDEN_MAX_ZOOM = 11
-/** 색 점을 누르면 이 줌으로 확대해 숫자 마커를 보여 줌 (지도 첫 화면과 같은 줌) */
-const DOT_TAP_ZOOM = 14
 /** 누른 뒤 손가락이 이 거리(px) 넘게 움직였거나 이 시간(ms) 넘게 눌렀으면 탭이 아니라 끌기 · 길게 누르기로 봄 */
 const TAP_MOVE_TOLERANCE = 8
 const TAP_MAX_DURATION = 500
@@ -35,30 +32,9 @@ function toMarkerHtml(station: Station, isRecommended: boolean) {
   )
 }
 
-// 이 충전소를 HTML 숫자 마커 대신 캔버스 색 점으로 그릴지. 마포(predictionAvailable) · 추천은 점 구간에서도 숫자로 그림
-function isDotStation(map: naver.maps.Map, station: Station, isRecommended: boolean) {
-  return map.getZoom() <= DOT_MAX_ZOOM && !station.predictionAvailable && !isRecommended
-}
-
-// 마커 겹침 순서. 추천 > 마포 > 나머지
-function toZIndex(station: Station, isRecommended: boolean) {
-  // 추천이면 가장 위
-  if (isRecommended) return RECOMMENDED_Z_INDEX
-  return station.predictionAvailable ? MAPO_Z_INDEX : 0
-}
-
-function isHiddenZoom(map: naver.maps.Map) {
-  return map.getZoom() <= HIDDEN_MAX_ZOOM
-}
-
 // 인증 실패 시 SDK가 naver.maps를 null로 비워 마커 정리 호출도 예외를 던짐 (지도는 안내 화면으로 가려짐)
 function isSdkDisabled() {
   return !window.naver.maps
-}
-
-// 마커 모양을 정하는 값만 이어 붙인 키 - 키가 같으면 아이콘을 다시 만들지 않음
-function toMarkerKey(station: Station, isRecommended: boolean) {
-  return `${station.availableChargers}/${station.totalChargers}/${station.congestion}/${isRecommended}`
 }
 
 function toMarkerIcon(station: Station, isRecommended: boolean): naver.maps.HtmlIcon {
@@ -76,33 +52,12 @@ type MarkerEntry = {
   isShown: boolean
 }
 
-type ViewBounds = { south: number; west: number; north: number; east: number }
-
-/** 화면 크기의 이 비율만큼 바깥까지 미리 그림. 지도를 조금 끌 때 마커가 늦게 뜨지 않게 함 */
-const VIEW_MARGIN_RATIO = 0.3
-
 // 지금 화면 범위에 여유를 더한 위경도 범위. Point는 x = 경도, y = 위도
 function readViewBounds(map: naver.maps.Map): ViewBounds {
   const bounds = map.getBounds()
   const min = bounds.getMin()
   const max = bounds.getMax()
-  const latMargin = (max.y - min.y) * VIEW_MARGIN_RATIO
-  const lngMargin = (max.x - min.x) * VIEW_MARGIN_RATIO
-  return {
-    south: min.y - latMargin,
-    west: min.x - lngMargin,
-    north: max.y + latMargin,
-    east: max.x + lngMargin,
-  }
-}
-
-function isInView(station: Station, view: ViewBounds) {
-  return (
-    station.lat >= view.south &&
-    station.lat <= view.north &&
-    station.lng >= view.west &&
-    station.lng <= view.east
-  )
+  return toViewBounds({ lat: min.y, lng: min.x }, { lat: max.y, lng: max.x })
 }
 
 /**
@@ -207,7 +162,8 @@ export function useStationMarkers(
     const entries = entriesRef.current
     const nextIds = new Set<string>()
     const view = readViewBounds(map)
-    const isHidden = isHiddenZoom(map)
+    const zoom = map.getZoom()
+    const isHidden = isHiddenZoom(zoom)
     const dots: Station[] = []
 
     stations.forEach((station) => {
@@ -216,7 +172,7 @@ export function useStationMarkers(
       // 너무 멀리 보면 화면 안이라도 그리지 않음
       const isInScreen = !isHidden && isInView(station, view)
       // 점으로 그릴 충전소는 캔버스로 넘기고 HTML 마커는 숨김
-      const isDot = isInScreen && isDotStation(map, station, isRecommended)
+      const isDot = isInScreen && isDotStation(zoom, station, isRecommended)
       if (isDot) dots.push(station)
       const isVisible = isInScreen && !isDot
       const entry = entries.get(station.stationId)
@@ -291,7 +247,7 @@ export function useStationMarkers(
   }, [map, stations, viewVersion, recommendedIds])
 
   // 지도 이동 · 확대가 끝날 때마다(viewVersion) 다시 그려지므로 그때의 줌으로 판단
-  return { isZoomedOut: map ? isHiddenZoom(map) : false }
+  return { isZoomedOut: map ? isHiddenZoom(map.getZoom()) : false }
 }
 
 export function useMyLocationMarker(map: naver.maps.Map | null, location: LatLng) {
