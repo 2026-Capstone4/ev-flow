@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # 네이버 Directions 5 - 추천 · 경로 API에서 사용. 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함
     naver_client_id: str = ""
     naver_client_secret: SecretStr = SecretStr("")
+    # 길찾기 · 추천 호출 제한 (SER-003, MAP-02) - 시연 날 강의실처럼 한 공인 IP를 여럿이 쓰면 .env에서 올림
+    route_rate_limit_per_min: int = 10
+    directions_daily_limit: int = 2000  # 서버 전체 Directions 실제 호출 수 / 하루(KST)
 
     # 운영자 로그인 (SER-001) - 토큰은 JWT(HS256)를 HttpOnly 쿠키로 내려줌
     # 비어 있으면 로그인만 500으로 막고 api · collector는 그대로 뜸 - 값은 .env.example 안내대로 생성

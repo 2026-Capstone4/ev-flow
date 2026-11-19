@@ -199,7 +199,7 @@
 | 429 | `LOGIN_LOCKED` | 로그인 실패가 반복돼 일정 시간 제한됨 (SER-001) |
 | 429 | `RATE_LIMITED` | 추천 · 길찾기 호출 제한 초과 (SER-003) |
 | 502 | `ROUTE_PROVIDER_ERROR` | 길찾기에서 네이버 Directions 오류 · 타임아웃 (UC-U07 E2) |
-| 503 | `ROUTE_QUOTA_EXCEEDED` | 길찾기에서 Directions 월 한도 초과 |
+| 503 | `ROUTE_QUOTA_EXCEEDED` | 길찾기에서 Directions 하루 예산(서버 전체 2,000회) 소진 또는 네이버 429 |
 | 503 | `DATA_UNAVAILABLE` | DB 장애 등으로 상태 데이터를 아예 읽을 수 없음 |
 | 500 | `INTERNAL_ERROR` | 그 외 서버 오류 |
 
@@ -223,7 +223,7 @@
 | 1 | `GET /stations` | — | UC-U01 · U02 | `get_stations` | 예측 필드 ⏳ `AI-07` |
 | 2 | `GET /stations/{stationId}` | — | UC-U03 · U04 · U05 | `get_station` | 도심만 (휴게소는 6번). 예측 필드 ⏳ `AI-07` |
 | 3 | `POST /recommendations` | — | UC-U06 | `recommend` | 15 · 30분 추천을 한 번에 응답 (🟡 잠정). 점수는 api가 요청 때 계산 — 혼잡도 · 대기는 Redis, 이동거리 · 이동시간은 Directions (🟡 제안: 직선거리 가까운 20곳 호출, [이동시간 처리](user.md#이동시간-처리)). ⏳ 계산식 |
-| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (SER-002). 🟡 제안: 3번과 같은 캐시, TTL 30분 `MAP-02` |
+| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (SER-002). 3번과 같은 캐시 — 출발 좌표 소수 4자리 + stationId, TTL 30분 `MAP-02` |
 | 5 | `GET /service-areas` | — | UC-U08 | `get_service_areas` | |
 | 6 | `GET /service-areas/chargers?name=&direction=` | — | UC-U08 | `get_service_area_chargers` | |
 | 7 | `POST /auth/login` | — | UC-O01 | `login` | ⏳ `admin_users` |
@@ -244,5 +244,5 @@
 | 항목 | 영향 | 담당 |
 |---|---|---|
 | 추천점수 계산식 | 3번 순위 | 전원 |
-| 이동거리 · 이동시간 처리 (`MAP-02`) — 🟡 제안: [이동시간 처리](user.md#이동시간-처리). 남은 것: 마포구 경계 여유 거리, 호출 제한 기준 | 3 · 4번, `RATE_LIMITED` 기준 | 전원 |
+| 이동거리 · 이동시간 처리 (`MAP-02`) — 🟡 제안: [이동시간 처리](user.md#이동시간-처리). 남은 것: 마포구 경계 여유 거리 | 3번 | 전원 |
 | 도착 시점 vs 예측 시점 (REC-006) — 🟡 제안: 추천의 15 · 30분은 대기 모델 정의대로 "h분 후 도착 시"(h분 예측 사용, 이동시간은 점수에만), 지금 출발(`horizonMinutes: 0`)은 실시간 상태만 사용(대기값 `null`). 추천 모듈은 지금 "지금 출발" 하나만 계산함 | 3번 응답 구조 | 전원 |
