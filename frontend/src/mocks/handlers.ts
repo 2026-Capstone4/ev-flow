@@ -112,13 +112,14 @@ function checkMockRateLimit() {
 }
 
 /**
- * 백엔드에 아직 없는 API(추천 · 길찾기) 핸들러를 만든다. 혼합 모드에서도 Mock으로 응답함.
+ * 백엔드에 아직 없는 추천 API 핸들러를 만든다. 혼합 모드에서도 Mock으로 응답함.
  * 충전소 목록을 어디서 가져올지(getStations)만 바꿔 끼워서 전체 · 혼합 모드가 같은 핸들러를 쓴다
  */
-function createUnimplementedHandlers(getStations: StationSource) {
-  return [
-    // 추천 충전소. 내 위치와 필터를 받아 시점(지금 · 15분 후 등)마다 Top 3를 만들어 돌려줌
-    http.post<never, RecommendationsRequest>('/api/v1/recommendations', async ({ request }) => {
+function createRecommendationHandler(getStations: StationSource) {
+  // 추천 충전소. 내 위치와 필터를 받아 시점(지금 · 15분 후 등)마다 Top 3를 만들어 돌려줌
+  return http.post<never, RecommendationsRequest>(
+    '/api/v1/recommendations',
+    async ({ request }) => {
       const { lat, lng, filters } = await request.json()
       const limited = checkMockRateLimit()
       // 호출 제한을 넘었으면 추천을 만들지 않고 429 그대로
@@ -147,41 +148,41 @@ function createUnimplementedHandlers(getStations: StationSource) {
           buildRecommendations(stations, { lat, lng }, horizon, filters),
         ),
       })
-    }),
-
-    // 길찾기. 출발지와 충전소 ID를 받아 Mock 경로(꺾은선 · 거리 · 시간)를 돌려줌
-    http.post<never, RouteRequest, ApiErrorBody | RouteResponse>(
-      '/api/v1/routes',
-      async ({ request }) => {
-        const { origin, stationId } = await request.json()
-        const limited = checkMockRateLimit()
-        // 호출 제한을 넘었으면 경로를 만들지 않고 429 그대로
-        if (limited) return limited
-        const stations = await getStations()
-        // 충전소 목록을 못 받았으면 도착지 좌표를 알 수 없으니 503
-        if (!stations) return HttpResponse.json(DATA_UNAVAILABLE, { status: 503 })
-        await delay(400)
-        const station = stations.find((s) => s.stationId === stationId)
-        // 목록에 없는 충전소면 404 - 혼합 모드에서는 실제 충전소 ID여야 찾아짐
-        if (!station) {
-          return HttpResponse.json<ApiErrorBody>(
-            { error: { code: 'STATION_NOT_FOUND', message: '충전소를 찾을 수 없습니다.' } },
-            { status: 404 },
-          )
-        }
-        const route = buildMockRoute(origin, station)
-        // 운영 불가 충전소는 Mock 경로가 null - 404로 응답해서 "경로 없음" 화면을 확인할 수 있게 함
-        if (!route) {
-          return HttpResponse.json<ApiErrorBody>(
-            { error: { code: 'ROUTE_NOT_FOUND', message: '경로를 찾을 수 없습니다.' } },
-            { status: 404 },
-          )
-        }
-        return HttpResponse.json<RouteResponse>(route)
-      },
-    ),
-  ]
+    },
+  )
 }
+
+/**
+ * 길찾기 Mock - 전체 Mock 모드에서만 씀. 혼합 모드는 실제 서버(POST /routes, #117)로 보냄
+ * 출발지와 충전소 ID를 받아 Mock 경로(꺾은선 · 거리 · 시간)를 돌려줌
+ */
+const routeHandler = http.post<never, RouteRequest, ApiErrorBody | RouteResponse>(
+  '/api/v1/routes',
+  async ({ request }) => {
+    const { origin, stationId } = await request.json()
+    const limited = checkMockRateLimit()
+    // 호출 제한을 넘었으면 경로를 만들지 않고 429 그대로
+    if (limited) return limited
+    await delay(400)
+    const station = STATIONS.find((s) => s.stationId === stationId)
+    // Mock 충전소 목록에 없는 ID면 404
+    if (!station) {
+      return HttpResponse.json<ApiErrorBody>(
+        { error: { code: 'STATION_NOT_FOUND', message: '충전소를 찾을 수 없습니다.' } },
+        { status: 404 },
+      )
+    }
+    const route = buildMockRoute(origin, station)
+    // 운영 불가 충전소는 Mock 경로가 null - 404로 응답해서 "경로 없음" 화면을 확인할 수 있게 함
+    if (!route) {
+      return HttpResponse.json<ApiErrorBody>(
+        { error: { code: 'ROUTE_NOT_FOUND', message: '경로를 찾을 수 없습니다.' } },
+        { status: 404 },
+      )
+    }
+    return HttpResponse.json<RouteResponse>(route)
+  },
+)
 
 /** 고속도로 휴게소 API - 전체 Mock 모드에서만 씀 */
 const serviceAreaHandlers = [
@@ -447,7 +448,8 @@ async function fetchRealStations(): Promise<Station[] | null> {
 /** VITE_USE_MOCK=true - 모든 API를 Mock으로. 추천 · 길찾기도 Mock 충전소 기준 */
 export const handlers = [
   ...stationHandlers,
-  ...createUnimplementedHandlers(async () => STATIONS),
+  createRecommendationHandler(async () => STATIONS),
+  routeHandler,
   ...serviceAreaHandlers,
   ...authHandlers,
   ...dashboardHandlers,
@@ -455,10 +457,10 @@ export const handlers = [
 ]
 
 /**
- * VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 길찾기 · 대시보드 보정 건수)만 Mock, 나머지는 실제 서버로.
+ * VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 대시보드 보정 건수)만 Mock, 나머지는 실제 서버로.
  * 운영자 로그인 · 대시보드 10~13번은 실제 서버가 응답하고, 보정 건수 Mock은 실제 로그인 여부를 확인한 뒤 응답함
  */
 export const partialHandlers = [
-  ...createUnimplementedHandlers(fetchRealStations),
+  createRecommendationHandler(fetchRealStations),
   createImputedCountHandler(checkRealSession),
 ]

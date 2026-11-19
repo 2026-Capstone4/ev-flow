@@ -44,10 +44,10 @@
 | `POST /auth/login` · `logout`, `GET /auth/me` | 있음 | HttpOnly 쿠키 |
 | `GET /admin/utilization` · `chargers` · `collection-status` · `missing-stats` | 있음 | |
 | 추천 | **없음 (Mock)** | 응답 모양이 바뀔 수 있음 |
-| 길찾기 `POST /routes` | **없음 (Mock)** | 응답 모양이 바뀔 수 있음 |
+| 길찾기 `POST /routes` | 있음 (#117) | IP당 분당 10회 · Directions 하루 2,000회 |
 | 대시보드 보정 건수 | **없음 (Mock)** | 운영자 전용 |
 
-웹은 `VITE_USE_MOCK=partial`이면 위 Mock 3개만 MSW로, 나머지는 실제 서버로 보냄.
+웹은 `VITE_USE_MOCK=partial`이면 위 Mock 2개만 MSW로, 나머지는 실제 서버로 보냄.
 
 ## 3. 그대로 쓰는 것 · 다시 짜는 것
 

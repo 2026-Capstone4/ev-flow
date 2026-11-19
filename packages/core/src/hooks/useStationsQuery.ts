@@ -43,12 +43,26 @@ export function useRecommendationsQuery(origin: LatLng, filters: RecommendationF
   })
 }
 
+/** 서버 경로 캐시와 같은 기간 (route:v1 키, 30분). 그 안에 같은 충전소로 다시 들어오면 서버를 부르지 않음 */
+const ROUTE_CACHE_TIME_MS = 30 * 60_000
+
+/** 서버 경로 캐시 키와 같은 자리수(소수 4자리, 약 10m). 위치가 조금만 흔들려도 새로 부르지 않게 함 */
+function roundCoord(value: number) {
+  return Math.round(value * 10_000) / 10_000
+}
+
 // 길찾기는 화면 주기 갱신에 넣지 않음 (docs/api/README.md, Directions 호출량)
+// 실패해도 자동으로 다시 부르지 않음. 경로 오류(502 · 503)는 다시 불러도 같거나 Directions를 한 번 더 쓰므로 재시도 버튼으로만
+// 실패한 쿼리는 데이터가 없어 staleTime과 상관없이 창 포커스 · 네트워크 복귀 때 다시 불리므로 둘 다 끔
 export function useRouteQuery(origin: LatLng, stationId: string) {
   return useQuery({
-    queryKey: ['routes', origin.lat, origin.lng, stationId],
+    queryKey: ['routes', roundCoord(origin.lat), roundCoord(origin.lng), stationId],
     queryFn: () => fetchRoute({ origin, stationId }),
     refetchInterval: false,
     staleTime: Infinity,
+    gcTime: ROUTE_CACHE_TIME_MS,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
