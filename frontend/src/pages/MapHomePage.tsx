@@ -36,6 +36,10 @@ const RECOMMEND_MESSAGE = {
   empty: '추천할 충전소가 없습니다',
 }
 
+/** 추천 시트 단계. 위에서부터 펼침(Top 3) · 접힘(첫 카드) · 최소(헤더만) */
+type SheetLevel = 'expanded' | 'collapsed' | 'minimized'
+const SHEET_LEVELS: SheetLevel[] = ['expanded', 'collapsed', 'minimized']
+
 /** 추천을 불러오는 동안 그리는 자리표시 카드 수 (Top 3) */
 const SKELETON_KEYS = ['skeleton-1', 'skeleton-2', 'skeleton-3']
 
@@ -48,9 +52,14 @@ export function MapHomePage() {
   const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
   // 길찾기 화면의 "다른 추천 충전소 보기"로 오면 추천 시트를 펼친 채로 시작
   const location = useLocation()
-  const [isSheetExpanded, setIsSheetExpanded] = useState(
-    () => (location.state as { expandSheet?: boolean } | null)?.expandSheet === true,
+  const [sheetLevel, setSheetLevel] = useState<SheetLevel>(() =>
+    (location.state as { expandSheet?: boolean } | null)?.expandSheet === true
+      ? 'expanded'
+      : 'collapsed',
   )
+  const isSheetExpanded = sheetLevel === 'expanded'
+  /** 헤더까지만 남기고 카드를 모두 내린 상태. 지도를 넓게 볼 때 씀 */
+  const isSheetMinimized = sheetLevel === 'minimized'
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 14 })
   const {
@@ -127,25 +136,34 @@ export function MapHomePage() {
 
   // 펼침 · 접힘 · 손 뗐을 때만 애니메이션. 데이터가 와서 높이를 처음 잴 때 시트가 미끄러져 내려오지 않게 함
   const [isSheetAnimating, setIsSheetAnimating] = useState(false)
-  const setSheetExpanded = (expanded: boolean) => {
+  const changeSheetLevel = (level: SheetLevel) => {
     setIsSheetAnimating(true)
-    setIsSheetExpanded(expanded)
+    setSheetLevel(level)
+  }
+  /** 위로 끌면 한 단계 펼치고 아래로 끌면 한 단계 내림. 맨 끝 단계에서는 그대로 */
+  const moveSheetLevel = (step: -1 | 1) => {
+    const index = SHEET_LEVELS.indexOf(sheetLevel) + step
+    changeSheetLevel(SHEET_LEVELS[Math.min(Math.max(index, 0), SHEET_LEVELS.length - 1)])
   }
   const sheetDrag = useSheetDrag({
-    onDragUp: () => setSheetExpanded(true),
-    onDragDown: () => setSheetExpanded(false),
+    onDragUp: () => moveSheetLevel(-1),
+    onDragDown: () => moveSheetLevel(1),
     onRelease: () => setIsSheetAnimating(true),
   })
   // 시트는 항상 Top 3를 다 그리고, 접힌 상태에서는 첫 카드만 보이게 아래로 내려 둠
   const sheetRef = useRef<HTMLElement>(null)
   const [firstItem, setFirstItem] = useState<HTMLLIElement | null>(null)
   const collapsedOffset = useSheetCollapsedOffset(sheetRef, firstItem)
+  // 최소 단계는 헤더(손잡이 · 제목 · 시점 선택) 아래를 모두 내림
+  const [sheetHeader, setSheetHeader] = useState<HTMLDivElement | null>(null)
+  const minimizedOffset = useSheetCollapsedOffset(sheetRef, sheetHeader)
+  const levelOffset = { expanded: 0, collapsed: collapsedOffset, minimized: minimizedOffset }
   const sheetTranslate = Math.min(
-    Math.max((isSheetExpanded ? 0 : collapsedOffset) + sheetDrag.dragOffset, 0),
-    collapsedOffset,
+    Math.max(levelOffset[sheetLevel] + sheetDrag.dragOffset, 0),
+    minimizedOffset,
   )
-  /** 0 = 접힘, 1 = 펼침. 지도 어둡게 하는 정도에 씀 */
-  const expandProgress = collapsedOffset ? 1 - sheetTranslate / collapsedOffset : 0
+  /** 0 = 접힘 이하, 1 = 펼침. 지도 어둡게 하는 정도에 씀 */
+  const expandProgress = collapsedOffset ? Math.max(1 - sheetTranslate / collapsedOffset, 0) : 0
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col overflow-hidden bg-bg-map">
@@ -203,7 +221,7 @@ export function MapHomePage() {
           type="button"
           aria-label="추천 목록 닫기"
           tabIndex={isSheetExpanded ? 0 : -1}
-          onClick={() => setSheetExpanded(false)}
+          onClick={() => changeSheetLevel('collapsed')}
           style={{ opacity: expandProgress }}
           className={`absolute inset-0 bg-black/25 ${isSheetExpanded ? '' : 'pointer-events-none'} ${
             isSheetAnimating && !sheetDrag.isDragging ? 'transition-opacity duration-200' : ''
@@ -245,12 +263,15 @@ export function MapHomePage() {
               type="button"
               aria-label={isSheetExpanded ? '추천 목록 접기' : '추천 목록 펼치기'}
               aria-expanded={isSheetExpanded}
-              onClick={sheetDrag.ignoreClickAfterDrag(() => setSheetExpanded(!isSheetExpanded))}
+              // 펼침이면 접고, 접힘이면 펼침. 최소 단계에서는 첫 카드가 보이는 접힘으로 올림
+              onClick={sheetDrag.ignoreClickAfterDrag(() =>
+                changeSheetLevel(sheetLevel === 'collapsed' ? 'expanded' : 'collapsed'),
+              )}
               className="-my-2.5 flex w-full justify-center py-2.5"
             >
               <span className="h-1 w-10 rounded-[2px] bg-border-default" />
             </button>
-            <div className="flex w-full items-center justify-between">
+            <div ref={setSheetHeader} className="flex w-full items-center justify-between">
               {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
               <h2 className="flex items-center gap-1.5 text-[17px] font-bold">
                 <span aria-hidden className="size-2.5 rounded-full bg-marker-recommended" />
@@ -276,10 +297,12 @@ export function MapHomePage() {
                       key={recommendation.station.stationId}
                       ref={index === 0 ? setFirstItem : undefined}
                       // 접혀서 가려진 카드는 키보드 · 스크린리더에서도 숨김 (React 18은 inert 미지원)
-                      aria-hidden={!isSheetExpanded && index > 0}
+                      aria-hidden={isSheetMinimized || (!isSheetExpanded && index > 0)}
                     >
                       <RecommendCard
-                        tabIndex={!isSheetExpanded && index > 0 ? -1 : undefined}
+                        tabIndex={
+                          isSheetMinimized || (!isSheetExpanded && index > 0) ? -1 : undefined
+                        }
                         recommendation={recommendation}
                         onClick={() => openStation(recommendation.station.stationId)}
                         onRouteClick={() => openRoute(recommendation.station.stationId)}
