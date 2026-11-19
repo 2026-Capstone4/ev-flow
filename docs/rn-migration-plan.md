@@ -204,7 +204,8 @@
 ## 8. 작업 규칙
 
 - 커밋 · PR 제목: 한글 Conventional Commits, 명사형 또는 '~함'체, 마침표 없음. 코드 식별자는 영어
-- 브랜치: `feat/*` · `fix/*` · `exp/*` → develop으로 PR. 커밋 · 푸시 전에 현재 브랜치가 작업 내용과 맞는지 확인하고, 다르면 새 브랜치로
+- 파트(브랜치 이름 · 커밋 scope): 앱(`mobile/`)만 바꾸면 `app`, 웹 · 공용 코드(`packages/core`)는 `fe` (`docs/conventions/git.md`)
+- 브랜치: `feat/*` · `fix/*` → develop으로 PR. 실험은 `exp/*`(develop에 병합하지 않음). 커밋 · 푸시 전에 현재 브랜치가 작업 내용과 맞는지 확인하고, 다르면 새 브랜치로
 - 강제 푸시 금지. 푸시한 브랜치 기록을 바꿔야 하면 새 이름 브랜치로
 - PR 전 `pnpm lint` · `typecheck` · `test` · `build` 모두 실행. 필수 CI 체크는 `ci-result` 하나
 - 주석: 함수 · if문마다 동작 설명, 문장 끝 마침표 없음
