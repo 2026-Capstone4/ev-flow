@@ -1,7 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from '@/app/App'
+import { loadNaverMapScript } from '@/lib/loadNaverMapScript'
 import '@/styles/index.css'
+
+// 지도 SDK는 Mock 준비 · 화면 그리기와 상관없어서 기다리지 않고 바로 실행을 시작함. 운영자 화면은 지도를 안 써서 뺌
+const naverMapClientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID
+if (naverMapClientId && !window.location.pathname.startsWith('/admin')) {
+  // 실패하면 지도 화면(useNaverMap)이 같은 함수를 다시 불러 안내 화면을 띄우므로 여기서는 넘어감
+  loadNaverMapScript(naverMapClientId).catch(() => {})
+}
 
 /**
  * VITE_USE_MOCK 값에 따라 MSW 워커를 띄운다.

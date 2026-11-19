@@ -1,4 +1,4 @@
-const SCRIPT_URL = 'https://oapi.map.naver.com/openapi/v3/maps.js'
+import { toNaverMapScriptUrl } from '@/lib/naverMapScriptUrl'
 
 // 동시에 여러 번 호출돼도(StrictMode 이중 effect 등) script 태그를 한 번만 넣도록 공유
 let loading: Promise<typeof naver.maps> | null = null
@@ -26,7 +26,7 @@ export function loadNaverMapScript(clientId: string) {
     }
 
     const script = document.createElement('script')
-    script.src = `${SCRIPT_URL}?ncpKeyId=${encodeURIComponent(clientId)}`
+    script.src = toNaverMapScriptUrl(clientId)
     script.async = true
     script.onload = () => resolve(window.naver.maps)
     script.onerror = () => {
