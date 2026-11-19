@@ -1,4 +1,4 @@
-import { LoaderCircle, TriangleAlert } from 'lucide-react'
+import { LoaderCircle, TriangleAlert, X } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { BackButton } from '@/components/BackButton'
@@ -55,6 +55,8 @@ export function RoutePage() {
     : null
   // 다른 추천 충전소 보기 (05 → 02): 지도 홈 추천 시트를 펼친 채로 돌아감
   const showOtherRecommendations = () => navigate('/', { state: { expandSheet: true } })
+  // 닫기 (05 → 02): 길찾기를 그만두고 지도 홈으로 돌아감
+  const closeRoute = () => navigate('/')
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col overflow-hidden bg-bg-map">
@@ -67,6 +69,14 @@ export function RoutePage() {
         <div className="absolute top-4 left-4">
           <BackButton floating />
         </div>
+        <button
+          type="button"
+          aria-label="닫기"
+          onClick={closeRoute}
+          className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-bg-page text-text-primary shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+        >
+          <X aria-hidden size={22} strokeWidth={2} />
+        </button>
 
         <section className="absolute inset-x-0 bottom-0 flex flex-col gap-3.5 rounded-t-[20px] bg-bg-page px-4 pt-5 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-2px_12px_rgba(0,0,0,0.12)]">
           {station ? (
