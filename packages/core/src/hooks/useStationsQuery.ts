@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useScreenActive } from '../app/screenActive'
 import { fetchRecommendations, fetchRoute, fetchStation, fetchStations } from '../api/stations'
 import { isDefaultFilters } from '../lib/stationFilter'
 import { loadStationsCache, saveStationsCache } from '../lib/stationsCache'
@@ -8,8 +9,11 @@ import type { RecommendationFilters } from '../types/station'
 // 폴링 · 캐시 설정은 queryClient 기본값 사용. 실패 시 마지막 정상값(data)은 그대로 유지됨
 // 모든 시점 예측을 한 번에 받으므로 예측 시점은 쿼리 키에 넣지 않음
 export function useStationsQuery() {
+  const isScreenActive = useScreenActive()
   return useQuery({
     queryKey: ['stations'],
+    // 화면이 가려지면(앱 스택 뒤) 구독을 끊어 폴링을 멈춤. 웹은 항상 true
+    subscribed: isScreenActive,
     queryFn: async () => {
       const response = await fetchStations()
       // 다음 방문 때 마커를 바로 그리도록 받을 때마다 저장
@@ -23,16 +27,22 @@ export function useStationsQuery() {
 }
 
 export function useStationQuery(stationId: string) {
+  const isScreenActive = useScreenActive()
   return useQuery({
     queryKey: ['stations', stationId],
+    // 화면이 가려지면(앱 스택 뒤) 구독을 끊어 폴링을 멈춤. 웹은 항상 true
+    subscribed: isScreenActive,
     queryFn: () => fetchStation(stationId),
   })
 }
 
 // 화면에 적용 중인 필터를 그대로 보냄 (REC-004). 기본 필터면 생략 = 전체
 export function useRecommendationsQuery(origin: LatLng, filters: RecommendationFilters) {
+  const isScreenActive = useScreenActive()
   return useQuery({
     queryKey: ['recommendations', origin.lat, origin.lng, filters],
+    // 화면이 가려지면(앱 스택 뒤) 구독을 끊어 폴링을 멈춤. 웹은 항상 true
+    subscribed: isScreenActive,
     queryFn: () =>
       fetchRecommendations({
         lat: origin.lat,
@@ -54,6 +64,7 @@ function roundCoord(value: number) {
 // 길찾기는 화면 주기 갱신에 넣지 않음 (docs/api/README.md, Directions 호출량)
 // 실패해도 자동으로 다시 부르지 않음. 경로 오류(502 · 503)는 다시 불러도 같거나 Directions를 한 번 더 쓰므로 재시도 버튼으로만
 // 실패한 쿼리는 데이터가 없어 staleTime과 상관없이 창 포커스 · 네트워크 복귀 때 다시 불리므로 둘 다 끔
+// 화면 활성(subscribed)도 연결하지 않음. 폴링이 없어 끊을 게 없고, 다시 구독할 때 실패한 경로를 또 부르게 됨
 export function useRouteQuery(origin: LatLng, stationId: string) {
   return useQuery({
     queryKey: ['routes', roundCoord(origin.lat), roundCoord(origin.lng), stationId],
