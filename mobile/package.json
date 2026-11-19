@@ -1,0 +1,49 @@
+{
+  "name": "ev-flow-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "EV-flow iOS 앱 (Expo). 화면 밖 로직은 @ev-flow/core를 씀",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo run:ios",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@ev-flow/core": "workspace:*",
+    "@react-native-community/netinfo": "12.0.1",
+    "@tanstack/react-query": "^5.104.5",
+    "expo": "~58.0.26",
+    "expo-constants": "~58.0.16",
+    "expo-dev-client": "~58.0.21",
+    "expo-font": "~58.0.12",
+    "expo-linking": "~58.0.17",
+    "expo-router": "~58.0.32",
+    "expo-status-bar": "~58.0.5",
+    "lucide-react-native": "^1.75.0",
+    "nativewind": "^4.2.7",
+    "pretendard": "^1.3.9",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-css-interop": "0.2.7",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1",
+    "react-native-svg": "15.16.0",
+    "react-native-worklets": "0.13.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "~19.3.0",
+    "babel-preset-expo": "~58.0.26",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

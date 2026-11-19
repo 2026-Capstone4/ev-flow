@@ -178,7 +178,34 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
   - 이 PR은 파일 이동 + import 경로 수정만 하고 짧게 끝냄 (기능 변경 섞지 않기). 진행 중에는 다른 프론트 브랜치를 새로 따지 않음
   - 0단계 중 `useMapMarkers` 판단 함수 빼기는 마커 관련 브랜치가 병합된 뒤에 함 (2026-11-19 완료). 실험 브랜치 `exp/fe-gl-map`은 병합하지 않으므로 이 변경과 충돌해도 둠
 
-### 2단계: Expo 앱 골격
+### 2단계: Expo 앱 골격 — 진행 중 (골격 PR 2026-11-19)
+
+골격 PR 결과 (`feat/app-expo-skeleton`)
+- `mobile/`(`ev-flow-mobile`): Expo SDK 58 · React 19.3 · RN 0.88 · Expo Router(`src/app/`) · dev build(`expo-dev-client`). 워크스페이스에 `mobile` 추가
+- 설정은 `app.config.ts` (번들 ID `app.evflowkr.evflow`, `LSApplicationQueriesSchemes: ['nmap']`, iOS만). `ios/`는 만들어지는 폴더라 저장소에 넣지 않음
+- `metro.config.js`: 아래 한 벌 설정 + NativeWind. `expo export --platform ios --dev` 번들에서 `@tanstack/react-query` · `react` · `react-native` 경로가 각각 하나뿐인 것 확인
+- NativeWind v4.2(Tailwind v3): 색은 `tailwind.config.js`에서 core `COLORS`를 그대로 불러옴 (`bg-bg-page`, `text-text-primary` …)
+  - pnpm(isolated)에서는 `react-native-css-interop`을 앱 의존성으로 직접 넣어야 번들이 됨 (nativewind의 의존성이라 앱 폴더에서 안 보임)
+- 폰트: Pretendard otf 4종(Regular · Medium · SemiBold · Bold)을 `expo-font` config plugin으로 앱에 넣음. RN은 굵기마다 다른 폰트 파일이라 클래스는 `font-sans` · `font-medium` · `font-semibold` · `font-bold`(= fontFamily)로 씀
+- 아이콘: `lucide-react-native` + `react-native-svg`
+- API 주소: `src/lib/config.ts` — `EXPO_PUBLIC_API_BASE_URL`, 없으면 `https://evflowkr.app/api/v1`. `_layout.tsx`에서 첫 요청 전에 `setApiBaseUrl`
+- 쿼리: `src/app-setup/queryClient.ts` — core `DEFAULT_QUERY_OPTIONS` + `AppState` → `focusManager`, `NetInfo` → `onlineManager`. 앱이 백그라운드면 폴링 멈추고, 돌아오면 낡은 데이터를 바로 새로 받음
+- 검사: `mobile`에 `lint` · `format:check` · `typecheck` 스크립트 → 루트 `pnpm -r`과 CI FE 검사에 포함 (CI 변경 판정에 `mobile/` 추가). iOS 빌드는 CI에서 안 함
+- 첫 화면(`src/app/index.tsx`)은 골격 확인용 — core `useStationsQuery`로 충전소 수 · 갱신 문구를 띄움. 3단계에서 지도 홈으로 바꿈
+- 확인 (2026-11-19, iPhone 17 Pro 시뮬레이터 · dev build): 실제 서버에서 충전소 1,622곳 · 갱신 문구가 뜨고, Pretendard · lucide 아이콘 · 색 토큰이 적용됨. 백그라운드 → 복귀 때 폴링 멈춤 · 재개는 아직 직접 확인 안 함
+- 로컬 빌드 주의: CocoaPods가 `LANG`이 UTF-8이 아니면 `pod install`에서 실패함 → `export LANG=en_US.UTF-8` 후 `pnpm --dir mobile ios`
+
+화면 포커스별 폴링 중단 — 방식 정함, 다음 PR(`fe`, core 수정)
+- RN 스택은 이전 화면을 살려 두므로 화면이 가려져도 그 화면의 쿼리가 계속 폴링함
+- TanStack Query 5의 `subscribed` 옵션을 씀: `false`면 그 화면의 구독(폴링 타이머 포함)을 끊고, 캐시 값은 그대로 남음. 다시 `true`가 되면 낡은 데이터를 새로 받음
+- core에 "지금 이 화면이 보이는지" 컨텍스트(기본값 `true` → 웹은 그대로)를 두고, core 쿼리 훅이 `subscribed`로 넘김. 앱은 화면마다 `useIsFocused()` 값을 넣어 줌
+- `freezeOnBlur`(화면 그리기만 멈춤)로는 쿼리 타이머가 안 멈춰서 쓰지 않음
+
+남은 것
+- 화면 포커스별 폴링 중단 (위 방식, core 수정이라 `fe` PR)
+- Mock: 웹 `frontend/src/mocks/data`를 core로 옮기고 앱은 axios adapter로 연결 (추천 · 보정 건수가 아직 Mock)
+
+계획 (당시 그대로)
 
 - `mobile/`에 Expo + Expo Router, dev build (네이티브 지도 모듈 때문에 Expo Go 불가)
 - **`mobile/metro.config.js` 필수** — 공용 코드가 가져오는 React · TanStack Query가 앱 것과 한 벌이 되게 함 (1단계 Expo 확인)
