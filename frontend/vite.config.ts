@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'jsdom',
+      // 기본은 CSS를 빈 내용으로 바꿈. theme.test.ts가 색 값을 비교하도록 index.css만 그대로 읽게 함
+      css: { include: [/styles\/index\.css/] },
     },
   }
 })
