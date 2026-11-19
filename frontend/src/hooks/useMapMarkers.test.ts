@@ -19,6 +19,7 @@ class FakeMarker {
   setIcon = vi.fn()
   setPosition = vi.fn()
   setTitle = vi.fn()
+  setZIndex = vi.fn()
   constructor(public options: unknown) {
     FakeMarker.created.push(this)
   }
@@ -330,5 +331,57 @@ describe('useStationMarkers', () => {
     renderHook(() => useStationMarkers(map, [station('MAPO', { predictionAvailable: true })]))
 
     expect(FakeMarker.created).toHaveLength(0)
+  })
+})
+
+describe('useStationMarkers 추천 충전소', () => {
+  type MarkerOptions = { zIndex: number; icon: { content: string } }
+  const optionsOf = (m: FakeMarker) => m.options as MarkerOptions
+
+  it('추천 충전소는 형광 파랑으로 그리고 다른 마커보다 위에 올림', () => {
+    renderHook(() =>
+      useStationMarkers(
+        map,
+        [station('A', { predictionAvailable: true }), station('B')],
+        undefined,
+        new Set(['B']),
+      ),
+    )
+    const [a, b] = FakeMarker.created
+
+    expect(optionsOf(b).icon.content).toContain('bg-marker-recommended')
+    expect(optionsOf(a).icon.content).not.toContain('bg-marker-recommended')
+    // 추천(2) > 마포(1)
+    expect(optionsOf(b).zIndex).toBeGreaterThan(optionsOf(a).zIndex)
+  })
+
+  it('추천이 되거나 빠지면 그 마커만 아이콘 · 겹침 순서를 고침', () => {
+    const { rerender } = renderHook(
+      ({ ids }) => useStationMarkers(map, [station('A'), station('B')], undefined, ids),
+      { initialProps: { ids: new Set<string>() } },
+    )
+    const [a, b] = FakeMarker.created
+
+    rerender({ ids: new Set(['A']) })
+
+    expect(a.setIcon).toHaveBeenCalledOnce()
+    expect(a.setZIndex).toHaveBeenLastCalledWith(2)
+    expect(b.setIcon).not.toHaveBeenCalled()
+
+    rerender({ ids: new Set<string>() })
+
+    expect(a.setIcon).toHaveBeenCalledTimes(2)
+    expect(a.setZIndex).toHaveBeenLastCalledWith(0)
+  })
+
+  it('점 구간(줌 13)에서도 추천 충전소는 점 대신 숫자 마커로 그림', () => {
+    zoom = 13
+    renderHook(() =>
+      useStationMarkers(map, [station('A'), station('B')], undefined, new Set(['B'])),
+    )
+
+    expect(lastDotIds()).toEqual(['A'])
+    expect(FakeMarker.created).toHaveLength(1)
+    expect(optionsOf(FakeMarker.created[0]).icon.content).toContain('bg-marker-recommended')
   })
 })

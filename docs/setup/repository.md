@@ -76,4 +76,4 @@ Organization Owner 또는 저장소 Admin 권한으로 진행한다.
 ## ⑤ 공유
 
 12. 저장소 URL을 Notion 「EV-flow 팀 홈 > 링크 > GitHub 저장소」에 기록
-13. 각 파트는 [CONTRIBUTING.md](../../CONTRIBUTING.md) 순서대로 `feature/*` 브랜치에서 자기 폴더 초기 세팅
+13. 각 파트는 [CONTRIBUTING.md](../../CONTRIBUTING.md) 순서대로 `feat/*` 브랜치에서 자기 폴더 초기 세팅

@@ -17,9 +17,10 @@
 |---|---|---|---|---|
 | `main` | 배포. 직접 push 금지 | — | — | — |
 | `develop` | 통합. 직접 push 금지 | `main` | `main` | Merge commit |
-| `feature/*` | 기능 개발 | `develop` | `develop` | Squash merge |
+| `feat/*` | 기능 개발 | `develop` | `develop` | Squash merge |
 | `fix/*` | 버그 수정 | `develop` | `develop` | Squash merge |
 | `hotfix/*` | 배포 후 긴급 수정 | `main` | `main` → 이후 `develop`에도 반영 | Merge commit |
+| `exp/*` | 실험 · 시험 구현. 결과만 보고 `develop`에 그대로 넣지 않음 | `develop` | 없음 (쓸 부분은 `feat/*`로 다시 만듦) | — |
 
 - `develop` → `main` 병합 시점에 배포한다.
 
@@ -29,15 +30,18 @@
 <종류>/<파트>-<내용>
 ```
 
-- 파트: `fe`, `be`, `ml`, `infra`, `docs`
+- 파트: `fe`, `app`, `be`, `ml`, `infra`, `docs`
+  - `fe`: 웹(`frontend/`)과 웹 · 앱 공용 코드(`packages/core`)
+  - `app`: RN 앱(`mobile/`)만 바꿀 때. 공용 코드를 같이 바꾸면 `fe`
 - 내용: 영문 소문자 `kebab-case`, 짧게
 
 | 좋은 예 | 나쁜 예 |
 |---|---|
-| `feature/fe-station-map` | `feature/map` (파트 없음) |
-| `feature/be-collector` | `feature/fe_StationMap` (대문자 · 밑줄) |
+| `feat/fe-station-map` | `feat/map` (파트 없음) |
+| `feat/app-map-markers` | `feat/rn-map` (없는 파트) |
+| `feat/be-collector` | `feat/fe_StationMap` (대문자 · 밑줄) |
 | `fix/fe-marker-color` | `muGyeom-work` (종류 · 내용 불명확) |
-| `hotfix/be-collector-timeout` | `feature/fe-충전소-지도` (한글) |
+| `hotfix/be-collector-timeout` | `feat/fe-충전소-지도` (한글) |
 
 ---
 
@@ -62,7 +66,7 @@
 | `chore` | 빌드, 설정, 패키지 등 |
 | `ci` | CI/CD 설정 |
 
-- scope: `fe`, `be`, `ml`, `infra`, `docs`
+- scope: `fe`, `app`, `be`, `ml`, `infra`, `docs` (`fe` · `app` 구분은 [브랜치 이름](#이름)과 같음)
   - 여러 파트에 걸치거나 루트 설정이면 생략: `chore: 루트 editorconfig 추가`
 
 ### 요약 작성 규칙
@@ -78,6 +82,7 @@
 | `fix(be): 수집 재시도 간격 오류 수정` | `fix: 버그 수정` | 무엇을 고쳤는지 불명확 |
 | `refactor(fe): 폴링 로직 useStationsQuery 훅으로 분리함` | `refactor(fe): 폴링 로직을 분리한다` | `~한다`체 |
 | `chore(fe): Tailwind CSS v4 설치` | `update` | type · 내용 없음 |
+| `feat(app): 지도 홈 화면 추가` | `feat(fe): 앱 지도 홈 화면 추가` | 앱만 바꾸면 `app` |
 
 ### 본문 (선택)
 

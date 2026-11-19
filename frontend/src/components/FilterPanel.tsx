@@ -16,7 +16,7 @@ type FilterPanelProps = {
   ignoreRef: RefObject<HTMLElement | null>
 }
 
-/** 지도 홈 검색창 아래로 내려오는 필터 패널. 고르는 동안은 지도에 반영하지 않고 적용을 눌러야 반영. 지도처럼 실시간 기준 */
+/** 지도 홈 검색창 아래로 내려오는 필터 패널. 고르는 동안은 지도에 반영하지 않고 적용을 눌러야 반영(초기화는 바로 반영). 지도처럼 실시간 기준 */
 export function FilterPanel({
   filters,
   allStations,
@@ -61,17 +61,20 @@ export function FilterPanel({
       className="flex w-full animate-panel-down flex-col gap-3 rounded-md bg-bg-page px-4 pt-4 pb-3 shadow-[0_4px_16px_rgba(0,0,0,0.16)]"
     >
       <StationFilterOptions filters={draft} onChange={setDraft} />
-      {/* 지도는 실시간만 보여 주고(추천 충전소는 예외로 항상 표시), 15 · 30분 후 예측으로 거르는 건 검색 화면에서 함 */}
+      {/* 지도는 실시간만 보여 주고(추천 충전소는 예외로 항상 형광 파랑으로 표시), 15 · 30분 후 예측으로 거르는 건 검색 화면에서 함 */}
       <p className="text-xs text-text-secondary">
-        지도는 지금 상태 기준이고, 추천 충전소는 조건과 상관없이 보여요. 15·30분 후 예측으로
-        찾으려면 검색을 이용해 주세요.
+        지도는 실시간 기준이고, 추천 충전소는 파란색 마커로 확인해요.
+        <br />
+        15·30분 후 예측으로 찾으려면 검색을 이용해 주세요.
       </p>
       <div className="mt-1 flex gap-2">
         <Button
           variant="secondary"
           className="flex-1"
-          disabled={isDefaultFilters(draft)}
-          onClick={() => setDraft(DEFAULT_FILTERS)}
+          // 고르는 값과 지도에 적용된 값이 둘 다 기본이면 되돌릴 게 없어서 막음
+          disabled={isDefaultFilters(draft) && isDefaultFilters(filters)}
+          // 초기화는 적용을 따로 누르지 않아도 바로 지도에 반영하고 닫음
+          onClick={() => onApply(DEFAULT_FILTERS)}
         >
           초기화
         </Button>

@@ -34,7 +34,7 @@
 | ✅ **모노레포** (`frontend/` `backend/` `ml/` `infra/` `docs/`) | API 명세 · Docker Compose · CI 설정을 한 저장소에서 관리하고 파트 간 변경을 한 PR에서 추적 | [README](../README.md) |
 | ✅ **GitHub Organization [`2026-Capstone4`](https://github.com/2026-Capstone4) 소유, public 저장소 [`ev-flow`](https://github.com/2026-Capstone4/ev-flow)**, 팀원 4명 Organization 멤버 | 특정 개인 계정에 묶이지 않고 팀 단위로 저장소 · 권한 · Secrets · GHCR 이미지를 관리. 무료 플랜 private 저장소는 브랜치 보호가 적용되지 않으므로 public으로 `main` · `develop` 직접 push 금지를 강제. 저장소 설정 · Secrets는 Organization Owner가 처리 (인프라 · CI 담당 장승민) | [setup/repository.md](setup/repository.md) |
 | ✅ **public 저장소 보안 규칙** — 비밀값 · 데이터 · 모델 파일 커밋 금지, Secret scanning · Push protection 사용 | 코드와 커밋 이력이 모두 공개됨 | [code-common.md 비밀값](conventions/code-common.md#비밀값--환경-변수) |
-| ✅ **브랜치**: `main` / `develop` / `feature/*` / `fix/*` / `hotfix/*`, 파트 접두어 사용 | 인원 4명 규모에 맞는 단순한 흐름, 브랜치 이름만으로 파트 구분 | [git.md 브랜치](conventions/git.md#브랜치) |
+| ✅ **브랜치**: `main` / `develop` / `feat/*` / `fix/*` / `hotfix/*` / `exp/*`(실험, 병합 안 함), 파트 접두어 사용. 2026-11-19 기능 브랜치를 `feature/*` → `feat/*`로 바꿈 | 인원 4명 규모에 맞는 단순한 흐름, 브랜치 이름만으로 파트 구분 | [git.md 브랜치](conventions/git.md#브랜치) |
 | ✅ **커밋**: Conventional Commits, 한글 요약 | 변경 종류 · 파트를 한눈에 구분 | [git.md 커밋](conventions/git.md#커밋) |
 | ✅ **PR 필수, 승인 불필요** — 작성자 본인 병합 가능 | 일정상 상호 리뷰가 어려움. 직접 push만 막아도 변경 추적이 가능 | [git.md PR](conventions/git.md#pr) |
 | ✅ **병합 방식**: `develop`으로는 Squash merge, `main`으로는 Merge commit | `develop` 이력을 기능 단위 한 커밋으로 유지 | [git.md PR](conventions/git.md#pr) |
@@ -199,3 +199,5 @@
 | 2026-11-16 | 버스 전용 충전기(마포 14기) **수집도 제외** — 2026-10-25 "수집은 유지하고 예측 · 추천 · 학습에서만 제외"를 바꿈. 화면 · 예측 · 기준선 · 대시보드 · 추출본 · ml 뷰가 모두 이미 버스를 빼고 있어 쓰는 곳이 없고, 서울 실시간 수집도 버스형을 대상에서 빼므로 기준을 맞춤. 충전기 행 · 지난 로그는 AI 이력 · FK 때문에 남김. 회차의 `expected_count`는 190 → 176, `eligible_*`는 같은 값으로 계속 기록 | 장승민 |
 | 2026-11-16 | 서울(마포 제외) 실시간 표시 수집 시작 — **마포와 같은 5분 스냅샷**, 테이블은 별도(`live_*`, 컬럼 동일). 설계 v7의 "현재 상태 덮어쓰기 + 변화 기록"은 용량은 작지만 시연 시각을 되짚는 변환 스크립트가 데모 전에 꼭 필요하고 코드가 따로 생겨서 바꿈. 용량은 하루 약 340MB(로컬 실측 행당 333B × 3,562기 × 288회), 백업은 `pg_dump -Fc`가 DB의 약 2%라 부담 작음. 예측 · 추천 · 학습에는 쓰지 않음 — 나중에 서울도 예측하면 `city_*`와 합치거나 함께 읽음. 보존 기간 · 디스크 알림은 추후 | 장승민 |
 | 2026-11-16 | `GET /stations`에 서울(마포 제외) 충전소를 **기본으로 포함** — 별도 파라미터 없이 마포 + 서울을 한 번에 줌. 충전소에 `predictionAvailable`(서울 `false`, 예측 값 전부 `null`) 추가, 최상위 기준 시각은 두 수집 회차 중 오래된 쪽(서울 확대 설계 C안), 서울 회차가 없으면 마포만. 응답 캐시는 넣지 않음 — 로컬 실측 1,628곳 74ms · gzip 84KB로 충분히 빠름. 프론트 서울 화면이 올라가기 전까지 지도에 서울 마커가 그대로 보이는 것은 감수함 | 장승민 |
+| 2026-11-19 | 추천 시점 기준 확정(REC-006) — 15 · 30분은 **h분 후 출발**. 2026-11-15의 "h분 후 도착" 제안을 바꿈. 도착 시각(h + 이동시간)에 맞는 예측 지평을 쓰므로 추천 모듈의 지금 출발 계산에 출발 시점만 더하면 됨. **지금 출발(0분)은 실시간 상태만** 쓰는 11-15 제안대로 확정 — 대기값 · `source`는 `null`, 화면의 지금 출발(실시간만)과 같은 기준. ⏳ 추천 모듈에 출발 시점(h) 입력 추가는 AI 팀 | 김무겸 |
+| 2026-11-19 | 브랜치 규칙 정리 — 기능 브랜치 이름을 `feature/*` → **`feat/*`**로 바꿈 (커밋 type `feat`와 맞추고, 최근 작업이 이미 `feat/*`로 진행됨). 실험 브랜치 `exp/*`(develop에 병합하지 않음)와 RN 앱 전용 파트 `app`(웹 · 공용 코드는 `fe`)을 추가. 이미 만든 `feature/*` 브랜치는 그대로 둬도 됨 | 김무겸 |

@@ -152,7 +152,7 @@
 - 충전기 조건은 **같은 충전기 하나**가 모두 만족해야 한다 — 커넥터(`connectorTypes` 중 하나라도) AND 용량(`capacityKw` ≥ `minCapacityKw`) AND (`available_only`이면) `status`가 `available`. 이런 충전기가 하나라도 있으면 충전소가 남는다
 - `exclude_high`(혼잡 제외): **고른 시점**의 혼잡도가 `high`인 충전소를 뺀다 — 지금 출발은 현재 혼잡도, 15 · 30분 후는 그 시점 예측 혼잡도. 현재 혼잡도가 `unavailable`이면 시점과 상관없이 뺀다. 현재 `unknown` · 예측 없음(`null`)은 남긴다. 충전기 조건(커넥터 · 용량)은 위와 같다. 추천은 시점별 결과마다 그 시점으로 판정한다
   - 지도 마커 · 지도 홈 필터 패널은 실시간 상태만 보여 주므로 항상 지금 출발 기준으로 판정한다. 예측 시점으로 거르는 건 검색 화면 · 추천에서만
-  - 지도 마커는 지금 보고 있는 시점의 추천 Top 3 충전소를 필터와 상관없이 표시한다 (추천 카드에 나온 곳이 지도에서 빠지지 않게)
+  - 지도 마커는 지금 보고 있는 시점의 추천 Top 3 충전소를 필터와 상관없이 표시한다 (추천 카드에 나온 곳이 지도에서 빠지지 않게). 이 마커는 현재 혼잡도 색 대신 형광 파랑으로 그리고 다른 마커 위에 올린다 (순위는 표시하지 않음)
   - ⚠️ 2026-11-18 프론트에서 현재 기준 → 시점 기준으로 바꿈 (지금 기준이면 30분 후를 보면서 혼잡 제외를 켜도 '혼잡' 예측이 남고, 30분 후 '여유'인 곳이 빠짐). 서버 확인 필요
 - 추천은 필터와 상관없이 현재 혼잡도가 `unavailable`인 충전소를 뺀다 (용어 정의 p.10 Top-3: "필터 · 이용 조건을 만족하는 후보")
 - 예: DC콤보 50kW `available` 1기 + DC콤보 200kW `charging` 1기인 충전소는 `dc_combo` · 100kW · `available_only`일 때 **제외** (조건을 다 만족하는 충전기가 없음)
@@ -199,7 +199,7 @@
 | 429 | `LOGIN_LOCKED` | 로그인 실패가 반복돼 일정 시간 제한됨 (SER-001) |
 | 429 | `RATE_LIMITED` | 추천 · 길찾기 호출 제한 초과 (SER-003) |
 | 502 | `ROUTE_PROVIDER_ERROR` | 길찾기에서 네이버 Directions 오류 · 타임아웃 (UC-U07 E2) |
-| 503 | `ROUTE_QUOTA_EXCEEDED` | 길찾기에서 Directions 월 한도 초과 |
+| 503 | `ROUTE_QUOTA_EXCEEDED` | 길찾기에서 Directions 하루 예산(서버 전체 2,000회) 소진 또는 네이버 429 |
 | 503 | `DATA_UNAVAILABLE` | DB 장애 등으로 상태 데이터를 아예 읽을 수 없음 |
 | 500 | `INTERNAL_ERROR` | 그 외 서버 오류 |
 
@@ -223,7 +223,7 @@
 | 1 | `GET /stations` | — | UC-U01 · U02 | `get_stations` | 예측 필드 ⏳ `AI-07` |
 | 2 | `GET /stations/{stationId}` | — | UC-U03 · U04 · U05 | `get_station` | 도심만 (휴게소는 6번). 예측 필드 ⏳ `AI-07` |
 | 3 | `POST /recommendations` | — | UC-U06 | `recommend` | 15 · 30분 추천을 한 번에 응답 (🟡 잠정). 점수는 api가 요청 때 계산 — 혼잡도 · 대기는 Redis, 이동거리 · 이동시간은 Directions (🟡 제안: 직선거리 가까운 20곳 호출, [이동시간 처리](user.md#이동시간-처리)). ⏳ 계산식 |
-| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (SER-002). 🟡 제안: 3번과 같은 캐시, TTL 30분 `MAP-02` |
+| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (SER-002). 3번과 같은 캐시 — 출발 좌표 소수 4자리 + stationId, TTL 30분 `MAP-02` |
 | 5 | `GET /service-areas` | — | UC-U08 | `get_service_areas` | |
 | 6 | `GET /service-areas/chargers?name=&direction=` | — | UC-U08 | `get_service_area_chargers` | |
 | 7 | `POST /auth/login` | — | UC-O01 | `login` | ⏳ `admin_users` |
@@ -244,5 +244,4 @@
 | 항목 | 영향 | 담당 |
 |---|---|---|
 | 추천점수 계산식 | 3번 순위 | 전원 |
-| 이동거리 · 이동시간 처리 (`MAP-02`) — 🟡 제안: [이동시간 처리](user.md#이동시간-처리). 남은 것: 마포구 경계 여유 거리, 호출 제한 기준 | 3 · 4번, `RATE_LIMITED` 기준 | 전원 |
-| 도착 시점 vs 예측 시점 (REC-006) — 🟡 제안: 추천의 15 · 30분은 대기 모델 정의대로 "h분 후 도착 시"(h분 예측 사용, 이동시간은 점수에만), 지금 출발(`horizonMinutes: 0`)은 실시간 상태만 사용(대기값 `null`). 추천 모듈은 지금 "지금 출발" 하나만 계산함 | 3번 응답 구조 | 전원 |
+| 이동거리 · 이동시간 처리 (`MAP-02`) — 🟡 제안: [이동시간 처리](user.md#이동시간-처리). 남은 것: 마포구 경계 여유 거리 | 3번 | 전원 |
