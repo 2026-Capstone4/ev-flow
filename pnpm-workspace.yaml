@@ -1,5 +1,5 @@
-# pnpm 워크스페이스 — 웹(frontend)과 웹 · 앱 공용 코드(packages/core)를 한 lock 파일로 관리
-# RN 앱(mobile)은 2단계에서 추가 (docs/rn-migration-plan.md)
+# pnpm 워크스페이스 — 웹(frontend) · RN 앱(mobile) · 웹 · 앱 공용 코드(packages/core)를 한 lock 파일로 관리
 packages:
   - frontend
+  - mobile
   - packages/*
