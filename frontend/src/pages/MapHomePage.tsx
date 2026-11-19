@@ -34,6 +34,7 @@ import type { Station } from '@/types/station'
 const RECOMMEND_MESSAGE = {
   error: '추천 충전소를 불러오지 못했습니다',
   empty: '추천할 충전소가 없습니다',
+  out_of_area: '현재 예측 서비스는 마포구만 지원해요',
 }
 
 /** 추천 시트 단계. 위에서부터 펼침(Top 3) · 접힘(첫 카드) · 최소(헤더만) */
@@ -280,7 +281,9 @@ export function MapHomePage() {
               <HorizonSelector value={horizon} onChange={setHorizon} />
             </div>
           </div>
-          {recommendState === 'error' || recommendState === 'empty' ? (
+          {recommendState === 'error' ||
+          recommendState === 'empty' ||
+          recommendState === 'out_of_area' ? (
             <p
               className={`flex w-full items-center justify-center rounded-lg bg-bg-subtle text-sm text-text-secondary ${RECOMMEND_CARD_HEIGHT_CLASS}`}
             >
