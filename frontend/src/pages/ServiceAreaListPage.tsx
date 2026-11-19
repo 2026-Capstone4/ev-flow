@@ -3,9 +3,9 @@ import { BottomTab } from '@/components/BottomTab'
 import { DirectionSelector } from '@/components/DirectionSelector'
 import { ServiceAreaCard } from '@/components/ServiceAreaCard'
 import { UpdateStatus } from '@/components/UpdateStatus'
-import { useServiceAreaListData } from '@/hooks/useServiceAreaListData'
-import { NO_FORECAST_SERVICE_AREA_LABEL, parseDirection } from '@/lib/serviceArea'
-import type { Direction } from '@/types/serviceArea'
+import { useServiceAreaListData } from '@ev-flow/core/hooks/useServiceAreaListData'
+import { NO_FORECAST_SERVICE_AREA_LABEL, parseDirection } from '@ev-flow/core/lib/serviceArea'
+import type { Direction } from '@ev-flow/core/types/serviceArea'
 
 export function ServiceAreaListPage() {
   const navigate = useNavigate()

@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStationMarkers } from '@/hooks/useMapMarkers'
-import type { Station } from '@/types/station'
+import type { Station } from '@ev-flow/core/types/station'
 
 // 캔버스 점 레이어는 SDK OverlayView가 필요해서, 어떤 충전소를 점으로 넘겼는지만 기록하는 가짜로 바꿈
 const dotLayer = {

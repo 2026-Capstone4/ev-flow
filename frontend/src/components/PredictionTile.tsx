@@ -1,7 +1,7 @@
 import { CongestionBadge } from '@/components/CongestionBadge'
-import { formatWaitTime } from '@/lib/congestion'
-import { getHorizonLabel } from '@/lib/horizon'
-import type { Prediction } from '@/types/station'
+import { formatWaitTime } from '@ev-flow/core/lib/congestion'
+import { getHorizonLabel } from '@ev-flow/core/lib/horizon'
+import type { Prediction } from '@ev-flow/core/types/station'
 
 type PredictionTileProps = {
   prediction: Prediction

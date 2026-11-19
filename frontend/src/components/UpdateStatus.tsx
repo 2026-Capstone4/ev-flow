@@ -1,5 +1,5 @@
-import { useNow } from '@/hooks/useNow'
-import { getUpdateStatusText } from '@/lib/formatUpdatedAt'
+import { useNow } from '@ev-flow/core/hooks/useNow'
+import { getUpdateStatusText } from '@ev-flow/core/lib/formatUpdatedAt'
 
 type UpdateStatusProps = {
   /** 마지막 정상 데이터 기준 시각 */

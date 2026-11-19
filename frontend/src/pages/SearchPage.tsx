@@ -7,10 +7,10 @@ import { FilterChip } from '@/components/FilterChip'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { SearchResultRow } from '@/components/SearchResultRow'
 import { FilterRow, StationFilterOptions } from '@/components/StationFilterOptions'
-import { useMapView } from '@/hooks/useMapView'
-import { useSearchData } from '@/hooks/useSearchData'
-import { DEFAULT_FILTERS, isDefaultFilters } from '@/lib/stationFilter'
-import type { StationSortKey } from '@/lib/stationSearch'
+import { useMapView } from '@ev-flow/core/hooks/useMapView'
+import { useSearchData } from '@ev-flow/core/hooks/useSearchData'
+import { DEFAULT_FILTERS, isDefaultFilters } from '@ev-flow/core/lib/stationFilter'
+import type { StationSortKey } from '@ev-flow/core/lib/stationSearch'
 
 const SORT_OPTIONS: { label: string; value: StationSortKey }[] = [
   { label: '추천순', value: 'recommended' },

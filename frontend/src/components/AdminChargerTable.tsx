@@ -1,9 +1,9 @@
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { getAdminChargerStatusLabel, TODAY_OCCUPANCY_TOOLTIP } from '@/lib/admin/chargerStatus'
 import { CHARGER_REGION_LABEL, formatPercent, isStale } from '@/lib/admin/common'
-import { formatClock, formatElapsed } from '@/lib/formatUpdatedAt'
+import { formatClock, formatElapsed } from '@ev-flow/core/lib/formatUpdatedAt'
 import type { AdminCharger } from '@/types/admin'
-import type { ChargerStatus } from '@/types/station'
+import type { ChargerStatus } from '@ev-flow/core/types/station'
 
 // 사용자 화면 ChargerRow와 같은 색. 확인 불가만 운영자가 바로 봐야 해서 빨강으로 강조
 const STATUS_CLASS: Record<ChargerStatus, string> = {

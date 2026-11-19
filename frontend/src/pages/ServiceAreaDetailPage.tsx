@@ -5,10 +5,15 @@ import { Button } from '@/components/Button'
 import { ChargerRow } from '@/components/ChargerRow'
 import { DirectionTag } from '@/components/DirectionTag'
 import { UpdateStatus } from '@/components/UpdateStatus'
-import { useNow } from '@/hooks/useNow'
-import { useServiceAreaDetailData } from '@/hooks/useServiceAreaDetailData'
-import { detectPlatform, getNaverCarRouteUrl, openNaverMapApp } from '@/lib/naverMapLink'
-import { AVAILABILITY_TONE_CLASS, getAvailabilityTone, parseDirection } from '@/lib/serviceArea'
+import { useNow } from '@ev-flow/core/hooks/useNow'
+import { useServiceAreaDetailData } from '@ev-flow/core/hooks/useServiceAreaDetailData'
+import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
+import { openNaverMapApp } from '@/lib/openNaverMapApp'
+import {
+  AVAILABILITY_TONE_CLASS,
+  getAvailabilityTone,
+  parseDirection,
+} from '@ev-flow/core/lib/serviceArea'
 
 // 휴게소는 앱 안 경로 미리보기가 없어서(POST /routes는 도심 충전소만) 길찾기 버튼이 바로 네이버 지도 앱을 엶
 export function ServiceAreaDetailPage() {

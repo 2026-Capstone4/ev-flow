@@ -2,8 +2,8 @@ import {
   CHARGER_STATUS_GROUP_LABEL,
   countChargerStatusGroups,
   type ChargerStatusGroup,
-} from '@/lib/charger'
-import type { ChargerStatus } from '@/types/station'
+} from '@ev-flow/core/lib/charger'
+import type { ChargerStatus } from '@ev-flow/core/types/station'
 
 /** 막대 순서 */
 const GROUPS: ChargerStatusGroup[] = ['available', 'charging', 'offline', 'unknown']

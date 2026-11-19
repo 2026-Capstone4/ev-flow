@@ -1,8 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { setApiBaseUrl } from '@ev-flow/core/api/client'
 import { App } from '@/app/App'
+import { API_BASE_URL } from '@/lib/config'
 import { loadNaverMapScript } from '@/lib/loadNaverMapScript'
 import '@/styles/index.css'
+
+// 공용 API 클라이언트에 웹 API 주소를 넘김. 첫 요청(화면 그리기) 전에 해야 함
+setApiBaseUrl(API_BASE_URL)
 
 // 지도 SDK는 Mock 준비 · 화면 그리기와 상관없어서 기다리지 않고 바로 실행을 시작함. 운영자 화면은 지도를 안 써서 뺌
 const naverMapClientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID

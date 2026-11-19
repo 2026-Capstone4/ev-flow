@@ -1,5 +1,7 @@
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 @import 'tailwindcss';
+/* 공용 코드(packages/core)에도 클래스 이름이 있어(lib/serviceArea.ts 등) Tailwind가 같이 훑게 함. 기본은 frontend/ 안만 봄 */
+@source '../../../packages/core/src';
 
 /* Figma Variables(Color · Size)와 같은 이름으로 맞춤. 색 값의 기준은 lib/theme.ts(웹 · 앱 공용) - 바꿀 때 같이 고침 */
 @theme {

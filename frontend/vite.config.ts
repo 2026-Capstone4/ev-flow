@@ -34,6 +34,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss(), preloadNaverMapScript(env.VITE_NAVER_MAP_CLIENT_ID)],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+      // 공용 코드(@ev-flow/core)도 React · TanStack Query를 가져오므로, 둘이 같은 한 벌을 쓰게 웹 것으로 맞춤
+      // (두 벌이면 훅 · QueryClientProvider가 서로를 못 찾음)
+      dedupe: ['react', 'react-dom', '@tanstack/react-query'],
     },
     server: {
       // 배포 환경과 같은 경로로 호출하도록 /api는 백엔드로 프록시 (MSW 사용 시에는 브라우저에서 가로챔)

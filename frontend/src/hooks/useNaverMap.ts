@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadNaverMapScript, onNaverMapAuthFailure } from '@/lib/loadNaverMapScript'
-import type { LatLng } from '@/types/geo'
+import type { LatLng } from '@ev-flow/core/types/geo'
 
 /** 이보다 더 축소하지 못하게 막음. 줌 8이면 수도권 전체 정도가 보임 */
 const MIN_ZOOM = 8

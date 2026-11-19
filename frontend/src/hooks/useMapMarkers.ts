@@ -11,10 +11,10 @@ import {
   toViewBounds,
   toZIndex,
   type ViewBounds,
-} from '@/lib/mapMarkers'
+} from '@ev-flow/core/lib/mapMarkers'
 import { createStationDotLayer, type StationDotLayer } from '@/lib/stationDotLayer'
-import type { LatLng } from '@/types/geo'
-import type { Station } from '@/types/station'
+import type { LatLng } from '@ev-flow/core/types/geo'
+import type { Station } from '@ev-flow/core/types/station'
 
 /** 누른 뒤 손가락이 이 거리(px) 넘게 움직였거나 이 시간(ms) 넘게 눌렀으면 탭이 아니라 끌기 · 길게 누르기로 봄 */
 const TAP_MOVE_TOLERANCE = 8

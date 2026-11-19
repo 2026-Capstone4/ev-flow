@@ -1,0 +1,21 @@
+# 앱(Expo) 전용 무시 목록. 공통 항목(node_modules · .env.* · OS 파일)은 루트 .gitignore에 있음
+
+# Expo가 만드는 파일 (expo start · export)
+.expo/
+dist/
+expo-env.d.ts
+
+# 네이티브 폴더는 app.config.ts로 만들어지므로 저장소에 넣지 않음 (expo prebuild · run:ios)
+/ios
+/android
+
+# 서명 · 인증 파일
+*.p8
+*.p12
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# TypeScript
+*.tsbuildinfo

@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
-import { useMapView } from '@/hooks/useMapView'
-import { isInMapo } from '@/lib/coverage'
-import { isLocateFailure, toLocateFailure, type LocateFailure } from '@/lib/geolocation'
-import type { LatLng } from '@/types/geo'
+import { useMapView } from '@ev-flow/core/hooks/useMapView'
+import { isInMapo } from '@ev-flow/core/lib/coverage'
+import { isLocateFailure, toLocateFailure, type LocateFailure } from '@ev-flow/core/lib/geolocation'
+import type { LatLng } from '@ev-flow/core/types/geo'
 
 /** 정확도 우선, 10초 넘으면 포기, 30초 안에 잰 위치는 다시 재지 않고 씀 */
 const POSITION_OPTIONS: PositionOptions = {

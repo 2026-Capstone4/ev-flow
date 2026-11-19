@@ -7,7 +7,7 @@ import {
   type AdminStation,
 } from '@/lib/admin/chargerStatus'
 import { CHARGER_REGION_LABEL, isStale } from '@/lib/admin/common'
-import { formatClock, formatElapsed } from '@/lib/formatUpdatedAt'
+import { formatClock, formatElapsed } from '@ev-flow/core/lib/formatUpdatedAt'
 
 type AdminStationTableProps = {
   stations: AdminStation[]

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 // 출처: 통계청 SGIS 행정동 경계(공공누리 제1유형)를 vuski/admdongkor(CC BY 4.0, ver20261001)가 가공한 것.
 // 서울 427개 동 · 마포구 16개 동을 각각 하나로 합치고 점 수를 줄임. 모든 고리는 반시계 방향
-import coverageBoundary from '@/assets/coverage-boundary.json'
+import coverageBoundary from '@ev-flow/core/assets/coverage-boundary.json'
 
 /** 서울 밖 — 서비스 안 함 */
 const OUTSIDE_COLOR = '#374151'

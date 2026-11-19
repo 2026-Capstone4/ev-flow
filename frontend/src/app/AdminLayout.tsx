@@ -1,10 +1,10 @@
 import { LogOut } from 'lucide-react'
 import { Suspense } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { isUnauthorized } from '@/api/errors'
+import { isUnauthorized } from '@ev-flow/core/api/errors'
 import { Button } from '@/components/Button'
 import { useAuthMeQuery, useLogoutMutation } from '@/hooks/useAdminAuth'
-import { formatClock } from '@/lib/formatUpdatedAt'
+import { formatClock } from '@ev-flow/core/lib/formatUpdatedAt'
 import type { AdminLoginState } from '@/pages/AdminLoginPage'
 
 /** 사이드바 메뉴 — 메뉴마다 화면이 따로 있음 */

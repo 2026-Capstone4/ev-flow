@@ -71,6 +71,7 @@ services:
       # 예측 갱신용 (docs/prediction.md) - depends_on은 걸지 않음: redis · ml이 죽어도 수집은 계속돼야 함
       REDIS_URL: redis://redis:6379/0
       ML_URL: http://ml:8001
+      PRODUCER_URL: http://producer:8002
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,6 +99,35 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  # 체크포인트 producer (docs/prediction.md) - collector가 도심 회차를 커밋할 때마다 POST /runs/{run_id}
+  # AI 패키지 코드는 이미지에 넣지 않고 서버 ml/package/에 풀어 둠 (모델 파일과 같은 방식)
+  producer:
+    build:
+      context: ../producer
+    container_name: evflow-producer
+    environment:
+      EVFLOW_POSTGRES_SCHEMA: ml_read
+      EVFLOW_CHECKPOINT_SCHEMA: ml_checkpoint
+      EVFLOW_CHECKPOINT_DIR: /state/evflow
+      # 로컬 · 서버 DB 이름이 같아 기본값(DB 이름:스키마)이 겹침 - 서버 .env에서 evflow-prod로 지정
+      EVFLOW_SOURCE_ID: ${EVFLOW_SOURCE_ID:-evflow-local}
+      # 계산은 읽기 전용 evflow_ckpt_reader, 게시만 evflow_ckpt_writer - 패키지가 이 두 이름으로 읽음
+      EVFLOW_ML_READONLY_DSN: ${EVFLOW_CKPT_READER_DSN:-}
+      EVFLOW_CHECKPOINT_WRITER_DSN: ${EVFLOW_CKPT_WRITER_DSN:-}
+    volumes:
+      - ../ml/package:/package:ro
+      # 최신 상태(latest.json) · 회차별 파일 · OS 잠금 - 다음 실행까지 남아 있어야 함. 잃으면 --initialize로 재구축
+      - evflow_checkpoint_state:/state/evflow
+    expose:
+      - "8002"
+    # AI 측정: 최초 구축 최대 약 105MiB(384MiB 한도) · 증분 약 80MiB
+    mem_limit: 384m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
   # 외부 공개는 이 서비스만 - 나머지는 Compose 내부 네트워크로만 접근
   nginx:
     image: nginx:1.27-alpine
@@ -120,3 +150,4 @@ services:
 
 volumes:
   evflow_pgdata:
+  evflow_checkpoint_state:

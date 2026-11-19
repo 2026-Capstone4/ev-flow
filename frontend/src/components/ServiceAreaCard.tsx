@@ -3,8 +3,8 @@ import {
   AVAILABILITY_TONE_CLASS,
   formatStatusSummary,
   getAvailabilityTone,
-} from '@/lib/serviceArea'
-import type { ServiceArea } from '@/types/serviceArea'
+} from '@ev-flow/core/lib/serviceArea'
+import type { ServiceArea } from '@ev-flow/core/types/serviceArea'
 
 type ServiceAreaCardProps = {
   serviceArea: ServiceArea

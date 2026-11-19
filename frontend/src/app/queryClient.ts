@@ -1,7 +1,7 @@
 import { QueryCache, QueryClient } from '@tanstack/react-query'
-import { isRetryableError, isUnauthorized } from '@/api/errors'
+import { isUnauthorized } from '@ev-flow/core/api/errors'
+import { DEFAULT_QUERY_OPTIONS } from '@ev-flow/core/app/queryDefaults'
 import { AUTH_ME_KEY } from '@/hooks/useAdminAuth'
-import { CACHE_TIME_MS, POLLING_INTERVAL_MS } from '@/lib/constants'
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -15,12 +15,10 @@ export const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      staleTime: POLLING_INTERVAL_MS,
-      gcTime: CACHE_TIME_MS,
-      refetchInterval: POLLING_INTERVAL_MS,
-      // 백그라운드 탭에서는 폴링 중단 (API 호출 수 절약)
+      // 폴링 · 캐시 · 재시도는 웹 · 앱 공용 기본값
+      ...DEFAULT_QUERY_OPTIONS,
+      // 백그라운드 탭에서는 폴링 중단 (API 호출 수 절약). 브라우저 탭 기준이라 웹에만 둠
       refetchIntervalInBackground: false,
-      retry: (failureCount, error) => failureCount < 1 && isRetryableError(error),
     },
   },
 })

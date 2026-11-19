@@ -1,6 +1,6 @@
 import { CongestionBadge } from '@/components/CongestionBadge'
-import { formatWaitTime } from '@/lib/congestion'
-import type { Recommendation } from '@/types/station'
+import { formatWaitTime } from '@ev-flow/core/lib/congestion'
+import type { Recommendation } from '@ev-flow/core/types/station'
 
 /**
  * 추천 카드 높이. 로딩 자리표시도 같은 값을 써서 데이터가 와도 시트 크기가 그대로임

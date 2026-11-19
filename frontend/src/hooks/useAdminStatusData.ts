@@ -4,7 +4,7 @@ import {
   useImputedCountQuery,
   useUtilizationQuery,
 } from '@/hooks/useAdminQueries'
-import { useNow } from '@/hooks/useNow'
+import { useNow } from '@ev-flow/core/hooks/useNow'
 import {
   groupChargersByStation,
   sortChargers,
@@ -14,7 +14,7 @@ import {
   type StationSort,
 } from '@/lib/admin/chargerStatus'
 import { getCollectionHealth } from '@/lib/admin/collection'
-import { getListLoadState } from '@/lib/loadState'
+import { getListLoadState } from '@ev-flow/core/lib/loadState'
 import type { AdminRegion } from '@/types/admin'
 
 /**

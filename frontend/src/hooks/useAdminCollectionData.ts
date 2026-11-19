@@ -3,7 +3,7 @@ import {
   useImputedCountQuery,
   useMissingStatsQuery,
 } from '@/hooks/useAdminQueries'
-import { useNow } from '@/hooks/useNow'
+import { useNow } from '@ev-flow/core/hooks/useNow'
 import { getTargetHealth } from '@/lib/admin/collection'
 import type { AdminPeriod, AdminRegion } from '@/types/admin'
 
