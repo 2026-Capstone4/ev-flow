@@ -8,7 +8,11 @@ import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
 import { MapNotice } from '@/components/MapNotice'
 import { OnboardingDialog } from '@/components/OnboardingDialog'
-import { RecommendCard } from '@/components/RecommendCard'
+import {
+  RECOMMEND_CARD_HEIGHT_CLASS,
+  RecommendCard,
+  RecommendCardSkeleton,
+} from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { ZoomInNotice } from '@/components/ZoomInNotice'
@@ -31,6 +35,9 @@ const RECOMMEND_MESSAGE = {
   error: '추천 충전소를 불러오지 못했습니다',
   empty: '추천할 충전소가 없습니다',
 }
+
+/** 추천을 불러오는 동안 그리는 자리표시 카드 수 (Top 3) */
+const SKELETON_KEYS = ['skeleton-1', 'skeleton-2', 'skeleton-3']
 
 /** 안내 문구를 띄워 두는 시간 */
 const NOTICE_DURATION_MS = 3000
@@ -63,6 +70,11 @@ export function MapHomePage() {
   }, [horizon])
   const openStation = useCallback(
     (stationId: string) => navigate(`/stations/${stationId}?horizon=${horizonRef.current}`),
+    [navigate],
+  )
+  // 추천 카드의 길찾기 버튼은 상세를 거치지 않고 바로 길찾기 화면으로 감
+  const openRoute = useCallback(
+    (stationId: string) => navigate(`/stations/${stationId}/route?horizon=${horizonRef.current}`),
     [navigate],
   )
   const handleMarkerSelect = useCallback(
@@ -247,37 +259,46 @@ export function MapHomePage() {
               <HorizonSelector value={horizon} onChange={setHorizon} />
             </div>
           </div>
-          {recommendations?.length ? (
+          {recommendState === 'error' || recommendState === 'empty' ? (
+            <p
+              className={`flex w-full items-center justify-center rounded-lg bg-bg-subtle text-sm text-text-secondary ${RECOMMEND_CARD_HEIGHT_CLASS}`}
+            >
+              {RECOMMEND_MESSAGE[recommendState]}
+            </p>
+          ) : (
             <ul
+              aria-busy={!recommendations}
               className={`flex w-full flex-col gap-3 ${isSheetExpanded ? 'overflow-y-auto' : 'overflow-hidden'}`}
             >
-              {recommendations.map((recommendation, index) => (
-                <li
-                  key={recommendation.station.stationId}
-                  ref={index === 0 ? setFirstItem : undefined}
-                  // 접혀서 가려진 카드는 키보드 · 스크린리더에서도 숨김 (React 18은 inert 미지원)
-                  aria-hidden={!isSheetExpanded && index > 0}
-                >
-                  <RecommendCard
-                    tabIndex={!isSheetExpanded && index > 0 ? -1 : undefined}
-                    recommendation={recommendation}
-                    onClick={() => openStation(recommendation.station.stationId)}
-                  />
-                </li>
-              ))}
+              {recommendations
+                ? recommendations.map((recommendation, index) => (
+                    <li
+                      key={recommendation.station.stationId}
+                      ref={index === 0 ? setFirstItem : undefined}
+                      // 접혀서 가려진 카드는 키보드 · 스크린리더에서도 숨김 (React 18은 inert 미지원)
+                      aria-hidden={!isSheetExpanded && index > 0}
+                    >
+                      <RecommendCard
+                        tabIndex={!isSheetExpanded && index > 0 ? -1 : undefined}
+                        recommendation={recommendation}
+                        onClick={() => openStation(recommendation.station.stationId)}
+                        onRouteClick={() => openRoute(recommendation.station.stationId)}
+                      />
+                    </li>
+                  ))
+                : // 불러오는 동안에도 카드 3장 자리를 같은 높이로 잡아 두어 데이터가 와도 시트 크기가 그대로임
+                  SKELETON_KEYS.map((key, index) => (
+                    <li key={key} ref={index === 0 ? setFirstItem : undefined} aria-hidden>
+                      <RecommendCardSkeleton />
+                    </li>
+                  ))}
               {/* 후보가 3곳 미만이면 짧은 배열로 옴 (UC-U06 E1) */}
-              {recommendations.length < 3 && (
+              {recommendations && recommendations.length < 3 && (
                 <li className="text-center text-[13px] text-text-secondary">
                   조건에 맞는 후보가 {recommendations.length}곳뿐이에요
                 </li>
               )}
             </ul>
-          ) : recommendState === 'error' || recommendState === 'empty' ? (
-            <p className="flex h-[118px] w-full items-center justify-center rounded-lg bg-bg-subtle text-sm text-text-secondary">
-              {RECOMMEND_MESSAGE[recommendState]}
-            </p>
-          ) : (
-            <div className="h-[118px] w-full animate-pulse rounded-lg bg-bg-subtle" />
           )}
         </section>
       </main>
