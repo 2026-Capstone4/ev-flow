@@ -32,6 +32,7 @@ venv/
 ml/data/
 ml/models/*
 !ml/models/.gitkeep
+ml/package/
 *.csv
 *.parquet
 *.pkl

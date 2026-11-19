@@ -8,6 +8,7 @@ from sqlalchemy import text, update
 
 from app.collector.api_client import MAX_RETRIES, get_charger_info, get_charger_status
 from app.collector.baseline import ensure_baseline, refresh_baseline
+from app.collector.checkpoint import publish_checkpoint
 from app.collector.prediction import refresh_predictions
 from app.db.models import (
     CityCharger,
@@ -260,6 +261,8 @@ class RegionCollector:
             # 도심만 예측함 (휴게소는 대조군 - DATA-003). 커밋 뒤에 불러야 예측 실패가 수집 기록에 섞이지 않음.
             # refresh_predictions는 예외를 밖으로 내지 않음 - 아래 except가 이 회차를 FAILED로 바꾸면 안 됨
             if self.target == "city":
+                # 체크포인트를 먼저 게시해야 같은 회차 예측에 대기시간이 들어감 (지금 ml은 아직 안 씀) - 예외를 밖으로 내지 않음
+                publish_checkpoint(run)
                 refresh_predictions(db, run)
                 # redis를 다시 만들어 키가 사라졌으면 다음 04:00까지 기다리지 않고 바로 채움 - 예외를 밖으로 내지 않음
                 ensure_baseline()

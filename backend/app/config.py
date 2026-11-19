@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     # 기본값은 호스트에서 직접 실행할 때(override 포트) 기준 - 컨테이너 안에서는 compose가 덮어씀
     redis_url: str = "redis://localhost:6379/0"
     ml_url: str = "http://localhost:8001"
+    # 체크포인트 producer - 비어 있으면 collector가 체크포인트 갱신을 건너뜀 (producer 없이 로컬 실행할 때)
+    producer_url: str = ""
 
     # 네이버 Directions 5 - 추천 · 경로 API에서 사용. 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함
     naver_client_id: str = ""
