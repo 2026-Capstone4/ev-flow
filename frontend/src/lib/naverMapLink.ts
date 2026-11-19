@@ -49,12 +49,16 @@ export function getNaverCarRouteUrl(
   { destination, appName }: NaverCarRouteOptions,
   platform: MobilePlatform,
 ) {
+  // URLSearchParams는 띄어쓰기를 +로 바꾸는데, 네이버 지도 앱은 +를 글자 그대로 보여 줘 %20으로 바꿈
+  // 이름에 원래 있던 +는 이미 %2B라서 띄어쓰기만 바뀜
   const query = new URLSearchParams({
     dlat: String(destination.lat),
     dlng: String(destination.lng),
     dname: destination.name,
     appname: appName,
-  }).toString()
+  })
+    .toString()
+    .replaceAll('+', '%20')
 
   if (platform === 'android') {
     return `intent://route/car?${query}#Intent;scheme=nmap;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.nmap;end`
