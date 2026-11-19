@@ -13,7 +13,7 @@
 ```bash
 git switch develop
 git pull
-git switch -c feature/fe-station-map
+git switch -c feat/fe-station-map
 ```
 
 - 브랜치 이름: `<종류>/<파트>-<내용>` — [git.md 브랜치](docs/conventions/git.md#브랜치)
@@ -31,7 +31,7 @@ git commit -m "feat(fe): 충전소 마커 혼잡도 색상 표시"
 ### 3. push하고 PR 만들기
 
 ```bash
-git push -u origin feature/fe-station-map
+git push -u origin feat/fe-station-map
 ```
 
 1. GitHub에서 **Compare & pull request** 클릭
@@ -50,7 +50,7 @@ git push -u origin feature/fe-station-map
 ```bash
 git switch develop
 git pull
-git branch -d feature/fe-station-map
+git branch -d feat/fe-station-map
 ```
 
 ## 작업 중 `develop`의 최신 변경 반영하기
