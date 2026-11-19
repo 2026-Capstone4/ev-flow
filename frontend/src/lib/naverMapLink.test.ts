@@ -25,6 +25,15 @@ describe('getNaverCarRouteUrl', () => {
     expect(params.has('slat')).toBe(false)
   })
 
+  it('앱 링크의 띄어쓰기는 +가 아닌 %20, 이름에 있던 +는 %2B', () => {
+    const url = getNaverCarRouteUrl(
+      { ...options, destination: { ...options.destination, name: '망원동 충전소 A+B' } },
+      'ios',
+    )
+    expect(url).toContain(`dname=${encodeURIComponent('망원동 충전소 A+B')}`)
+    expect(url).not.toContain('+')
+  })
+
   it('Android는 네이버 지도 패키지를 지정한 intent URL', () => {
     const url = getNaverCarRouteUrl(options, 'android')!
     expect(url.startsWith('intent://route/car?')).toBe(true)

@@ -142,7 +142,7 @@
 
 ## 3. 충전소 추천 — `POST /recommendations`
 
-현재 위치 기준 Top-3 (UC-U06). **후보는 마포 충전소만** — 서울 다른 구에 있어도 추천 결과는 마포 충전소다(서울은 예측이 없음). 지금 출발 · 15 · 30분 추천을 한 번에 내려준다 (🟡 잠정 — 도착 시점 vs 예측 시점 논의에 따라 바뀔 수 있음).
+현재 위치 기준 Top-3 (UC-U06). **후보는 마포 충전소만** — 서울 다른 구에 있어도 추천 결과는 마포 충전소다(서울은 예측이 없음). 지금 출발 · 15분 후 출발 · 30분 후 출발 추천을 한 번에 내려준다.
 
 **요청 본문**
 
@@ -196,8 +196,8 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. 🟡 제안 (REC-006, 2026-11-15 김무겸): `horizonMinutes` = **h분 후 도착했을 때** (대기 모델 정의와 같음) — 모든 후보에 h분 예측을 쓰고, 이동시간은 점수에만 반영. ⏳ 추천 모듈은 지금 지평을 이동시간으로 자동 선택함 → 고른 지평으로 계산하는 기능 필요 (AI 팀 확인 중) |
-| `results[].horizonMinutes = 0` | | 🟡 제안 (2026-11-15 김무겸): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`에 대기 비교 문구를 넣지 않음 (⏳ 대신 쓸 비교 문구는 미정, 예: 사용 가능 대수 비교) |
+| `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-19): `horizonMinutes` = **h분 후 출발**. 도착 시각이 h분 + 이동시간이므로, 후보마다 도착 시각에 맞는 예측 지평의 값을 씀 — 추천 모듈이 지금 출발에서 이동시간으로 지평을 고르는 방식에 출발 시점 h만 더하면 됨. ⏳ 추천 모듈에 출발 시점(h)을 넘겨 계산하는 기능 필요 (AI 팀) |
+| `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`에 대기 비교 문구를 넣지 않음 (⏳ 대신 쓸 비교 문구는 미정, 예: 사용 가능 대수 비교) |
 | `recommendations` | object[] | 최대 3개. 후보가 부족하면 짧거나 빈 배열 (UC-U06 E1) |
 | `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음) |
 | `station.availableChargers` | number | **현재** 사용 가능 대수 (REC-002) |

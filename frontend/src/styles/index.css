@@ -1,7 +1,7 @@
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 @import 'tailwindcss';
 
-/* Figma Variables(Color · Size)와 같은 이름으로 맞춤 */
+/* Figma Variables(Color · Size)와 같은 이름으로 맞춤. 색 값의 기준은 lib/theme.ts(웹 · 앱 공용) - 바꿀 때 같이 고침 */
 @theme {
   --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
 
@@ -33,6 +33,8 @@
   /* 지도에서 추천 Top 3 충전소 마커. 혼잡도 색과 겹치지 않는 형광 파랑, 글자는 다른 마커처럼 흰색 */
   --color-marker-recommended: #00a8e8;
   --color-marker-recommended-text: #ffffff;
+  /* 상세 예측 칸의 'AI 예측' 글자. 혼잡도 · 브랜드 파랑 · 충전 중 남색과 겹치지 않는 보라 */
+  --color-ai: #7c3aed;
 
   --radius-sm: 6px;
   --radius-md: 12px;

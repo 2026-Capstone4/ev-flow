@@ -1,13 +1,5 @@
-import type { CurrentCongestion, Station } from '@/types/station'
-
-/** 혼잡도별 점 색. 캔버스는 Tailwind 클래스를 못 쓰므로 같은 CSS 변수(styles/index.css)를 읽음 */
-const CONGESTION_COLOR_VAR: Record<CurrentCongestion, string> = {
-  low: '--color-congestion-free',
-  medium: '--color-congestion-normal',
-  high: '--color-congestion-busy',
-  unknown: '--color-congestion-unknown',
-  unavailable: '--color-congestion-unavailable',
-}
+import { CONGESTION_COLOR } from '@/lib/theme'
+import type { Station } from '@/types/station'
 
 /** 점 반지름(흰 테두리 포함) · 안쪽 색 반지름. 예전 HTML 점(지름 12px, 테두리 2px)과 같은 크기 */
 const DOT_RADIUS = 6
@@ -110,19 +102,6 @@ export function createStationDotLayer(): StationDotLayer {
       context.setTransform(ratio, 0, 0, ratio, 0, 0)
       context.clearRect(0, 0, width, height)
 
-      const rootStyle = getComputedStyle(document.documentElement)
-      const colors = new Map<CurrentCongestion, string>()
-      const colorOf = (congestion: CurrentCongestion) => {
-        // 혼잡도별 색은 그릴 때마다 한 번씩만 읽음
-        if (!colors.has(congestion)) {
-          colors.set(
-            congestion,
-            rootStyle.getPropertyValue(CONGESTION_COLOR_VAR[congestion]).trim(),
-          )
-        }
-        return colors.get(congestion)!
-      }
-
       this.offsets = this.stations.map((station) => {
         const offset = projection.fromCoordToOffset(new maps.LatLng(station.lat, station.lng))
         const x = offset.x - left
@@ -147,7 +126,7 @@ export function createStationDotLayer(): StationDotLayer {
         context.fill()
         context.beginPath()
         context.arc(x, y, DOT_INNER_RADIUS, 0, Math.PI * 2)
-        context.fillStyle = colorOf(station.congestion)
+        context.fillStyle = CONGESTION_COLOR[station.congestion]
         context.fill()
         return offset
       })

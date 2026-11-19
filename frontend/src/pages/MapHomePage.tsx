@@ -8,7 +8,11 @@ import { LocateButton } from '@/components/LocateButton'
 import { MapFallback } from '@/components/MapFallback'
 import { MapNotice } from '@/components/MapNotice'
 import { OnboardingDialog } from '@/components/OnboardingDialog'
-import { RecommendCard } from '@/components/RecommendCard'
+import {
+  RECOMMEND_CARD_HEIGHT_CLASS,
+  RecommendCard,
+  RecommendCardSkeleton,
+} from '@/components/RecommendCard'
 import { SearchBar } from '@/components/SearchBar'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { ZoomInNotice } from '@/components/ZoomInNotice'
@@ -20,7 +24,8 @@ import { useNaverMap } from '@/hooks/useNaverMap'
 import { useSheetCollapsedOffset } from '@/hooks/useSheetCollapsedOffset'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useMapView } from '@/hooks/useMapView'
-import { IS_GEOLOCATION_ENABLED, MAPO_CENTER } from '@/lib/constants'
+import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
+import { MAPO_CENTER } from '@/lib/constants'
 import { LOCATE_FAILURE_MESSAGE } from '@/lib/geolocation'
 import { hasSeenOnboarding, markOnboardingSeen } from '@/lib/onboarding'
 import { countActiveFilters } from '@/lib/stationFilter'
@@ -30,7 +35,15 @@ import type { Station } from '@/types/station'
 const RECOMMEND_MESSAGE = {
   error: '추천 충전소를 불러오지 못했습니다',
   empty: '추천할 충전소가 없습니다',
+  out_of_area: '현재 예측 서비스는 마포구만 지원해요',
 }
+
+/** 추천 시트 단계. 위에서부터 펼침(Top 3) · 접힘(첫 카드) · 최소(헤더만) */
+type SheetLevel = 'expanded' | 'collapsed' | 'minimized'
+const SHEET_LEVELS: SheetLevel[] = ['expanded', 'collapsed', 'minimized']
+
+/** 추천을 불러오는 동안 그리는 자리표시 카드 수 (Top 3) */
+const SKELETON_KEYS = ['skeleton-1', 'skeleton-2', 'skeleton-3']
 
 /** 안내 문구를 띄워 두는 시간 */
 const NOTICE_DURATION_MS = 3000
@@ -41,9 +54,14 @@ export function MapHomePage() {
   const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
   // 길찾기 화면의 "다른 추천 충전소 보기"로 오면 추천 시트를 펼친 채로 시작
   const location = useLocation()
-  const [isSheetExpanded, setIsSheetExpanded] = useState(
-    () => (location.state as { expandSheet?: boolean } | null)?.expandSheet === true,
+  const [sheetLevel, setSheetLevel] = useState<SheetLevel>(() =>
+    (location.state as { expandSheet?: boolean } | null)?.expandSheet === true
+      ? 'expanded'
+      : 'collapsed',
   )
+  const isSheetExpanded = sheetLevel === 'expanded'
+  /** 헤더까지만 남기고 카드를 모두 내린 상태. 지도를 넓게 볼 때 씀 */
+  const isSheetMinimized = sheetLevel === 'minimized'
 
   const { containerRef, map, status } = useNaverMap({ center: MAPO_CENTER, zoom: 14 })
   const {
@@ -63,6 +81,11 @@ export function MapHomePage() {
   }, [horizon])
   const openStation = useCallback(
     (stationId: string) => navigate(`/stations/${stationId}?horizon=${horizonRef.current}`),
+    [navigate],
+  )
+  // 추천 카드의 길찾기 버튼은 상세를 거치지 않고 바로 길찾기 화면으로 감
+  const openRoute = useCallback(
+    (stationId: string) => navigate(`/stations/${stationId}/route?horizon=${horizonRef.current}`),
     [navigate],
   )
   const handleMarkerSelect = useCallback(
@@ -115,25 +138,34 @@ export function MapHomePage() {
 
   // 펼침 · 접힘 · 손 뗐을 때만 애니메이션. 데이터가 와서 높이를 처음 잴 때 시트가 미끄러져 내려오지 않게 함
   const [isSheetAnimating, setIsSheetAnimating] = useState(false)
-  const setSheetExpanded = (expanded: boolean) => {
+  const changeSheetLevel = (level: SheetLevel) => {
     setIsSheetAnimating(true)
-    setIsSheetExpanded(expanded)
+    setSheetLevel(level)
+  }
+  /** 위로 끌면 한 단계 펼치고 아래로 끌면 한 단계 내림. 맨 끝 단계에서는 그대로 */
+  const moveSheetLevel = (step: -1 | 1) => {
+    const index = SHEET_LEVELS.indexOf(sheetLevel) + step
+    changeSheetLevel(SHEET_LEVELS[Math.min(Math.max(index, 0), SHEET_LEVELS.length - 1)])
   }
   const sheetDrag = useSheetDrag({
-    onDragUp: () => setSheetExpanded(true),
-    onDragDown: () => setSheetExpanded(false),
+    onDragUp: () => moveSheetLevel(-1),
+    onDragDown: () => moveSheetLevel(1),
     onRelease: () => setIsSheetAnimating(true),
   })
   // 시트는 항상 Top 3를 다 그리고, 접힌 상태에서는 첫 카드만 보이게 아래로 내려 둠
   const sheetRef = useRef<HTMLElement>(null)
   const [firstItem, setFirstItem] = useState<HTMLLIElement | null>(null)
   const collapsedOffset = useSheetCollapsedOffset(sheetRef, firstItem)
+  // 최소 단계는 헤더(손잡이 · 제목 · 시점 선택) 아래를 모두 내림
+  const [sheetHeader, setSheetHeader] = useState<HTMLDivElement | null>(null)
+  const minimizedOffset = useSheetCollapsedOffset(sheetRef, sheetHeader)
+  const levelOffset = { expanded: 0, collapsed: collapsedOffset, minimized: minimizedOffset }
   const sheetTranslate = Math.min(
-    Math.max((isSheetExpanded ? 0 : collapsedOffset) + sheetDrag.dragOffset, 0),
-    collapsedOffset,
+    Math.max(levelOffset[sheetLevel] + sheetDrag.dragOffset, 0),
+    minimizedOffset,
   )
-  /** 0 = 접힘, 1 = 펼침. 지도 어둡게 하는 정도에 씀 */
-  const expandProgress = collapsedOffset ? 1 - sheetTranslate / collapsedOffset : 0
+  /** 0 = 접힘 이하, 1 = 펼침. 지도 어둡게 하는 정도에 씀 */
+  const expandProgress = collapsedOffset ? Math.max(1 - sheetTranslate / collapsedOffset, 0) : 0
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col overflow-hidden bg-bg-map">
@@ -191,7 +223,7 @@ export function MapHomePage() {
           type="button"
           aria-label="추천 목록 닫기"
           tabIndex={isSheetExpanded ? 0 : -1}
-          onClick={() => setSheetExpanded(false)}
+          onClick={() => changeSheetLevel('collapsed')}
           style={{ opacity: expandProgress }}
           className={`absolute inset-0 bg-black/25 ${isSheetExpanded ? '' : 'pointer-events-none'} ${
             isSheetAnimating && !sheetDrag.isDragging ? 'transition-opacity duration-200' : ''
@@ -233,12 +265,15 @@ export function MapHomePage() {
               type="button"
               aria-label={isSheetExpanded ? '추천 목록 접기' : '추천 목록 펼치기'}
               aria-expanded={isSheetExpanded}
-              onClick={sheetDrag.ignoreClickAfterDrag(() => setSheetExpanded(!isSheetExpanded))}
+              // 펼침이면 접고, 접힘이면 펼침. 최소 단계에서는 첫 카드가 보이는 접힘으로 올림
+              onClick={sheetDrag.ignoreClickAfterDrag(() =>
+                changeSheetLevel(sheetLevel === 'collapsed' ? 'expanded' : 'collapsed'),
+              )}
               className="-my-2.5 flex w-full justify-center py-2.5"
             >
               <span className="h-1 w-10 rounded-[2px] bg-border-default" />
             </button>
-            <div className="flex w-full items-center justify-between">
+            <div ref={setSheetHeader} className="flex w-full items-center justify-between">
               {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
               <h2 className="flex items-center gap-1.5 text-[17px] font-bold">
                 <span aria-hidden className="size-2.5 rounded-full bg-marker-recommended" />
@@ -247,37 +282,50 @@ export function MapHomePage() {
               <HorizonSelector value={horizon} onChange={setHorizon} />
             </div>
           </div>
-          {recommendations?.length ? (
+          {recommendState === 'error' ||
+          recommendState === 'empty' ||
+          recommendState === 'out_of_area' ? (
+            <p
+              className={`flex w-full items-center justify-center rounded-lg bg-bg-subtle text-sm text-text-secondary ${RECOMMEND_CARD_HEIGHT_CLASS}`}
+            >
+              {RECOMMEND_MESSAGE[recommendState]}
+            </p>
+          ) : (
             <ul
+              aria-busy={!recommendations}
               className={`flex w-full flex-col gap-3 ${isSheetExpanded ? 'overflow-y-auto' : 'overflow-hidden'}`}
             >
-              {recommendations.map((recommendation, index) => (
-                <li
-                  key={recommendation.station.stationId}
-                  ref={index === 0 ? setFirstItem : undefined}
-                  // 접혀서 가려진 카드는 키보드 · 스크린리더에서도 숨김 (React 18은 inert 미지원)
-                  aria-hidden={!isSheetExpanded && index > 0}
-                >
-                  <RecommendCard
-                    tabIndex={!isSheetExpanded && index > 0 ? -1 : undefined}
-                    recommendation={recommendation}
-                    onClick={() => openStation(recommendation.station.stationId)}
-                  />
-                </li>
-              ))}
+              {recommendations
+                ? recommendations.map((recommendation, index) => (
+                    <li
+                      key={recommendation.station.stationId}
+                      ref={index === 0 ? setFirstItem : undefined}
+                      // 접혀서 가려진 카드는 키보드 · 스크린리더에서도 숨김 (React 18은 inert 미지원)
+                      aria-hidden={isSheetMinimized || (!isSheetExpanded && index > 0)}
+                    >
+                      <RecommendCard
+                        tabIndex={
+                          isSheetMinimized || (!isSheetExpanded && index > 0) ? -1 : undefined
+                        }
+                        recommendation={recommendation}
+                        onClick={() => openStation(recommendation.station.stationId)}
+                        onRouteClick={() => openRoute(recommendation.station.stationId)}
+                      />
+                    </li>
+                  ))
+                : // 불러오는 동안에도 카드 3장 자리를 같은 높이로 잡아 두어 데이터가 와도 시트 크기가 그대로임
+                  SKELETON_KEYS.map((key, index) => (
+                    <li key={key} ref={index === 0 ? setFirstItem : undefined} aria-hidden>
+                      <RecommendCardSkeleton />
+                    </li>
+                  ))}
               {/* 후보가 3곳 미만이면 짧은 배열로 옴 (UC-U06 E1) */}
-              {recommendations.length < 3 && (
+              {recommendations && recommendations.length < 3 && (
                 <li className="text-center text-[13px] text-text-secondary">
                   조건에 맞는 후보가 {recommendations.length}곳뿐이에요
                 </li>
               )}
             </ul>
-          ) : recommendState === 'error' || recommendState === 'empty' ? (
-            <p className="flex h-[118px] w-full items-center justify-center rounded-lg bg-bg-subtle text-sm text-text-secondary">
-              {RECOMMEND_MESSAGE[recommendState]}
-            </p>
-          ) : (
-            <div className="h-[118px] w-full animate-pulse rounded-lg bg-bg-subtle" />
           )}
         </section>
       </main>

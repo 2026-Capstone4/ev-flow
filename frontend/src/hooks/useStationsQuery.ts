@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { fetchRecommendations, fetchRoute, fetchStation, fetchStations } from '@/api/stations'
 import { isDefaultFilters } from '@/lib/stationFilter'
+import { loadStationsCache, saveStationsCache } from '@/lib/stationsCache'
 import type { LatLng } from '@/types/geo'
 import type { RecommendationFilters } from '@/types/station'
 
@@ -9,7 +10,15 @@ import type { RecommendationFilters } from '@/types/station'
 export function useStationsQuery() {
   return useQuery({
     queryKey: ['stations'],
-    queryFn: fetchStations,
+    queryFn: async () => {
+      const response = await fetchStations()
+      // 다음 방문 때 마커를 바로 그리도록 받을 때마다 저장
+      saveStationsCache(response)
+      return response
+    },
+    // 저장해 둔 목록으로 먼저 그림. 받은 시각을 0으로 둬서 바로 낡은 값으로 보고 곧장 새로 받음
+    initialData: () => loadStationsCache(),
+    initialDataUpdatedAt: 0,
   })
 }
 

@@ -18,6 +18,9 @@ const SORT_OPTIONS: { label: string; value: StationSortKey }[] = [
   { label: '대기 짧은순', value: 'wait' },
 ]
 
+// 검색어가 없을 때 한 번에 보여 주는 충전소 수
+const PAGE_SIZE = 30
+
 function parseSortKey(value: string | null): StationSortKey {
   return SORT_OPTIONS.find((option) => option.value === value)?.value ?? 'recommended'
 }
@@ -29,6 +32,7 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
   const sortKey = parseSortKey(searchParams.get('sort'))
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const updateParams = (next: { q?: string; sort?: StationSortKey }) => {
     const params = { q: query, sort: sortKey, ...next }
@@ -43,6 +47,8 @@ export function SearchPage() {
   const changeQuery = (value: string) => {
     setQuery(value)
     updateParams({ q: value })
+    // 검색어를 지우면 다시 처음 30곳부터 보여 줌
+    setVisibleCount(PAGE_SIZE)
   }
 
   const { results, isError } = useSearchData({
@@ -52,6 +58,9 @@ export function SearchPage() {
     horizon,
     sortKey,
   })
+  // 검색어가 있으면 찾은 결과를 모두, 없으면 정렬 순서대로 visibleCount곳까지만 보여 줌
+  const visibleResults = query ? results : results?.slice(0, visibleCount)
+  const hasMore = !!results && !!visibleResults && visibleResults.length < results.length
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
@@ -81,8 +90,12 @@ export function SearchPage() {
         </div>
       </header>
 
-      <section className="flex shrink-0 flex-col items-start gap-3 border-b border-border-default px-4 pt-2 pb-4">
-        <HorizonSelector value={horizon} onChange={setHorizon} />
+      {/* 시점은 모든 결과의 예측 기준을 바꾸는 필수 선택이라, 결과를 줄이는 필터 칩과 따로 세그먼트로 둠 */}
+      <div className="shrink-0 border-b border-border-default px-4 pt-2 pb-3">
+        <HorizonSelector value={horizon} onChange={setHorizon} variant="inline" />
+      </div>
+
+      <section className="flex shrink-0 flex-col items-start gap-3 border-b border-border-default px-4 pt-3 pb-4">
         <StationFilterOptions filters={filters} onChange={setFilters} />
         <FilterRow label="정렬">
           {SORT_OPTIONS.map(({ label, value }) => (
@@ -97,25 +110,38 @@ export function SearchPage() {
       </section>
 
       <main className="flex-1 overflow-y-auto">
-        {results ? (
+        {results && visibleResults ? (
           <>
             <p className="px-4 pt-4 pb-1 text-[13px] font-medium text-text-secondary">
               검색 결과 {results.length}곳 ·{' '}
               {horizon === 0 ? '지금 기준' : `${horizon}분 후 예측 기준`}
             </p>
             {results.length > 0 ? (
-              <ul>
-                {results.map((result) => (
-                  <li key={result.station.stationId}>
-                    <SearchResultRow
-                      result={result}
-                      onClick={() =>
-                        navigate(`/stations/${result.station.stationId}?horizon=${horizon}`)
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul>
+                  {visibleResults.map((result) => (
+                    <li key={result.station.stationId}>
+                      <SearchResultRow
+                        result={result}
+                        onClick={() =>
+                          navigate(`/stations/${result.station.stationId}?horizon=${horizon}`)
+                        }
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {hasMore && (
+                  <div className="px-4 py-4">
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                    >
+                      더보기 ({visibleResults.length}/{results.length})
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 pt-12 pb-6 text-center">
                 <p className="text-base font-bold">조건에 맞는 충전소가 없어요</p>
