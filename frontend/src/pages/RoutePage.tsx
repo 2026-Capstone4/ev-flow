@@ -13,8 +13,9 @@ import { formatWaitRange, NO_PREDICTION_LABEL } from '@ev-flow/core/lib/congesti
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { getHorizonWhen, parseHorizon } from '@ev-flow/core/lib/horizon'
 import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
-import { formatDistance } from '@ev-flow/core/lib/stationSearch'
+import { getRetryWaitText } from '@ev-flow/core/lib/rateLimit'
 import { openNaverMapApp } from '@/lib/openNaverMapApp'
+import { formatDistance } from '@ev-flow/core/lib/stationSearch'
 
 /** 경로 시트 높이 대략값. 경로가 시트에 가리지 않게 지도를 맞출 때 씀 */
 const ROUTE_SHEET_HEIGHT = 280
@@ -33,6 +34,8 @@ export function RoutePage() {
     isStationError,
     isRouteError,
     isRouteUnavailable,
+    isRouteRateLimited,
+    routeRetryAfterSeconds,
     retryRoute,
   } = useRouteData(userLocation, stationId, horizon)
 
@@ -99,9 +102,18 @@ export function RoutePage() {
             <>
               <p className="flex gap-2 rounded-sm bg-status-warning-bg px-3 py-2.5 text-[13px] text-status-warning">
                 <TriangleAlert aria-hidden size={16} strokeWidth={2} className="mt-px shrink-0" />
-                {isRouteUnavailable
-                  ? '경로를 찾을 수 없어요. 다른 충전소를 선택해 주세요.'
-                  : '경로를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}
+                {/* 경로 없음 · 호출 제한 · 그 밖의 오류 순으로 안내를 고름 */}
+                {isRouteUnavailable ? (
+                  '경로를 찾을 수 없어요. 다른 충전소를 선택해 주세요.'
+                ) : isRouteRateLimited ? (
+                  <span>
+                    요청이 많아 경로를 불러오지 못했어요.
+                    <br />
+                    {getRetryWaitText(routeRetryAfterSeconds)} 다시 시도해 주세요.
+                  </span>
+                ) : (
+                  '경로를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
+                )}
               </p>
               {!isRouteUnavailable && (
                 <Button variant="secondary" onClick={retryRoute}>

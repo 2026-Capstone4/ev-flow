@@ -28,6 +28,7 @@ import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { LOCATE_FAILURE_MESSAGE } from '@ev-flow/core/lib/geolocation'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
+import { getRetryWaitText } from '@ev-flow/core/lib/rateLimit'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
@@ -72,6 +73,7 @@ export function MapHomePage() {
     recommendations,
     recommendedIds,
     recommendState,
+    recommendRetryAfterSeconds,
   } = useMapHomeData(userLocation, horizon, filters)
 
   // 마커는 시점이 바뀔 때마다 다시 만들지 않도록 최신 시점만 ref로 읽음
@@ -284,11 +286,21 @@ export function MapHomePage() {
           </div>
           {recommendState === 'error' ||
           recommendState === 'empty' ||
-          recommendState === 'out_of_area' ? (
+          recommendState === 'out_of_area' ||
+          recommendState === 'rate_limited' ? (
             <p
-              className={`flex w-full items-center justify-center rounded-lg bg-bg-subtle text-sm text-text-secondary ${RECOMMEND_CARD_HEIGHT_CLASS}`}
+              className={`flex w-full flex-col items-center justify-center rounded-lg bg-bg-subtle text-center text-sm text-text-secondary ${RECOMMEND_CARD_HEIGHT_CLASS}`}
             >
-              {RECOMMEND_MESSAGE[recommendState]}
+              {/* 호출 제한이면 남은 시간을 넣어 두 줄로, 나머지는 정해진 한 줄 문구 */}
+              {recommendState === 'rate_limited' ? (
+                <>
+                  요청이 많아 추천을 불러오지 못했어요.
+                  <br />
+                  {getRetryWaitText(recommendRetryAfterSeconds)} 다시 시도해 주세요.
+                </>
+              ) : (
+                RECOMMEND_MESSAGE[recommendState]
+              )}
             </p>
           ) : (
             <ul

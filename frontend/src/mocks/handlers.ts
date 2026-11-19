@@ -79,6 +79,38 @@ const stationHandlers = [
   }),
 ]
 
+/** 추천 · 길찾기를 합쳐 이 시간 안에 이만큼 넘게 부르면 429 RATE_LIMITED (화면 확인용, 실제 기준은 미정) */
+const MOCK_RATE_LIMIT = { maxCalls: 10, windowMs: 60_000 }
+
+/** 최근 추천 · 길찾기 호출 시각(ms). 새로고침하면 초기화됨 */
+const recentCalls: number[] = []
+
+/**
+ * 호출 제한을 넘었으면 429 응답을, 아니면 이번 호출을 기록하고 null을 돌려준다.
+ * Retry-After는 가장 오래된 호출이 기준 시간 밖으로 나갈 때까지 남은 초
+ */
+function checkMockRateLimit() {
+  const now = Date.now()
+  // 기준 시간보다 오래된 호출은 세지 않도록 앞에서부터 버림
+  while (recentCalls.length > 0 && recentCalls[0] <= now - MOCK_RATE_LIMIT.windowMs)
+    recentCalls.shift()
+  // 한도를 채웠으면 기록하지 않고 429 - 추천 시트 · 길찾기 화면의 호출 제한 안내로 이어짐
+  if (recentCalls.length >= MOCK_RATE_LIMIT.maxCalls) {
+    const retryAfter = Math.ceil((recentCalls[0] + MOCK_RATE_LIMIT.windowMs - now) / 1000)
+    return HttpResponse.json<ApiErrorBody>(
+      {
+        error: {
+          code: 'RATE_LIMITED',
+          message: '요청이 많아 잠시 후 다시 시도해 주세요.',
+        },
+      },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    )
+  }
+  recentCalls.push(now)
+  return null
+}
+
 /**
  * 백엔드에 아직 없는 API(추천 · 길찾기) 핸들러를 만든다. 혼합 모드에서도 Mock으로 응답함.
  * 충전소 목록을 어디서 가져올지(getStations)만 바꿔 끼워서 전체 · 혼합 모드가 같은 핸들러를 쓴다
@@ -88,6 +120,9 @@ function createUnimplementedHandlers(getStations: StationSource) {
     // 추천 충전소. 내 위치와 필터를 받아 시점(지금 · 15분 후 등)마다 Top 3를 만들어 돌려줌
     http.post<never, RecommendationsRequest>('/api/v1/recommendations', async ({ request }) => {
       const { lat, lng, filters } = await request.json()
+      const limited = checkMockRateLimit()
+      // 호출 제한을 넘었으면 추천을 만들지 않고 429 그대로
+      if (limited) return limited
       // 출발 위치가 마포구 밖이면 실제 서버처럼 422 - 추천 시트에 마포구만 지원한다는 안내가 뜸
       if (!isInMapo({ lat, lng })) {
         await delay(300)
@@ -119,6 +154,9 @@ function createUnimplementedHandlers(getStations: StationSource) {
       '/api/v1/routes',
       async ({ request }) => {
         const { origin, stationId } = await request.json()
+        const limited = checkMockRateLimit()
+        // 호출 제한을 넘었으면 경로를 만들지 않고 429 그대로
+        if (limited) return limited
         const stations = await getStations()
         // 충전소 목록을 못 받았으면 도착지 좌표를 알 수 없으니 503
         if (!stations) return HttpResponse.json(DATA_UNAVAILABLE, { status: 503 })
