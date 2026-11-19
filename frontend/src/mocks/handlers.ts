@@ -1,6 +1,6 @@
 import { bypass, delay, http, HttpResponse, type DefaultBodyType, type PathParams } from 'msw'
-import { isInMapo } from '@/lib/coverage'
-import { HORIZONS } from '@/lib/horizon'
+import { isInMapo } from '@ev-flow/core/lib/coverage'
+import { HORIZONS } from '@ev-flow/core/lib/horizon'
 import {
   buildAdminChargers,
   buildCollectionTargets,
@@ -22,8 +22,11 @@ import {
   toKstIso,
 } from '@/mocks/data/stations'
 import type { AdminPeriod, AdminRegion, AuthSession, LoginRequest } from '@/types/admin'
-import type { ApiErrorBody } from '@/types/api'
-import type { ServiceAreaChargersResponse, ServiceAreasResponse } from '@/types/serviceArea'
+import type { ApiErrorBody } from '@ev-flow/core/types/api'
+import type {
+  ServiceAreaChargersResponse,
+  ServiceAreasResponse,
+} from '@ev-flow/core/types/serviceArea'
 import type {
   RecommendationsRequest,
   RecommendationsResponse,
@@ -32,7 +35,7 @@ import type {
   Station,
   StationDetailResponse,
   StationsResponse,
-} from '@/types/station'
+} from '@ev-flow/core/types/station'
 
 /**
  * 추천 · 길찾기 핸들러에 충전소 목록을 넘겨주는 함수 모양.

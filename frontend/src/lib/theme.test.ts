@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COLORS } from '@/lib/theme'
+import { COLORS } from '@ev-flow/core/lib/theme'
 import css from '@/styles/index.css?raw'
 
 /** index.css @theme의 --color-이름: 값 목록 */

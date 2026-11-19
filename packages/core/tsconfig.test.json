@@ -1,0 +1,9 @@
+{
+  // 테스트 파일 타입 검사. 테스트는 jsdom(브라우저 흉내)에서 돌아 DOM 타입을 씀
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src"],
+  "exclude": []
+}

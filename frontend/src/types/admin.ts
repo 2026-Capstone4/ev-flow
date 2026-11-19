@@ -1,5 +1,5 @@
 // 운영자 API 명세(docs/api/admin.md 7~14번) 기준. 응답 필드 이름을 바꾸지 않고 그대로 씀 (API-05)
-import type { ChargerStatus } from '@/types/station'
+import type { ChargerStatus } from '@ev-flow/core/types/station'
 
 export type AdminRegion = 'all' | 'city' | 'service_area'
 

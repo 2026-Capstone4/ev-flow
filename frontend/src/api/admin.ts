@@ -1,4 +1,4 @@
-import { api } from '@/api/client'
+import { api } from '@ev-flow/core/api/client'
 import type {
   AdminChargersResponse,
   AdminPeriod,

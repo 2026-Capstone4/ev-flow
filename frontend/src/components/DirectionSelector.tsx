@@ -1,5 +1,5 @@
-import { DIRECTION_LABEL } from '@/lib/serviceArea'
-import type { Direction } from '@/types/serviceArea'
+import { DIRECTION_LABEL } from '@ev-flow/core/lib/serviceArea'
+import type { Direction } from '@ev-flow/core/types/serviceArea'
 
 const OPTIONS: Direction[] = ['up', 'down']
 

@@ -1,7 +1,7 @@
 import { CollectionHealthLabel } from '@/components/CollectionHealthLabel'
 import { type CollectionHealth } from '@/lib/admin/collection'
 import { CHARGER_REGION_LABEL } from '@/lib/admin/common'
-import { formatClock, formatElapsed } from '@/lib/formatUpdatedAt'
+import { formatClock, formatElapsed } from '@ev-flow/core/lib/formatUpdatedAt'
 import type { CollectionTarget } from '@/types/admin'
 
 type CollectionTargetCardProps = {

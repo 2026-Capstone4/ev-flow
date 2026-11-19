@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { getApiErrorCode, getRetryAfterSeconds } from '@/api/errors'
+import { getApiErrorCode, getRetryAfterSeconds } from '@ev-flow/core/api/errors'
 import { Button } from '@/components/Button'
 import { useAuthMeQuery, useLoginMutation } from '@/hooks/useAdminAuth'
 import { getLoginErrorMessage } from '@/lib/admin/auth'

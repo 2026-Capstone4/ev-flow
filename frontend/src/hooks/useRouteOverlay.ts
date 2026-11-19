@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { LatLng } from '@/types/geo'
+import type { LatLng } from '@ev-flow/core/types/geo'
 
 /** 브랜드 색(--color-brand-primary). 지도 SDK는 CSS 변수를 못 읽어 값으로 넣음 */
 const ROUTE_COLOR = '#2563eb'

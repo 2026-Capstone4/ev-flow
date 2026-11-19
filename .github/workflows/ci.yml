@@ -62,8 +62,8 @@ jobs:
           echo "바뀐 파일:"
           echo "$changed"
 
-          # frontend/ 아래 파일이나 이 워크플로 파일이 바뀌면 FE 검사를 돌림
-          if echo "$changed" | grep -qE '^(frontend/|\.github/workflows/ci\.yml$)'; then
+          # 웹(frontend/) · 공용 코드(packages/) · 워크스페이스 설정(루트 package.json · lock) · 이 워크플로 파일이 바뀌면 FE 검사를 돌림
+          if echo "$changed" | grep -qE '^(frontend/|packages/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.prettierrc\.json$|\.github/workflows/ci\.yml$)'; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend=false" >> "$GITHUB_OUTPUT"
@@ -76,7 +76,8 @@ jobs:
             echo "backend=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # 프론트엔드 검사 — lint · 포맷 · 타입 · 테스트 · 빌드를 차례로 실행
+  # 프론트엔드 검사 — 웹(frontend)과 공용 코드(packages/core)의 lint · 포맷 · 타입 · 테스트 · 빌드를 차례로 실행
+  # pnpm 워크스페이스 루트에서 pnpm -r로 패키지마다 실행 (루트 package.json scripts)
   frontend-check:
     needs: changes
     # FE가 안 바뀐 PR에서는 건너뜀 → GitHub은 건너뛴 job을 통과로 기록함
@@ -84,10 +85,6 @@ jobs:
     runs-on: ubuntu-latest
     # 설치가 멈추는 등 이상 상황에서 무료 실행 시간을 낭비하지 않도록 10분에서 끊음
     timeout-minutes: 10
-    defaults:
-      run:
-        # 모든 run 단계를 frontend/ 폴더에서 실행
-        working-directory: frontend
 
     steps:
       - name: 코드 받기
@@ -99,14 +96,14 @@ jobs:
         with:
           node-version-file: frontend/.nvmrc
 
-      # pnpm 버전은 package.json의 packageManager를 따름
+      # pnpm 버전은 루트 package.json의 packageManager를 따름
       # cache: lock 파일 내용이 같으면 이전 실행에서 받은 패키지를 재사용해 설치 시간을 줄임
       - name: pnpm 설치
         uses: pnpm/action-setup@v6
         with:
-          package_json_file: frontend/package.json
+          package_json_file: package.json
           cache: true
-          cache_dependency_path: frontend/pnpm-lock.yaml
+          cache_dependency_path: pnpm-lock.yaml
 
       # lock 파일과 package.json이 맞지 않으면 설치를 고치지 않고 실패시킴
       - name: 패키지 설치

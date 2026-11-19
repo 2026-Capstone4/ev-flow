@@ -31,7 +31,7 @@
 
 | 결정 | 이유 | 세부 |
 |---|---|---|
-| ✅ **모노레포** (`frontend/` `backend/` `ml/` `infra/` `docs/`) | API 명세 · Docker Compose · CI 설정을 한 저장소에서 관리하고 파트 간 변경을 한 PR에서 추적 | [README](../README.md) |
+| ✅ **모노레포** (`frontend/` `packages/` `backend/` `ml/` `infra/` `docs/`) — 프론트는 pnpm 워크스페이스(`frontend` + 공용 `packages/core`, 2026-11-19) | API 명세 · Docker Compose · CI 설정을 한 저장소에서 관리하고 파트 간 변경을 한 PR에서 추적 | [README](../README.md) |
 | ✅ **GitHub Organization [`2026-Capstone4`](https://github.com/2026-Capstone4) 소유, public 저장소 [`ev-flow`](https://github.com/2026-Capstone4/ev-flow)**, 팀원 4명 Organization 멤버 | 특정 개인 계정에 묶이지 않고 팀 단위로 저장소 · 권한 · Secrets · GHCR 이미지를 관리. 무료 플랜 private 저장소는 브랜치 보호가 적용되지 않으므로 public으로 `main` · `develop` 직접 push 금지를 강제. 저장소 설정 · Secrets는 Organization Owner가 처리 (인프라 · CI 담당 장승민) | [setup/repository.md](setup/repository.md) |
 | ✅ **public 저장소 보안 규칙** — 비밀값 · 데이터 · 모델 파일 커밋 금지, Secret scanning · Push protection 사용 | 코드와 커밋 이력이 모두 공개됨 | [code-common.md 비밀값](conventions/code-common.md#비밀값--환경-변수) |
 | ✅ **브랜치**: `main` / `develop` / `feat/*` / `fix/*` / `hotfix/*` / `exp/*`(실험, 병합 안 함), 파트 접두어 사용. 2026-11-19 기능 브랜치를 `feature/*` → `feat/*`로 바꿈 | 인원 4명 규모에 맞는 단순한 흐름, 브랜치 이름만으로 파트 구분 | [git.md 브랜치](conventions/git.md#브랜치) |
@@ -112,7 +112,7 @@
 | **레포 전체 워크플로 `ci.yml` 하나, 파트별 job** — `changes`(바뀐 파트 확인) → `<파트>-check`(바뀐 파트만 실행) → `ci-result`(결과 모음) | 필수 체크를 쓰려면 모든 PR에서 결과가 남아야 함. 파트별 파일에 경로 필터를 걸면 다른 파트 PR에서 워크플로가 아예 안 돌아 결과가 없고 병합이 막힘. 파트별 파일을 모든 PR에서 돌리면 BE PR에 `frontend-ci`가 도는 식으로 이름과 하는 일이 어긋남 |
 | **ruleset 필수 체크는 `ci-result` 하나만 지정** — 앞 job에 실패 · 취소가 있으면 실패, 통과 · 건너뜀은 통과 | 파트를 추가해도 ruleset을 고치지 않음. 건너뛴 job은 GitHub이 통과로 기록 |
 | **`develop` · `main` 대상 모든 PR에서 실행**(경로 필터 없음) + 수동 실행(`workflow_dispatch`, 모든 파트 검사). 바뀐 파트는 PR 브랜치가 갈라진 지점과 `git diff`로 비교 | 다른 PR이 develop에 먼저 들어와도 그 변경이 섞이지 않음. 외부 Action(`dorny/paths-filter`) 의존 없음 |
-| **FE 검사(`frontend-check`)**: `frontend/**` 또는 `ci.yml`이 바뀌면 `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`를 차례로 실행 | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패. `ci.yml`이 바뀌면 모든 파트 검사 |
+| **FE 검사(`frontend-check`)**: `frontend/**` · `packages/**` · 루트 워크스페이스 설정(`package.json` · `pnpm-lock.yaml` · `pnpm-workspace.yaml` · `.prettierrc.json`) 또는 `ci.yml`이 바뀌면 루트에서 `pnpm install --frozen-lockfile` → `lint` → `format:check` → `typecheck` → `test` → `build`를 차례로 실행 (각각 `pnpm -r`로 웹 · 공용 코드 모두) | 검사가 각 1~2초라 job을 나누면 설치만 반복됨. lock 파일과 다르게 설치되면 실패. `ci.yml`이 바뀌면 모든 파트 검사 |
 | **BE 검사(`backend-check`)**: `backend/**` 또는 `ci.yml`이 바뀌면 Python 3.11에서 `pip install -r requirements-dev.txt` → `ruff check` → `ruff format --check` → `pytest`를 차례로 실행 | Python은 운영 이미지(Dockerfile)와 같은 버전, Ruff · pytest는 `requirements-dev.txt`에 고정해 로컬과 CI 결과가 같음. 테스트는 DB · `.env` 없이 도는 판정 로직 단위 테스트 |
 | **Node · pnpm 버전은 YAML에 쓰지 않음** — `frontend/.nvmrc` · `package.json`의 `packageManager`를 읽음 | 로컬과 CI 버전이 항상 같음 |
 | **환경 변수 · Secrets 없이 빌드** | Mock을 뺀 배포용 번들이 빌드되는지 확인. 지도 Client ID는 빌드에 필요 없음 |
@@ -201,3 +201,4 @@
 | 2026-11-16 | `GET /stations`에 서울(마포 제외) 충전소를 **기본으로 포함** — 별도 파라미터 없이 마포 + 서울을 한 번에 줌. 충전소에 `predictionAvailable`(서울 `false`, 예측 값 전부 `null`) 추가, 최상위 기준 시각은 두 수집 회차 중 오래된 쪽(서울 확대 설계 C안), 서울 회차가 없으면 마포만. 응답 캐시는 넣지 않음 — 로컬 실측 1,628곳 74ms · gzip 84KB로 충분히 빠름. 프론트 서울 화면이 올라가기 전까지 지도에 서울 마커가 그대로 보이는 것은 감수함 | 장승민 |
 | 2026-11-19 | 추천 시점 기준 확정(REC-006) — 15 · 30분은 **h분 후 출발**. 2026-11-15의 "h분 후 도착" 제안을 바꿈. 도착 시각(h + 이동시간)에 맞는 예측 지평을 쓰므로 추천 모듈의 지금 출발 계산에 출발 시점만 더하면 됨. **지금 출발(0분)은 실시간 상태만** 쓰는 11-15 제안대로 확정 — 대기값 · `source`는 `null`, 화면의 지금 출발(실시간만)과 같은 기준. ⏳ 추천 모듈에 출발 시점(h) 입력 추가는 AI 팀 | 김무겸 |
 | 2026-11-19 | 브랜치 규칙 정리 — 기능 브랜치 이름을 `feature/*` → **`feat/*`**로 바꿈 (커밋 type `feat`와 맞추고, 최근 작업이 이미 `feat/*`로 진행됨). 실험 브랜치 `exp/*`(develop에 병합하지 않음)와 RN 앱 전용 파트 `app`(웹 · 공용 코드는 `fe`)을 추가. 이미 만든 `feature/*` 브랜치는 그대로 둬도 됨 | 김무겸 |
+| 2026-11-19 | RN 전환 1단계 — 프론트를 **pnpm 워크스페이스**로 바꾸고 웹 · 앱 공용 코드를 `packages/core`(`@ev-flow/core`)로 분리. 타입 · 판단 함수 · API 호출 · 쿼리 훅 · 화면 데이터 훅을 옮기고, 운영자 코드 · 지도 SDK · 브라우저 전용 코드는 웹에 둠. core는 빌드 없이 소스를 바로 가져다 쓰고, DOM 타입 없이 타입 검사해 브라우저 전역을 쓰면 오류가 남. lock 파일은 루트 하나로 합침 (패키지 버전 변화 없음) | 김무겸 |
