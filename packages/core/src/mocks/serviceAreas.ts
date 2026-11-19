@@ -1,6 +1,6 @@
-import { toKstIso } from '@/mocks/data/stations'
-import type { Direction, ServiceArea, ServiceAreaCharger } from '@ev-flow/core/types/serviceArea'
-import type { ChargerStatus, ConnectorType, DataQuality } from '@ev-flow/core/types/station'
+import { toKstIso } from './stations'
+import type { Direction, ServiceArea, ServiceAreaCharger } from '../types/serviceArea'
+import type { ChargerStatus, ConnectorType, DataQuality } from '../types/station'
 
 type MockServiceArea = {
   name: string

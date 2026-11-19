@@ -1,6 +1,6 @@
-import { getDistanceMeters } from '@ev-flow/core/lib/distance'
-import type { LatLng } from '@ev-flow/core/types/geo'
-import type { RouteResponse, Station } from '@ev-flow/core/types/station'
+import { getDistanceMeters } from '../lib/distance'
+import type { LatLng } from '../types/geo'
+import type { RouteResponse, Station } from '../types/station'
 
 const METERS_PER_MINUTE = 350
 

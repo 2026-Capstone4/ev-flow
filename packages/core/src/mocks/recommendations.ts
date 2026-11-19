@@ -1,6 +1,6 @@
-import { getDistanceMeters } from '@ev-flow/core/lib/distance'
-import { DEFAULT_FILTERS, matchesFilters } from '@ev-flow/core/lib/stationFilter'
-import type { LatLng } from '@ev-flow/core/types/geo'
+import { getDistanceMeters } from '../lib/distance'
+import { DEFAULT_FILTERS, matchesFilters } from '../lib/stationFilter'
+import type { LatLng } from '../types/geo'
 import type {
   HorizonMinutes,
   HorizonRecommendations,
@@ -8,7 +8,7 @@ import type {
   Recommendation,
   RecommendationFilters,
   Station,
-} from '@ev-flow/core/types/station'
+} from '../types/station'
 
 // 실제 추천 점수 계산식은 미정이라 혼잡도 → 이동시간 순으로만 정렬
 
