@@ -97,6 +97,54 @@ ml 호출 타임아웃은 짧게 둔다 (🟡 10초). 실패해도 수집 결과
 
 - 값이 하나도 없는 충전소는 넣지 않는다. 크기는 약 85KB (로컬 10월 데이터 63개소 기준)
 
+## 체크포인트 producer
+
+ml이 대기시간을 계산할 때 과거 이력을 매번 읽지 않도록, 회차마다 기점(9/23)부터의 요약을 `ml_checkpoint.history_checkpoints`에 게시한다 ([database.md](database.md#ml-체크포인트-저장소-ml_checkpoint)). 계산 코드는 AI v3.1 패키지(`maintain_checkpoint.py`)를 그대로 쓰고, 백엔드는 실행 · 연결만 맡는다.
+
+```
+collector (도심 SUCCESS · PARTIAL 커밋, 저장 1행 이상)
+  → POST http://producer:8002/runs/{run_id}       (app/collector/checkpoint.py, 타임아웃 60초)
+      producer 컨테이너 (producer/server.py, 단일 스레드)
+        → 회차마다 새 하위 프로세스: maintain_checkpoint.py --run-id N --publish-postgres
+  → refresh_predictions (ml 호출, 기존 그대로)
+```
+
+| producer 응답 | 뜻 | collector |
+|---|---|---|
+| 200 | 게시됨 (`atomic_publish`) 또는 이미 같은 내용 (`duplicate_noop`) | 정상 로그 |
+| 409 | 다른 작업 중 | 5초 뒤 같은 회차 재시도, 최대 2번 |
+| 503 `checkpoint_not_initialized` | 최초 구축 전 | 경고 로그 |
+| 503 `rebuild_required` | revision이 올라감(#89 hook 등) → 재구축 필요 | 경고 로그 |
+| 504 · 500 | 시간 초과(100초) · 그 밖의 오류 | 경고 로그 |
+
+producer가 실패해도 수집 · 예측은 그대로 진행한다. 자동 재구축은 하지 않는다 — 재구축은 약 1분 · 최대 약 140MiB를 쓰므로 운영자가 실행한다.
+
+### 서버 준비 (1회, 운영자)
+
+1. AI 패키지를 `ml/package/`에 푼다 (저장소에는 없음 — 모델 파일과 같은 방식). producer가 `/package`로 읽기 전용 마운트
+2. `evflow_ckpt_reader` · `evflow_ckpt_writer`에 비밀번호 · LOGIN 설정 (`evflow_ml_reader`와 같은 방식)
+3. `backend/.env`에 `EVFLOW_CKPT_READER_DSN` · `EVFLOW_CKPT_WRITER_DSN` · `EVFLOW_SOURCE_ID=evflow-prod` 추가
+4. 배포(`deploy.sh --with-collector`) 후 최초 구축 — `RUN_ID`는 `finished_at`이 있는 최근 도심 SUCCESS 회차
+
+```bash
+cd /home/ubuntu/ev-flow/backend && docker compose -f docker-compose.yml run --rm --no-deps -w /package producer \
+  python -B maintain_checkpoint.py --run-id "$RUN_ID" --initialize --publish-postgres --checkpoint-dir /state/evflow
+```
+
+재구축(503 `rebuild_required`)도 같은 명령을 최신 도심 회차로 실행한다. 상태 볼륨(`evflow_checkpoint_state`)을 잃었을 때도 같다.
+
+### 로컬 검증 (2026-11-19)
+
+`evflow_runs_test` 복제본(9/23~10/24, 소급 회차라 10/24 오후 도심 SUCCESS 59회차에 `finished_at`을 넣어 실시간 회차로 만듦), 맥(arm64) Docker, 384MiB · swap 0
+
+| 단계 | 결과 |
+|---|---|
+| 최초 구축 (run 9030, 158.7만 행) | 59.6초 · 최대 128MiB · `atomic_publish` |
+| 증분 39회차 (collector 함수 → producer HTTP) | 실패 0 · 회차당 중앙값 0.57초 · 최대 0.64초, 서버 컨테이너 최대 127MiB |
+| 같은 회차 다시 · 지나간 회차 다시 | `duplicate_noop` (최신 상태 유지) |
+| FAILED 회차 | 500 (collector는 보내지 않음) |
+| `invalidate_history` 뒤 | 503 `checkpoint_incompatible_source_revision` → 재구축 60.7초 · 최대 136MiB → 다시 200 |
+
 ## 미정
 
 모델을 받으면 AI 팀(김서현 · 이상윤)과 확인해 이 문서를 고친다.

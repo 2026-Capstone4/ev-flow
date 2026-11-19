@@ -1,0 +1,12 @@
+# AI v3.1 패키지 requirements-producer-linux.txt와 같은 버전 (CPython 3.11 / Linux amd64)
+# producer는 XGBoost · SciPy · scikit-learn · FastAPI가 필요 없음 - 패키지가 바뀌면 이 목록도 같이 맞춤
+numpy==2.4.6
+pandas==2.2.3
+pyarrow==25.0.1
+psycopg[binary]==3.3.9
+# 간접 의존성 - AI가 시험한 runtime-constraints-linux.txt의 해당 버전으로 고정
+psycopg-binary==3.3.9
+python-dateutil==4.0.0
+pytz==2026.6
+tzdata==2026.6
+typing-extensions==4.16.0
