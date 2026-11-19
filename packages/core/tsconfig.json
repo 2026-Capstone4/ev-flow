@@ -1,0 +1,26 @@
+{
+  // 공용 코드 타입 검사. 웹 · 앱 어디서나 돌아야 하므로 브라우저(DOM) 타입을 넣지 않음
+  // → window · document · localStorage · navigator를 쓰면 타입 오류가 남
+  // 두 플랫폼에 다 있는 전역(타이머 · console · URLSearchParams)만 src/globals.d.ts에 적어 둠
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

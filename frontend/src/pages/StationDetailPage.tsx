@@ -7,11 +7,11 @@ import { CongestionBadge } from '@/components/CongestionBadge'
 import { PredictionTile } from '@/components/PredictionTile'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { WaitRangeBar } from '@/components/WaitRangeBar'
-import { useNow } from '@/hooks/useNow'
-import { useStationDetailData } from '@/hooks/useStationDetailData'
-import { formatWaitRange, NO_PREDICTION_LABEL } from '@/lib/congestion'
-import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@/lib/horizon'
-import type { HorizonMinutes } from '@/types/station'
+import { useNow } from '@ev-flow/core/hooks/useNow'
+import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
+import { formatWaitRange, NO_PREDICTION_LABEL } from '@ev-flow/core/lib/congestion'
+import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
+import type { HorizonMinutes } from '@ev-flow/core/types/station'
 
 export function StationDetailPage() {
   const navigate = useNavigate()

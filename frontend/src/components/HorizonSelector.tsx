@@ -1,5 +1,5 @@
-import { getHorizonLabel, HORIZONS } from '@/lib/horizon'
-import type { HorizonMinutes } from '@/types/station'
+import { getHorizonLabel, HORIZONS } from '@ev-flow/core/lib/horizon'
+import type { HorizonMinutes } from '@ev-flow/core/types/station'
 
 type HorizonSelectorProps = {
   value: HorizonMinutes

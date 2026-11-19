@@ -1,4 +1,4 @@
-import { HORIZONS, toCurrentPrediction } from '@/lib/horizon'
+import { HORIZONS, toCurrentPrediction } from '@ev-flow/core/lib/horizon'
 import type {
   ApiHorizonMinutes,
   Charger,
@@ -11,7 +11,7 @@ import type {
   Prediction,
   Station,
   StationDetail,
-} from '@/types/station'
+} from '@ev-flow/core/types/station'
 
 type MockStation = Omit<
   Station,

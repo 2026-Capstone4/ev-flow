@@ -1,6 +1,6 @@
 import { CongestionBadge } from '@/components/CongestionBadge'
-import { formatWaitTime } from '@/lib/congestion'
-import { formatDistance, type StationSearchResult } from '@/lib/stationSearch'
+import { formatWaitTime } from '@ev-flow/core/lib/congestion'
+import { formatDistance, type StationSearchResult } from '@ev-flow/core/lib/stationSearch'
 
 type SearchResultRowProps = {
   result: StationSearchResult

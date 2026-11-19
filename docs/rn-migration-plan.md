@@ -149,7 +149,23 @@
 - ✅ 색 토큰을 TS 상수 `lib/theme.ts`(`COLORS`, `CONGESTION_COLOR`)로 옮김. 웹 CSS `@theme`과 값이 같은지 `theme.test.ts`가 확인 (#115)
 - ✅ 환경 변수 읽기를 `lib/config.ts`로 모음 — 공용 코드가 읽는 `API_BASE_URL` · `IS_GEOLOCATION_ENABLED`만. 웹 전용 값(지도 Client ID, Mock 방식, 개발 모드)은 웹 코드에서 직접 읽음 (#115)
 
-### 1단계: 공용 코드 분리
+### 1단계: 공용 코드 분리 — ✅ 완료 (2026-11-19)
+
+결과 요약
+- 루트 pnpm 워크스페이스(`frontend` + `packages/*`), lock 파일은 루트 하나 (기존 lock을 옮겨 패키지 버전 변화 없음)
+- `packages/core`(`@ev-flow/core`): 빌드 없이 소스를 바로 씀. 가져오기는 `@ev-flow/core/<폴더>/<파일>` (`package.json` `exports`), core 안에서는 상대 경로
+- core는 DOM 타입 없이 타입 검사 → `window` · `document` · `localStorage` · `navigator`를 쓰면 오류. 두 플랫폼에 다 있는 전역만 `src/globals.d.ts`에 둠 (타이머 · `URLSearchParams`)
+- 플랫폼에 묶인 부분: API 주소는 `setApiBaseUrl`로 넘김(웹 `main.tsx`), 저장소는 `localStorage`가 없으면 저장 안 함(`lib/storage.ts`), 딥링크 여는 함수는 웹 `lib/openNaverMapApp.ts`, 쿼리 기본값은 core `app/queryDefaults.ts`
+- 웹에 남긴 것: 운영자 코드, 지도 SDK 훅, `useCurrentLocation` · `useSheet*`, `lib/config.ts`(환경 변수), `mocks/`
+- 웹 Vite는 `resolve.dedupe`(React · TanStack Query 한 벌), Tailwind는 `@source`로 core 안 클래스도 훑음 → 빌드 결과 CSS는 이전과 같고 JS는 0.1kB 차이
+
+Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레이터 + Expo Go)
+- 기본 설정 그대로 core를 가져다 쓰면 **TanStack Query가 두 벌** 들어감 — core 폴더 기준으로 찾으면 웹 버전(React 18용)이 잡힘. 이러면 core 훅이 앱의 `QueryClientProvider`를 못 찾음
+- `mobile/metro.config.js`에서 `react` · `react-native` · `@tanstack/react-query`를 앱 폴더 기준으로 찾게 하면 한 벌로 맞춰짐 (아래 2단계)
+- 이 설정으로 core `useMapHomeData`가 실제 서버(`evflowkr.app`)에서 충전소 1,622곳을 받아 옴. RN `URLSearchParams`도 딥링크 띄어쓰기 `%20` 정상, `localStorage` 없는 환경에서 오류 없음
+- `node-linker` 변경(hoisted)은 필요 없었음 (pnpm 기본 isolated 그대로)
+
+계획 (당시 그대로)
 
 - pnpm 워크스페이스에 `packages/core` 생성 → `types` · `lib` · `api` · 쿼리 훅 · 화면 데이터 훅 · `MapViewProvider` 이동 (운영자 전용 코드는 웹에 그대로 둠)
 - `queryClient.ts`의 401 처리(로그인 상태 다시 확인)는 운영자 전용이라 웹 쪽 설정으로 남기고, 공용에는 폴링 · 재시도 기본값만 둠
@@ -165,6 +181,23 @@
 ### 2단계: Expo 앱 골격
 
 - `mobile/`에 Expo + Expo Router, dev build (네이티브 지도 모듈 때문에 Expo Go 불가)
+- **`mobile/metro.config.js` 필수** — 공용 코드가 가져오는 React · TanStack Query가 앱 것과 한 벌이 되게 함 (1단계 Expo 확인)
+  ```js
+  const path = require('path')
+  const { getDefaultConfig } = require('expo/metro-config')
+  const config = getDefaultConfig(__dirname)
+  const SINGLETONS = ['react', 'react-native', '@tanstack/react-query']
+  const APP_ENTRY = path.join(__dirname, 'index.ts')
+  config.resolver.resolveRequest = (context, moduleName, platform) => {
+    const isSingleton = SINGLETONS.some((name) => moduleName === name || moduleName.startsWith(`${name}/`))
+    // 한 벌이어야 하는 패키지는 앱 폴더에서 가져온 것처럼 찾음
+    if (isSingleton) return context.resolveRequest({ ...context, originModulePath: APP_ENTRY }, moduleName, platform)
+    return context.resolveRequest(context, moduleName, platform)
+  }
+  module.exports = config
+  ```
+  - 확인: `npx expo export --platform ios --dev` 번들에서 `@tanstack+react-query@` 경로가 하나뿐인지 봄
+- `pnpm-workspace.yaml`에 `mobile` 추가, 앱 시작 때 `setApiBaseUrl('https://evflowkr.app/api/v1')`
 - `queryClient`에 `AppState` · `NetInfo` 연결, 화면 포커스별 폴링 중단 방식 정하기
 - API 절대 URL 설정, 폰트 · 아이콘, Mock(axios adapter + `mocks/data`)
 
@@ -198,7 +231,7 @@
 | 라우터 | Expo Router | 파일 기반, 웹 라우트 구조와 비슷 |
 | 폴더 구조 | `packages/core` + `frontend/`(웹, 이름 유지) + `mobile/` | `frontend/` 이름을 바꾸면 CI · 문서 · Nginx 경로를 모두 고쳐야 함 |
 | 번들 ID | **`app.evflowkr.evflow`로 결정 (2026-11-19)** | NCP 콘솔 등록 완료. 스토어에 올리면 못 바꿈 ([9번](#9-ncp-콘솔-등록)) |
-| Expo SDK | 시작 시점 최신 안정판 | NativeWind v4 · 네이버 지도 라이브러리 지원 여부 함께 확인 |
+| Expo SDK | 시작 시점 최신 안정판 (2026-11-19 기준 SDK 58 · React 19.3 · RN 0.88 — 1단계에서 core와 함께 동작 확인) | NativeWind v4 · 네이버 지도 라이브러리 지원 여부 함께 확인 |
 | 앱 작업 일정 | 데모(12주차) 전엔 0 · 1단계 + 3단계 검증까지 | 데모 준비가 우선 |
 
 ## 8. 작업 규칙

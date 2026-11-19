@@ -1,7 +1,7 @@
-import { CHARGER_STATUS_LABEL } from '@/lib/charger'
+import { CHARGER_STATUS_LABEL } from '@ev-flow/core/lib/charger'
 import { formatPercent } from '@/lib/admin/common'
 import type { AdminCharger } from '@/types/admin'
-import type { ChargerStatus } from '@/types/station'
+import type { ChargerStatus } from '@ev-flow/core/types/station'
 
 /** 충전기 상태 문구. 확인 불가는 원본 코드로 통신 이상 · 상태 미확인을 나눠 보여 줌 */
 export function getAdminChargerStatusLabel(charger: Pick<AdminCharger, 'status' | 'stat'>) {

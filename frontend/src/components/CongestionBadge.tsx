@@ -1,5 +1,5 @@
-import { getCongestionLabel } from '@/lib/congestion'
-import type { CurrentCongestion } from '@/types/station'
+import { getCongestionLabel } from '@ev-flow/core/lib/congestion'
+import type { CurrentCongestion } from '@ev-flow/core/types/station'
 
 const BADGE_CLASS: Record<CurrentCongestion | 'none', string> = {
   low: 'bg-congestion-free-bg text-congestion-free',

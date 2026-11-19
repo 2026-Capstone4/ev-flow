@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Button } from '@/components/Button'
 import { StationFilterOptions } from '@/components/StationFilterOptions'
-import { DEFAULT_FILTERS, isDefaultFilters, matchesFilters } from '@/lib/stationFilter'
-import type { RecommendationFilters, Station } from '@/types/station'
+import { DEFAULT_FILTERS, isDefaultFilters, matchesFilters } from '@ev-flow/core/lib/stationFilter'
+import type { RecommendationFilters, Station } from '@ev-flow/core/types/station'
 
 type FilterPanelProps = {
   /** 지금 지도에 적용된 필터. 패널을 열 때 이 값에서 시작 */

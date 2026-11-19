@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react'
 import { FilterChip } from '@/components/FilterChip'
-import { CONNECTOR_LABEL } from '@/lib/charger'
-import type { ConnectorType, RecommendationFilters, StatusFilter } from '@/types/station'
+import { CONNECTOR_LABEL } from '@ev-flow/core/lib/charger'
+import type {
+  ConnectorType,
+  RecommendationFilters,
+  StatusFilter,
+} from '@ev-flow/core/types/station'
 
 // 급속 · 초급속은 FLT-002 속도 필터의 100 · 200kW 기준
 const CAPACITY_OPTIONS: { label: string; value: 100 | 200 }[] = [

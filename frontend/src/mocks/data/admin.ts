@@ -11,7 +11,7 @@ import type {
   UtilizationBucket,
   UtilizationResponse,
 } from '@/types/admin'
-import type { ChargerStatus } from '@/types/station'
+import type { ChargerStatus } from '@ev-flow/core/types/station'
 
 /** Mock 운영자 계정 — 화면 개발용 (실제 서버 계정 아님) */
 export const MOCK_ADMIN = { loginId: 'admin', password: 'evflow-mock', name: '운영자(Mock)' }

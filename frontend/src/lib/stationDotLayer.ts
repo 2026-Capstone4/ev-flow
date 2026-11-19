@@ -1,5 +1,5 @@
-import { CONGESTION_COLOR } from '@/lib/theme'
-import type { Station } from '@/types/station'
+import { CONGESTION_COLOR } from '@ev-flow/core/lib/theme'
+import type { Station } from '@ev-flow/core/types/station'
 
 /** 점 반지름(흰 테두리 포함) · 안쪽 색 반지름. 예전 HTML 점(지름 12px, 테두리 2px)과 같은 크기 */
 const DOT_RADIUS = 6
