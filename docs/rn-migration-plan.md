@@ -208,7 +208,7 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
 - 확인 (시뮬레이터, 임시로 폴링 3초 + 요청 로그): 두 번째 화면을 연 15초 동안 홈의 `stations` 요청 0번(보이는 화면 `service-areas`만 5번), 돌아오면 `stations` 재개 · 떠난 화면 요청 멈춤. 앱을 백그라운드로 보낸 12초 동안 요청 0번, 돌아오면 바로 재개
 
 남은 것
-- Mock: 웹 `frontend/src/mocks/data`를 core로 옮기고 앱은 axios adapter로 연결 (추천 · 보정 건수가 아직 Mock)
+- Mock: 웹 `frontend/src/mocks/data`를 core로 옮기고 앱은 axios adapter로 연결. 앱은 추천만 Mock (보정 건수는 운영자 전용이라 웹만, 길찾기는 실제 서버)
 
 계획 (당시 그대로)
 
@@ -243,7 +243,7 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
 
 1. 충전소 상세, 휴게소 목록 · 상세, 검색 — 응답 모양 확정, 다시 고칠 일 적음
 2. 지도 홈 + 추천 Top 3 시트
-3. 길찾기 (폴리라인 · 딥링크) — 추천 · 길찾기 API가 실제로 붙은 뒤
+3. 길찾기 (폴리라인 · 딥링크) — 길찾기 API는 연동됨 (#121), 추천 API가 실제로 붙은 뒤
 
 각 화면은 기존 `use*Data` 훅을 그대로 쓰고 JSX만 새로 씀.
 
