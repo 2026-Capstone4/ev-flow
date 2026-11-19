@@ -48,6 +48,7 @@
 | 대시보드 보정 건수 | **없음 (Mock)** | 운영자 전용 |
 
 웹은 `VITE_USE_MOCK=partial`이면 위 Mock 2개만 MSW로, 나머지는 실제 서버로 보냄.
+앱은 `EXPO_PUBLIC_USE_MOCK=partial`이면 추천만 axios adapter로 Mock, 나머지는 실제 서버로 보냄 (보정 건수는 운영자 전용이라 앱에 없음).
 
 ## 3. 그대로 쓰는 것 · 다시 짜는 것
 
@@ -93,7 +94,7 @@
 9. **그 밖**
    - 최신 RN · Expo는 React 19 (지금 18.3 — 큰 문제는 없어 보임)
    - `lucide-react` → `lucide-react-native`(react-native-svg), `my-location.svg` → PNG 또는 svg-transformer, Pretendard → `expo-font`
-   - MSW: `msw/native`는 polyfill 필요 → `mocks/data`만 가져와 axios adapter로 연결하는 쪽이 간단
+   - MSW: `msw/native`는 polyfill 필요 → `mocks/data`만 가져와 axios adapter로 연결하는 쪽이 간단 (2단계에서 이렇게 함)
    - 테스트: 공용 `lib/` 테스트는 Vitest 유지, RN 컴포넌트 테스트는 `jest-expo` (필요할 때만)
 10. **운영자 대시보드 (웹에 남겨서 해당 없음)** — 옮겼다면 HttpOnly 쿠키 로그인(앱 쿠키 저장소 · 토큰 방식 재협의), RN에서 안 도는 Recharts, 넓은 표 · hover 툴팁 같은 PC 전제 UI가 문제였음. 앱에는 로그인 기능이 없으므로 쿠키 처리도 필요 없음
 
@@ -201,9 +202,15 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
 - core에 "지금 이 화면이 보이는지" 컨텍스트(기본값 `true` → 웹은 그대로)를 두고, core 쿼리 훅이 `subscribed`로 넘김. 앱은 화면마다 `useIsFocused()` 값을 넣어 줌
 - `freezeOnBlur`(화면 그리기만 멈춤)로는 쿼리 타이머가 안 멈춰서 쓰지 않음
 
+Mock — 완료 (`fe`, core · 웹 · 앱 수정)
+- 사용자 화면 Mock 데이터(충전소 · 추천 · 길찾기 · 휴게소)를 `packages/core/src/mocks/`로 옮김. 운영자 Mock(`admin.ts`)은 웹에만 남김
+- 추천 응답 만들기(호출 제한 429 · 마포구 밖 422 · 충전소 못 받음 503 · Top 3)를 `mocks/mockApi.ts`로 빼서 웹 MSW 핸들러와 앱이 같이 씀
+- 앱: `mocks/axiosMock.ts`의 `enableRecommendationsMock()`이 공용 `api`의 adapter를 감싸 `POST /recommendations`만 Mock으로 답하고, 나머지는 원래 adapter로 실제 서버에 보냄. 추천 후보는 실제 서버 충전소에 기준선 예측을 채워 씀 (웹 혼합 모드와 같음)
+- 켜기: `mobile/.env.local`에 `EXPO_PUBLIC_USE_MOCK=partial` (`.env.example`에 적어 둠). 추천 API가 백엔드에 생기면 이 값만 지우면 됨
+- 확인 (2026-11-20): core 테스트(추천 200 · 다른 요청은 실제 서버로 · 422 · 503 · 429 + Retry-After), 웹 전체 Mock에서 추천 200 · 422 · 11번째 429, 시뮬레이터에서 실제 충전소 1,622곳 + 실제 충전소 기준 추천 1위가 뜸
+
 남은 것
 - 화면 포커스별 폴링 중단 (위 방식, core 수정이라 `fe` PR)
-- Mock: 웹 `frontend/src/mocks/data`를 core로 옮기고 앱은 axios adapter로 연결 (추천 · 보정 건수가 아직 Mock)
 
 계획 (당시 그대로)
 
@@ -226,7 +233,7 @@ Expo 확인 (임시 폴더, Expo SDK 58 · React 19.3 · RN 0.88, iOS 시뮬레�
   - 확인: `npx expo export --platform ios --dev` 번들에서 `@tanstack+react-query@` 경로가 하나뿐인지 봄
 - `pnpm-workspace.yaml`에 `mobile` 추가, 앱 시작 때 `setApiBaseUrl('https://evflowkr.app/api/v1')`
 - `queryClient`에 `AppState` · `NetInfo` 연결, 화면 포커스별 폴링 중단 방식 정하기
-- API 절대 URL 설정, 폰트 · 아이콘, Mock(axios adapter + `mocks/data`)
+- API 절대 URL 설정, 폰트 · 아이콘, Mock(axios adapter + `mocks/data`) — 완료
 
 ### 3단계: 지도 검증 (위험을 먼저 확인)
 
