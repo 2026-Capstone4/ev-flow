@@ -1,9 +1,13 @@
 import { useMemo } from 'react'
+import { getApiErrorCode } from '@/api/errors'
 import { useRecommendationsQuery, useStationsQuery } from '@/hooks/useStationsQuery'
-import { getListLoadState } from '@/lib/loadState'
+import { getListLoadState, type ListLoadState } from '@/lib/loadState'
 import { matchesFilters } from '@/lib/stationFilter'
 import type { LatLng } from '@/types/geo'
 import type { HorizonMinutes, RecommendationFilters } from '@/types/station'
+
+/** 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area)이 더해짐 */
+export type RecommendState = ListLoadState | 'out_of_area'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
 export function useMapHomeData(
@@ -46,6 +50,17 @@ export function useMapHomeData(
     isStationsError: stationsQuery.isError,
     recommendations,
     recommendedIds,
-    recommendState: getListLoadState(recommendations, recommendationsQuery.isError),
+    recommendState: getRecommendState(
+      getListLoadState(recommendations, recommendationsQuery.isError),
+      recommendationsQuery.error,
+    ),
   }
+}
+
+/** 추천 오류가 마포구 밖(422 OUT_OF_SERVICE_AREA)이면 일반 오류와 다른 안내를 띄우도록 상태를 나눔 */
+export function getRecommendState(listState: ListLoadState, error: unknown): RecommendState {
+  // 오류 상태이고 서버가 마포구 밖이라고 알려 준 경우만 out_of_area, 나머지는 목록 상태 그대로
+  if (listState === 'error' && getApiErrorCode(error) === 'OUT_OF_SERVICE_AREA')
+    return 'out_of_area'
+  return listState
 }

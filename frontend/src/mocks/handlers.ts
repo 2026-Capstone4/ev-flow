@@ -1,4 +1,5 @@
 import { bypass, delay, http, HttpResponse, type DefaultBodyType, type PathParams } from 'msw'
+import { isInMapo } from '@/lib/coverage'
 import { HORIZONS } from '@/lib/horizon'
 import {
   buildAdminChargers,
@@ -84,6 +85,19 @@ function createUnimplementedHandlers(getStations: StationSource) {
     // 추천 충전소. 내 위치와 필터를 받아 시점(지금 · 15분 후 등)마다 Top 3를 만들어 돌려줌
     http.post<never, RecommendationsRequest>('/api/v1/recommendations', async ({ request }) => {
       const { lat, lng, filters } = await request.json()
+      // 출발 위치가 마포구 밖이면 실제 서버처럼 422 - 추천 시트에 마포구만 지원한다는 안내가 뜸
+      if (!isInMapo({ lat, lng })) {
+        await delay(300)
+        return HttpResponse.json<ApiErrorBody>(
+          {
+            error: {
+              code: 'OUT_OF_SERVICE_AREA',
+              message: '현재 충전소 추천 기능은 마포구만 지원해요',
+            },
+          },
+          { status: 422 },
+        )
+      }
       const stations = await getStations()
       // 충전소 목록을 못 받았으면 추천을 만들 수 없으니 503 - 추천 시트의 오류 상태로 이어짐
       if (!stations) return HttpResponse.json<ApiErrorBody>(DATA_UNAVAILABLE, { status: 503 })
