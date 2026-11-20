@@ -91,6 +91,8 @@ services:
       EVFLOW_ML_READONLY_DSN: ${EVFLOW_ML_READONLY_DSN:-}
       EVFLOW_POSTGRES_SCHEMA: ml_read
       EVFLOW_CHECKPOINT_SCHEMA: ml_checkpoint
+      # producer와 반드시 같은 값 - 체크포인트에 원천 이름이 묶여 있어 다르면 전부 거부됨(대기 예측이 모두 빠짐)
+      EVFLOW_SOURCE_ID: ${EVFLOW_SOURCE_ID:-evflow-local}
     # 패키지(코드 · 모델)는 저장소 · 이미지에 넣지 않고 서버 ml/package/에 둠 - producer와 같은 폴더를 써서 버전이 항상 같음
     # 교체는 ml/package/를 새 패키지로 바꾸고 producer · ml 재시작 (docs/prediction.md 모델 교체)
     volumes:

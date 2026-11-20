@@ -17,6 +17,7 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 - 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
 - 실행: `/package`에서 `uvicorn backend_app:app --workers 1` — 워커마다 모델을 따로 로드하므로 512MiB 예산은 워커 1개 기준
 - 접속: `evflow_ml_reader` (`EVFLOW_ML_READONLY_DSN`) — 원천 `ml_read`, 체크포인트 `ml_checkpoint`
+- 원천 이름 `EVFLOW_SOURCE_ID`는 producer와 **같은 값**(서버 `evflow-prod`)이어야 한다 — 체크포인트에 묶여 있어 다르면 모든 체크포인트가 `checkpoint_incompatible_source_identity`로 거부되고 대기가 전부 빠짐 (2026-11-21 서버에서 확인)
 - 경로: `POST /internal/v1/predict` (본문 `{"run_id": 정수}`) · `GET /healthz`
 - 시점 15 · 30분 × 충전소. 혼잡 모델(`xgb_v1_20261108`)과 대기 모델(`station_wait_time_v1_20261115`)이 함께 돈다
 - 응답 HTTP: 200 = `success`(전부 있음) · `partial`(일부 빠짐), 503 = 예측 전부 없음 · DB 장애 · 모델 로드 실패, 409 = 회차 근거 불일치, 404 = 모르는 회차
