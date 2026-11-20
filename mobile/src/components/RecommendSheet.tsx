@@ -8,6 +8,7 @@ import { getRetryWaitText } from '@ev-flow/core/lib/rateLimit'
 import type { HorizonMinutes, Recommendation } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type LayoutChangeEvent, Pressable, Text, View } from 'react-native'
+import type { SharedValue } from 'react-native-reanimated'
 import { HorizonSelector } from './HorizonSelector'
 import { RECOMMEND_CARD_HEIGHT, RecommendCard, RecommendCardSkeleton } from './RecommendCard'
 
@@ -50,6 +51,12 @@ type RecommendSheetProps = {
   onSelect: (stationId: string) => void
   /** 시트를 놓을 지도 영역 높이. 펼침 높이 상한을 정할 때 씀 */
   containerHeight: number
+  /** 시트 위쪽 끝의 y 좌표(지도 영역 기준)를 받을 값. 현재 위치 버튼을 시트 위에 붙여 함께 움직일 때 씀 */
+  animatedPosition?: SharedValue<number>
+  /** 지금 단계 번호(끄는 동안은 1.4처럼 중간값)를 받을 값. 펼칠수록 현재 위치 버튼을 흐리게 할 때 씀 */
+  animatedIndex?: SharedValue<number>
+  /** 펼침 단계에 들어가거나 나올 때 부름 */
+  onExpandedChange?: (isExpanded: boolean) => void
 }
 
 /**
@@ -64,6 +71,9 @@ export function RecommendSheet({
   onHorizonChange,
   onSelect,
   containerHeight,
+  animatedPosition,
+  animatedIndex,
+  onExpandedChange,
 }: RecommendSheetProps) {
   const sheetRef = useRef<BottomSheet>(null)
   const [level, setLevel] = useState(LEVEL.collapsed)
@@ -99,6 +109,10 @@ export function RecommendSheet({
   // 펼친 채로 추천이 오류 · 호출 제한으로 바뀌면 펼침 단계가 없어짐. 화면이 보는 단계는 마지막 단계를 넘지 않게 함
   const currentLevel = Math.min(level, lastLevel)
   const isExpanded = currentLevel === LEVEL.expanded
+  // 펼침 여부가 바뀔 때만 알림 (지도 홈이 현재 위치 버튼을 누를 수 없게 함)
+  useEffect(() => {
+    onExpandedChange?.(isExpanded)
+  }, [isExpanded, onExpandedChange])
 
   // 단계가 줄어 지금 단계가 없어졌으면 시트도 마지막 단계로 옮김. 옮기면 onChange가 level을 맞춤
   useEffect(() => {
@@ -143,6 +157,8 @@ export function RecommendSheet({
       snapPoints={snapPoints}
       enableDynamicSizing={false}
       onChange={setLevel}
+      animatedPosition={animatedPosition}
+      animatedIndex={animatedIndex}
       backdropComponent={renderBackdrop}
       // 그림자는 바탕색이 있는 배경에 줘야 iOS가 빠르게 그림 (시트 바깥 칸엔 바탕색이 없음)
       backgroundStyle={{ borderRadius: 20, ...SHEET_SHADOW }}

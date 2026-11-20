@@ -1,19 +1,33 @@
-import { NaverMapView, type Region } from '@mj-studio/react-native-naver-map'
+import { NaverMapView, type NaverMapViewRef, type Region } from '@mj-studio/react-native-naver-map'
 import { router, useFocusEffect } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { isDotStation, isHiddenZoom, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
+import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
+import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, View } from 'react-native'
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FilterPanel } from '../../components/FilterPanel'
+import { LOCATE_BUTTON_SIZE, LocateButton } from '../../components/LocateButton'
+import { MapNotice } from '../../components/MapNotice'
+import { OnboardingDialog } from '../../components/OnboardingDialog'
 import { RecommendSheet } from '../../components/RecommendSheet'
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { ZoomInNotice } from '../../components/ZoomInNotice'
+import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
+import { IS_GEOLOCATION_ENABLED } from '../../lib/config'
+import { appStorage } from '../../lib/storage'
 import { CoverageMask } from '../../map/CoverageMask'
 import { StationMarker } from '../../map/StationMarker'
 import { toAppZoom, toWebZoomLevel } from '../../map/zoom'
@@ -30,13 +44,20 @@ const TOP_GAP = 16
  */
 const IS_HIDE_COLLIDED = true
 
+/** 안내 문구를 띄워 두는 시간 */
+const NOTICE_DURATION_MS = 3000
+
+/** 현재 위치 버튼과 시트 위쪽 끝 사이 간격 (웹 mb-3) */
+const LOCATE_BUTTON_GAP = 12
+
 /** 카메라 상태. webZoomLevel은 core 줌 기준(점 · 숨김)에 넘기는 정수 단계 */
 type CameraState = { webZoomLevel: number; region: Region | null }
 
 // 지도 홈 (하단 탭 첫 번째). 데이터는 웹과 같은 core useMapHomeData
-// 지금 위치 버튼 · 첫 방문 안내는 5단계, 추천 카드의 길찾기 버튼은 4단계 3번에서 더함
+// 추천 카드의 길찾기 버튼은 4단계 3번에서 더함
 export default function MapHomeScreen() {
   const insets = useSafeAreaInsets()
+  const mapRef = useRef<NaverMapViewRef>(null)
   // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
   const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
   const {
@@ -83,6 +104,56 @@ export default function MapHomeScreen() {
     })
   }, [])
 
+  // 처음 들어온 사용자에게만 사용법 안내를 띄움. 본 기록은 기기 저장소(expo-sqlite)에 남김
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !hasSeenOnboarding(appStorage))
+  /** 안내를 닫으면 본 것으로 기록해서 다음에 앱을 열 때부터는 띄우지 않음 */
+  const closeOnboarding = useCallback(() => {
+    markOnboardingSeen(appStorage)
+    setIsOnboardingOpen(false)
+  }, [])
+
+  // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
+  const [notice, setNotice] = useState<{ id: number; message: string } | null>(null)
+  useEffect(() => {
+    // 띄운 문구가 없으면 셀 것도 없음
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(null), NOTICE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [notice])
+
+  const { locate, isLocating } = useCurrentLocation()
+  /** 줌은 그대로 두고 지도 가운데만 옮김 */
+  const panTo = (target: LatLng) =>
+    mapRef.current?.animateCameraTo({ latitude: target.lat, longitude: target.lng })
+  // 웹 MapHomePage handleLocate와 같은 흐름
+  const handleLocate = async () => {
+    // 기능이 꺼져 있으면 GPS 없이 지금 기준 위치(시연 위치)로 지도만 옮김
+    if (!IS_GEOLOCATION_ENABLED) {
+      panTo(userLocation)
+      return
+    }
+    const result = await locate()
+    // 찾았으면 그 위치로, 마포구 밖이면 지금 추천 기준 위치로 지도를 옮김
+    if (result.ok || result.reason === 'out-of-area') {
+      panTo(result.ok ? result.location : userLocation)
+    }
+    // 못 쓴 이유는 잠깐 안내 (권한 거부 · 위치 서비스 꺼짐 · 마포구 밖 등)
+    if (!result.ok) {
+      setNotice({ id: Date.now(), message: APP_LOCATE_FAILURE_MESSAGE[result.reason] })
+    }
+  }
+
+  // 현재 위치 버튼은 시트 위에 붙어 함께 움직이고, 시트를 펼칠수록 흐려짐 (웹과 같음)
+  // 시트가 위쪽 끝 위치 · 단계 번호를 UI 스레드 값에 써 주고, 버튼은 그 값으로 자리 · 투명도를 정함
+  const sheetPosition = useSharedValue(0)
+  const sheetIndex = useSharedValue(1)
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false)
+  const locateButtonStyle = useAnimatedStyle(() => ({
+    top: sheetPosition.value - LOCATE_BUTTON_SIZE - LOCATE_BUTTON_GAP,
+    // 접힘(1) → 펼침(2)으로 갈수록 0에 가까워짐. 최소 · 접힘에서는 그대로 보임
+    opacity: interpolate(sheetIndex.value, [1, 2], [1, 0], Extrapolation.CLAMP),
+  }))
+
   // 마커는 시점이 바뀔 때마다 다시 그리지 않도록 최신 시점만 ref로 읽음
   const horizonRef = useRef(horizon)
   useEffect(() => {
@@ -108,6 +179,7 @@ export default function MapHomeScreen() {
       onLayout={(event) => setContainerHeight(event.nativeEvent.layout.height)}
     >
       <NaverMapView
+        ref={mapRef}
         style={{ flex: 1 }}
         initialCamera={{
           latitude: MAPO_CENTER.lat,
@@ -117,6 +189,11 @@ export default function MapHomeScreen() {
         isShowLocationButton={false}
         isShowZoomControls={false}
         onCameraIdle={handleCameraIdle}
+        // 추천 · 검색 기준 위치 표시 (웹 내 위치 마커). 시연 위치이거나 현재 위치 버튼으로 바꾼 위치
+        locationOverlay={{
+          isVisible: true,
+          position: { latitude: userLocation.lat, longitude: userLocation.lng },
+        }}
       >
         <CoverageMask />
         {visibleStations.map((station) => {
@@ -143,7 +220,21 @@ export default function MapHomeScreen() {
           onHorizonChange={setHorizon}
           onSelect={openStation}
           containerHeight={containerHeight}
+          animatedPosition={sheetPosition}
+          animatedIndex={sheetIndex}
+          onExpandedChange={setIsSheetExpanded}
         />
+      )}
+
+      {/* 현재 위치 버튼. 시트를 펼친 동안은 흐려지고 누를 수 없음 */}
+      {containerHeight > 0 && (
+        <Animated.View
+          pointerEvents={isSheetExpanded ? 'none' : 'box-none'}
+          accessibilityElementsHidden={isSheetExpanded}
+          style={[{ position: 'absolute', right: 16 }, locateButtonStyle]}
+        >
+          <LocateButton isLocating={isLocating} onPress={handleLocate} />
+        </Animated.View>
       )}
 
       {/* 필터 패널이 열린 동안 바깥(지도 · 시트)을 누르면 고른 값을 버리고 닫음 */}
@@ -183,6 +274,7 @@ export default function MapHomeScreen() {
           )}
         </View>
         <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
+        {notice && <MapNotice key={notice.id} message={notice.message} />}
         {/* 너무 멀리 봐서 마커를 숨긴 동안은 확대하라고 계속 안내. 왼쪽 정렬 줄에서 혼자 가운데로 */}
         {isZoomedOut && (
           <View className="mt-2 self-center">
@@ -190,6 +282,7 @@ export default function MapHomeScreen() {
           </View>
         )}
       </View>
+      {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
     </View>
   )
 }
