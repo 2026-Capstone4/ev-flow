@@ -78,21 +78,23 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  # 혼잡 · 대기 예측 (docs/prediction.md) - AI 패키지의 backend_app을 그대로 실행, 우리 코드는 이미지 설정뿐
+  # collector가 도심 회차마다 POST /internal/v1/predict {"run_id"} → ml이 ml_read · ml_checkpoint를 직접 읽음
   ml:
     build:
       context: ../ml
       dockerfile: Dockerfile
     container_name: evflow-ml
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1
     environment:
-      MODEL_DIR: /models
-      # 추천 모듈의 읽기 전용 접속 (docs/database.md ml_read) - .env 전체를 넘기지 않고 이 값만 전달
-      # 비어 있으면 DB를 읽지 않는 기존 동작 그대로
+      # 읽기 전용 접속 evflow_ml_reader (docs/database.md) - .env 전체를 넘기지 않고 이 값만 전달
+      # 비어 있으면 모델 로드 단계에서 시작을 못 함 - collector는 예측만 건너뛰고 수집은 계속함
       EVFLOW_ML_READONLY_DSN: ${EVFLOW_ML_READONLY_DSN:-}
       EVFLOW_POSTGRES_SCHEMA: ml_read
-    # 모델 파일은 저장소 · 이미지에 넣지 않고 서버의 ml/models/에 둠 (AI-02) - 교체 후 ml 재시작
+      EVFLOW_CHECKPOINT_SCHEMA: ml_checkpoint
+    # 패키지(코드 · 모델)는 저장소 · 이미지에 넣지 않고 서버 ml/package/에 둠 - producer와 같은 폴더를 써서 버전이 항상 같음
+    # 교체는 ml/package/를 새 패키지로 바꾸고 producer · ml 재시작 (docs/prediction.md 모델 교체)
     volumes:
-      - ../ml/models:/models:ro
+      - ../ml/package:/package:ro
     expose:
       - "8001"
     mem_limit: 512m

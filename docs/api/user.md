@@ -38,14 +38,15 @@
 | `connectorTypes` | string[] | 커넥터 타입 |
 | `capacityKw` | number | 충전 용량 (kW) — FLT-002 속도 필터 기준 |
 
-**예측 `Prediction`** — `predictions`는 15 · 30분 순서로 2개. 🟡 60분은 서비스에서 뺌 (2026-11-15) — 백엔드 · ml에서 정리하기 전까지는 60분도 올 수 있고, 프론트는 무시함
+**예측 `Prediction`** — `predictions`는 15 · 30분 순서로 2개 (60분은 2026-11-15에 서비스에서 뺌)
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `horizonMinutes` | number | 15 · 30 |
 | `congestion` | string \| null | 예측 혼잡도 (`low` · `medium` · `high`). 예측 · 기준선 모두 없으면 `null` |
-| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | 예상 대기 구간 (분) |
+| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | 예상 대기 구간 (분). 기준선이면 항상 `null`, 모델이어도 대기 예측이 빠진 회차면 `null` (혼잡도만 있음). 🟡 대기 모델 수정(AI v3.2) 전까지는 모델 예측도 항상 `null` |
 | `source` | string \| null | `model` · `baseline`. 값이 없으면 `null` |
+| `modelVersion` | string \| null | `source`가 `model`일 때 예측에 쓴 AI 패키지 배포 이름 (예: `evflow_station_recommendation_1530_20261116`), 아니면 `null` |
 
 `dataQuality`가 `baseline`이면 `source`는 `baseline` 또는 `null`이다.
 

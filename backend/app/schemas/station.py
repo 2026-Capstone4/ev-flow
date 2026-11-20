@@ -11,12 +11,15 @@ from app.schemas.common import (
 
 
 class Prediction(CamelModel):
-    horizon_minutes: Literal[15, 30, 60]
+    horizon_minutes: Literal[15, 30]
     # 예측 · 기준선이 모두 없으면 null (UC-U05 E2)
     congestion: Literal["low", "medium", "high"] | None
+    # 기준선이면 항상 null. 모델이어도 대기 예측이 빠진 회차면 null
     wait_time_p50_minutes: int | None
     wait_time_p90_minutes: int | None
     source: Literal["model", "baseline"] | None
+    # source가 model일 때 AI 패키지 배포 이름 (예: evflow_station_recommendation_1530_20261116), 아니면 null
+    model_version: str | None
 
 
 class Station(CamelModel):
