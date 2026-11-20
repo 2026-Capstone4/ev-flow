@@ -137,4 +137,6 @@ export type RouteResponse = {
   distanceMeters: number
   /** 경로 좌표 [위도, 경도] 배열 — 서버가 Directions 원본([경도, 위도])에서 순서를 바꿔 보냄 */
   path: [number, number][]
+  /** 경로를 만든 길찾기 제공자. 화면에 출처를 작게 표시함 */
+  provider: 'kakao' | 'naver'
 }

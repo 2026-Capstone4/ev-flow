@@ -12,13 +12,17 @@ import { useRouteOverlay } from '@/hooks/useRouteOverlay'
 import { formatWaitRange, NO_PREDICTION_LABEL } from '@ev-flow/core/lib/congestion'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { getHorizonWhen, parseHorizon } from '@ev-flow/core/lib/horizon'
+import { getKakaoCarRouteUrl } from '@ev-flow/core/lib/kakaoMapLink'
 import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
 import { getRetryWaitText } from '@ev-flow/core/lib/rateLimit'
-import { openNaverMapApp } from '@/lib/openNaverMapApp'
+import { openMapApp } from '@/lib/openMapApp'
 import { formatDistance } from '@ev-flow/core/lib/stationSearch'
 
 /** 경로 시트 높이 대략값. 경로가 시트에 가리지 않게 지도를 맞출 때 씀 */
-const ROUTE_SHEET_HEIGHT = 280
+const ROUTE_SHEET_HEIGHT = 310
+
+/** 경로를 만든 길찾기 제공자 이름. 약관상 출처를 헷갈리지 않게 시트에 작게 표시함 */
+const ROUTE_PROVIDER_LABEL = { kakao: '카카오모빌리티', naver: '네이버' } as const
 
 export function RoutePage() {
   const navigate = useNavigate()
@@ -45,15 +49,12 @@ export function RoutePage() {
   useRouteOverlay(map, route?.path, station ? [userLocation, station] : [], ROUTE_SHEET_HEIGHT)
 
   const platform = detectPlatform(navigator.userAgent)
-  const naverMapUrl = station
-    ? getNaverCarRouteUrl(
-        {
-          destination: { lat: station.lat, lng: station.lng, name: station.name },
-          appName: window.location.origin,
-        },
-        platform,
-      )
+  // 충전소 정보를 받은 뒤에만 목적지를 알 수 있어 그 전엔 null
+  const destination = station ? { lat: station.lat, lng: station.lng, name: station.name } : null
+  const naverMapUrl = destination
+    ? getNaverCarRouteUrl({ destination, appName: window.location.origin }, platform)
     : null
+  const kakaoMapUrl = destination ? getKakaoCarRouteUrl(destination, platform) : null
   const waitRange = prediction
     ? formatWaitRange(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes)
     : null
@@ -124,36 +125,56 @@ export function RoutePage() {
           ) : (
             // 경로를 받기 전에도 같은 칸 · 버튼 자리를 먼저 보여 줘, 다 받았을 때 시트 높이가 튀지 않게 함
             <>
-              <div className="flex gap-2">
-                <SummaryTile
-                  value={route ? `${route.travelTimeMinutes}분` : null}
-                  label="자동차 소요"
-                />
-                <SummaryTile
-                  value={route ? formatDistance(route.distanceMeters) : null}
-                  label="거리"
-                />
-                {/* 지금 출발은 예상 대기 대신 실시간 사용 가능 대수 */}
-                {horizon === 0 ? (
+              <div className="flex flex-col gap-1">
+                <div className="flex gap-2">
                   <SummaryTile
-                    value={
-                      station ? `${station.availableChargers}/${station.totalChargers}대` : null
-                    }
-                    label="지금 사용 가능"
+                    value={route ? `${route.travelTimeMinutes}분` : null}
+                    label="자동차 소요"
                   />
-                ) : (
                   <SummaryTile
-                    value={station ? (waitRange ?? NO_PREDICTION_LABEL) : null}
-                    label={`${getHorizonWhen(horizon)} 예상 대기`}
+                    value={route ? formatDistance(route.distanceMeters) : null}
+                    label="거리"
                   />
-                )}
+                  {/* 지금 출발은 예상 대기 대신 실시간 사용 가능 대수 */}
+                  {horizon === 0 ? (
+                    <SummaryTile
+                      value={
+                        station ? `${station.availableChargers}/${station.totalChargers}대` : null
+                      }
+                      label="지금 사용 가능"
+                    />
+                  ) : (
+                    <SummaryTile
+                      value={station ? (waitRange ?? NO_PREDICTION_LABEL) : null}
+                      label={`${getHorizonWhen(horizon)} 예상 대기`}
+                    />
+                  )}
+                </div>
+                {/* 경로 출처. 받기 전에도 한 줄 자리를 잡아 다 받았을 때 시트 높이가 튀지 않게 함 */}
+                <p className="text-right text-[11px] text-text-secondary">
+                  {route && ROUTE_PROVIDER_LABEL[route.provider]
+                    ? `경로 정보: ${ROUTE_PROVIDER_LABEL[route.provider]}`
+                    : ' '}
+                </p>
               </div>
-              {/* 경로를 찾는 동안은 안내 버튼 자리에 진행 중 표시. 휴대폰은 네이버 지도 앱, PC는 네이버 지도 웹을 새 탭으로 엶 */}
+              {/* 경로를 찾는 동안은 안내 버튼 자리에 진행 중 표시. 휴대폰은 지도 앱, PC는 지도 웹을 새 탭으로 엶 */}
               {route ? (
-                naverMapUrl && (
-                  <Button onClick={() => openNaverMapApp(naverMapUrl, platform)}>
-                    네이버 지도로 안내받기
-                  </Button>
+                naverMapUrl &&
+                kakaoMapUrl && (
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => openMapApp(naverMapUrl, platform, 'naver')}
+                    >
+                      네이버 지도로 안내
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => openMapApp(kakaoMapUrl, platform, 'kakao')}
+                    >
+                      카카오맵으로 안내
+                    </Button>
+                  </div>
                 )
               ) : (
                 <Button disabled aria-busy className="gap-2">

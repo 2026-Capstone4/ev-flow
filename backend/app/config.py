@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,7 +23,14 @@ class Settings(BaseSettings):
     # 체크포인트 producer - 비어 있으면 collector가 체크포인트 갱신을 건너뜀 (producer 없이 로컬 실행할 때)
     producer_url: str = ""
 
-    # 네이버 Directions 5 - 추천 · 경로 API에서 사용. 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함
+    # 길찾기 제공자 - 추천 · 경로 API에서 사용. kakao(기본) · naver. 바꾸면 재시작만 하면 됨 (캐시 키가 제공자별로 따로)
+    directions_provider: Literal["kakao", "naver"] = "kakao"
+    # 카카오모빌리티 자동차 길찾기 - 카카오디벨로퍼스 앱 > 앱 키 > REST API 키
+    # 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함 (길찾기만 502, 추천은 직선거리 추정)
+    kakao_rest_api_key: SecretStr = SecretStr("")
+    # 경로 기준 - DISTANCE(거리 우선, 기본) · TIME(시간 우선, 큰길로 돌아가는 경로가 많음) · RECOMMEND
+    kakao_priority: Literal["DISTANCE", "TIME", "RECOMMEND"] = "DISTANCE"
+    # 네이버 Directions 5 - DIRECTIONS_PROVIDER=naver일 때만 씀. 지도 SDK Client ID와 같은 값
     naver_client_id: str = ""
     naver_client_secret: SecretStr = SecretStr("")
     # 길찾기 · 추천 호출 제한 (SER-003, MAP-02) - 시연 날 강의실처럼 한 공인 IP를 여럿이 쓰면 .env에서 올림
