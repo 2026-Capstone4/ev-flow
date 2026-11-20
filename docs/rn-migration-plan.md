@@ -327,9 +327,41 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버 + 추천 Mock): 첫 화면 접힘, 손잡이로 펼침(지도 어둡게) → 덮개 누르면 접힘 → 끌어서 최소 → 손잡이로 접힘, 30분 후로 바꾸면 추천 마커가 바뀜, 필터 패널(초급속 235곳 → 적용하면 "필터 1" · 추천 마커만 남음 → 초기화), 카드 → 상세(30분 후 선택된 채), 멀리 보면 확대 안내 · 서울 밖 회색 · 마포 테두리
   - 시뮬레이터는 Mac GPU라 시트 끌기 부드러움 · 지도 위 버벅임은 실기기(6단계)에서 다시 봄
 
-### 5단계: 기기 기능 · 예외
+### 5단계: 기기 기능 · 예외 — 완료 (`feat/app-device-edge`, 2026-11-20)
 
+계획 (당시 그대로)
 - 현재 위치(`expo-location`), 갱신 실패 시 마지막 정상값 유지 + 경고, 예외 화면 4종, 백그라운드 → 복귀 시 갱신
+
+현재 위치
+- 버튼: `src/components/LocateButton.tsx` (웹 `LocateButton`과 같은 모양). 웹처럼 추천 시트 위에 붙어 함께 움직이고, 시트를 펼칠수록 흐려지다가 펼침에서는 누를 수 없음
+  - 시트가 `@gorhom/bottom-sheet`의 `animatedPosition` · `animatedIndex`(UI 스레드 값)에 위쪽 끝 위치 · 단계 번호를 써 주고, 지도 홈이 그 값으로 버튼 자리 · 투명도를 정함 (`RecommendSheet`에 두 값과 `onExpandedChange`를 넘길 수 있게 함)
+  - 재는 동안은 아이콘 대신 기본 로딩 표시 (웹은 아이콘을 돌리지만 NativeWind 애니메이션은 실험 기능)
+- 흐름: `src/hooks/useCurrentLocation.ts` — 웹 `useCurrentLocation` · `handleLocate`와 같음. 버튼을 누를 때만 권한을 물음 → 마포구 안이면 기준 위치(`setUserLocation`)를 바꾸고 지도를 옮김, 마포구 밖이면 지금 기준 위치로 지도만 옮기고 안내, 실패하면 3초 안내(`src/components/MapNotice.tsx`)
+  - 위치 서비스 꺼짐(`hasServicesEnabledAsync`) → 권한(`requestForegroundPermissionsAsync`) → 30초 안의 위치(`getLastKnownPositionAsync`) → 새로 잼(`Accuracy.High`). expo-location에는 시간 제한이 없어서 10초 타이머와 경주시켜 `timeout`
+  - core `lib/geolocation.ts`는 그대로 씀. 앱 실패 이유는 `Exclude<LocateFailure, 'insecure'>`(HTTP 주소는 앱에 없음), 문구는 앱 쪽 `APP_LOCATE_FAILURE_MESSAGE`에서 두 개만 바꿈 — `denied`는 "설정 앱에서 … 허용", `unsupported`는 기기 위치 서비스가 꺼진 경우
+  - 웹처럼 `EXPO_PUBLIC_USE_GEOLOCATION=true`일 때만 GPS를 씀 (`.env.example`). 꺼져 있으면 시연 위치로 지도만 옮김
+- 내 위치 표시: 웹 `useMyLocationMarker` 대신 SDK 위치 오버레이(`locationOverlay`)를 기준 위치에 켬 → 그림 파일이 필요 없음
+- 권한 설명: `app.config.ts`의 `expo-location` plugin `locationWhenInUsePermission` → Info.plist `NSLocationWhenInUseUsageDescription`. 플러그인이 기본으로 넣는 항상 위치 · 움직임 권한 설명은 `false`로 뺌
+- **네이티브 모듈(expo-location · expo-sqlite)이 늘어 앱을 다시 빌드해야 함** (`expo prebuild --platform ios` 후 `expo run:ios`)
+
+첫 방문 안내
+- `src/components/OnboardingDialog.tsx`: 웹과 같은 5장 · 문구 · 범례. RN `Modal`(fade)로 띄우고 바깥을 눌러도 안 닫힘
+  - 웹은 grid로 모든 장을 겹쳐 가장 긴 장 높이에 맞춤 → 앱은 가로 줄에 장을 놓고 둘째 장부터 `marginLeft: '-100%'`로 겹침 (장을 넘겨도 창 크기가 그대로)
+  - 웹 제목 extrabold는 앱에 넣은 Pretendard가 Bold까지라 Bold
+- 저장소: core `lib/onboarding.ts`는 동기 `getItem` · `setItem` 모양을 받음 → 동기 API가 있는 `expo-sqlite/kv-store`(`getItemSync` · `setItemSync`)를 `src/lib/storage.ts`의 `appStorage`로 감싸 넘김. AsyncStorage는 비동기라 core 함수에 그대로 못 넘김
+  - 전역 `localStorage`로 심지 않음 — 심으면 웹용 충전소 목록 캐시(`stationsCache`)까지 앱에서 켜짐
+
+갱신 실패 · 예외 화면 · 복귀 갱신 (웹과 비교)
+- 갱신 실패 시 마지막 정상값 유지 + 경고: core 데이터 훅 · `getListLoadState` · `UpdateStatus`가 4단계에서 이미 웹과 같음 (지도 홈 · 상세 · 휴게소 목록 · 상세). 이번에 시뮬레이터로 확인만 함
+- 예외 화면 4종(Figma 03-1 예측값 없음 · 04-1 결과 없음 · 04-2 초기화 후 · 05-1 경로 없음): 03-1은 상세(#131, 대기 예측이 없으면 칸을 숨김), 04-1 · 04-2는 검색(#132)에 이미 있음. **05-1은 길찾기 화면(4단계 3번)과 함께 옮김**
+- 백그라운드 → 복귀 시 갱신: 2단계 `focusManager` 연결 그대로 (낡은 데이터만 바로 새로 받음, 웹 탭 복귀와 같음)
+
+확인 (iPhone 17 Pro 시뮬레이터, 실제 서버 + 추천 Mock)
+- 첫 실행에 안내 5장(장마다 창 크기 같음, 마지막 장은 건너뛰기 없음) → 시작하기 → 앱을 끄고 다시 열어도 안 뜸
+- 현재 위치: 첫 누름에 iOS 권한 창(우리 설명 문구) → 허용 안 함이면 "설정 앱에서 … 허용" 안내 / 허용 + 합정역 위치(`simctl location`)면 지도 · 내 위치 표시가 합정역으로 / 강남이면 "마포구 외의 지역은 …" 안내, 기준 위치 그대로 / 시트를 펼치면 버튼 숨김
+- 갱신 실패: 임시로 API 주소를 없는 주소로 바꾸자 60초 뒤 "갱신 실패 · 23:03 데이터 표시 중"(경고 색) + 마커 그대로
+- 복귀 갱신: 위 경고가 뜬 채로 API 주소를 되돌리고 백그라운드에 70초 둔 뒤 돌아오면, 바로 다시 받아 경고가 풀리고 "기준 · n분 전 갱신"으로 돌아옴 (시각은 서버 데이터 기준)
+- 실기기 위치 권한 · 실제 GPS는 6단계
 
 ### 6단계: 실기기 확인 · 배포
 
