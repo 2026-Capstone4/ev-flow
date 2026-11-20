@@ -241,11 +241,27 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - `queryClient`에 `AppState` · `NetInfo` 연결, 화면 포커스별 폴링 중단 방식 정하기
 - API 절대 URL 설정, 폰트 · 아이콘, Mock(axios adapter + `mocks/data`) — 완료
 
-### 3단계: 지도 검증 (위험을 먼저 확인)
+### 3단계: 지도 검증 (위험을 먼저 확인) — 시뮬레이터 확인 완료, 실기기 남음 (`feat/app-naver-map`, 2026-11-20)
 
 - 네이버 지도 SDK + 이미지 아이콘 마커로 마포 숫자 마커 + 서울 전역 1,600여 개를 **실기기**에서 그려 봄
 - 확인할 것: 확대 · 축소 · 이동 중 버벅임, 폴링 갱신 때 멈칫함, `isHideCollidedMarkers` 효과, 웹과 같은 넓이가 보이는 줌 값
 - 여기서 막히면 일정 전체가 흔들리므로 화면 작업보다 먼저 함
+
+한 것
+- 라이브러리: `@mj-studio/react-native-naver-map` 2.11.0 (iOS SDK NMapsMap 3.23.2). CocoaPods 기본 저장소에서 받아져 git-lfs · 추가 저장소 설정 필요 없음
+- Client ID: `app.config.ts`에서 `NAVER_MAP_CLIENT_ID`(mobile/.env.local, 웹과 같은 값)를 plugin 옵션 `client_id`로 넘김 → Info.plist `NMFNcpKeyId`. 값이 비어 있으면 설정을 읽을 때(prebuild · start) 경고를 띄움 (비어도 빌드는 성공하고 지도만 회색 격자라 놓치기 쉬움). 값을 바꾸면 `expo prebuild --platform ios` 후 다시 빌드 (`ios/`가 이미 있으면 `expo run:ios`만으로는 Info.plist가 안 바뀜)
+- 마커 그림: `mobile/scripts/generate-marker-images.py`가 core `theme.ts` 색으로 알약(색 6 × 글자 수 3~7) · 점(색 6) PNG와 목록 `src/map/markerImages.ts`를 만듦. 숫자는 그림에 넣지 않고 SDK 캡션(가운데 정렬)으로 얹음 → 글자도 지도 엔진이 그림
+- 마커: `src/map/StationMarker.tsx` — SDK 마커 + 그림, `memo`로 모양이 같으면 다시 안 그림. 줌 판단(숨김 · 점 · 숫자) · 겹침 순서 · 화면 범위 걸러내기는 core `mapMarkers` 그대로
+- 줌 기준: **앱 SDK 줌 = 웹 줌 − 1** (같은 넓이). 앱 줌 13 = 웹 줌 14 = 가로 약 3km. `src/map/zoom.ts`의 `toWebZoomLevel`로 바꿔 core에 넘김
+  - 웹 타일 지도는 줌이 정수로만 움직여 13 → 14 사이 넓이도 13으로 보임. 앱은 13.5 같은 중간 줌이 있어서 **정수로 내림**해 넘김 (안 내리면 13.01부터 서울 전역이 숫자 마커로 바뀜). 확인: 웹 줌 13.6(가로 3.9km) → 단계 13, 마포 밖은 점
+- 첫 화면(`src/app/index.tsx`)을 지도 검증 화면으로 바꿈. 위쪽 확인용 표시(웹 줌 · 가로 km · 그리는 마커 수 · 겹침 숨김 토글)는 4단계에서 뺌
+
+확인 (iPhone 17 Pro 시뮬레이터, 실제 서버 1,622곳)
+- 웹 줌 14: 가로 3.0km, 마커 168개, 모두 숫자. 웹 줌 12: 가로 11.9km, 마커 941개, 마포 밖은 색 점. 웹 줌 11: 마커 0개
+- 마커 탭 → 충전소 이름 · 대수가 뜸
+- `isHideCollidedMarkers`: 점에만 켜면 겹친 점이 줄어 서울 전역이 덜 빽빽해짐. 마포 숫자 마커에 켜면(또는 `isForceShowIcon`) 겹친 마커의 숫자 캡션이 사라져서 마포 · 추천은 빼 둠
+  - 확인 중 주의: 이 속성을 코드에서 지웠을 때 화면 새로고침(Fast Refresh)만으로는 지도에 남아 있었음. 앱을 다시 불러야 반영됨
+- 시뮬레이터는 Mac GPU라 버벅임 판단 못 함 → **실기기에서 확대 · 축소 · 이동, 줌 12 근처(마커 900여 개) 체감, 폴링 갱신 때 멈칫함 확인이 남음**
 
 ### 4단계: 화면 옮기기 (연동 끝난 API부터)
 
@@ -304,7 +320,7 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 
 ### 확인 안 된 것
 
-- config plugin 옵션 이름(`client_id`)은 라이브러리 버전마다 다를 수 있음 → 설치하는 버전의 README로 확인
+- config plugin 옵션 이름(`client_id`)은 라이브러리 버전마다 다를 수 있음 → 설치하는 버전의 README로 확인 (2.11.0은 `client_id` 맞음, 3단계에서 확인)
 - 참고: [NCP Maps Application 가이드](https://guide.ncloud-docs.com/docs/application-maps-app-vpc), [react-native-naver-map](https://github.com/mym0404/react-native-naver-map)
 
 ## 10. 네이버 지도 앱 딥링크

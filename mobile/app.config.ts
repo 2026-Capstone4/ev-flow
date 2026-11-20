@@ -4,6 +4,18 @@ import type { ExpoConfig } from 'expo/config'
  * Expo 앱 설정. app.json 대신 TS로 둬서 나중에 환경 변수(네이버 지도 Client ID 등)를 읽어 넣음
  * iOS만 만듦 (docs/rn-migration-plan.md 7번). 네이티브 폴더(ios/)는 이 설정으로 만들어지므로 직접 고치지 않음
  */
+
+/** 네이버 지도 Client ID (mobile/.env.local). 비어 있어도 빌드는 되지만 지도가 회색 격자로만 나옴 */
+const naverMapClientId = process.env.NAVER_MAP_CLIENT_ID ?? ''
+
+// 값이 없으면 설정을 읽을 때(prebuild · start) 바로 알려 줌. 빌드 성공만 보고 지도 인증 실패를 놓치지 않게 함
+if (!naverMapClientId) {
+  console.warn(
+    '[app.config] NAVER_MAP_CLIENT_ID가 비어 있어 지도가 뜨지 않습니다. ' +
+      'mobile/.env.local에 넣은 뒤 `expo prebuild --platform ios`부터 다시 빌드하세요',
+  )
+}
+
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
@@ -24,6 +36,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    [
+      '@mj-studio/react-native-naver-map',
+      {
+        // 웹과 같은 NCP Client ID (계획 문서 9번). 앱 Info.plist의 NMFNcpKeyId로 들어감
+        // 공개 값이지만 저장소에 적지 않고 mobile/.env.local에서 읽음. 바꾸면 네이티브 빌드를 다시 해야 함
+        client_id: naverMapClientId,
+      },
+    ],
     [
       'expo-font',
       {

@@ -2,3 +2,5 @@
 ios
 dist
 expo-env.d.ts
+# 마커 그림 목록은 scripts/generate-marker-images.py가 만듦
+src/map/markerImages.ts
