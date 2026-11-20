@@ -28,6 +28,8 @@ const config: ExpoConfig = {
   ios: {
     // NCP 콘솔에 등록한 값과 글자 하나까지 같아야 지도 인증이 됨 (계획 문서 9번)
     bundleIdentifier: 'app.evflowkr.evflow',
+    // 실기기 빌드 서명에 쓰는 Apple 개발자 팀 ID (mobile/.env.local). 비어 있으면 시뮬레이터 빌드만 됨
+    appleTeamId: process.env.APPLE_TEAM_ID || undefined,
     supportsTablet: false,
     infoPlist: {
       // 네이버 지도 앱 설치 여부를 canOpenURL로 확인하려면 nmap을 적어 둬야 함 (없으면 항상 false)

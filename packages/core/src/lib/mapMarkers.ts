@@ -21,8 +21,8 @@ const MAPO_Z_INDEX = 1
 /** 추천 충전소 마커는 겹쳐도 다른 마커에 가리지 않게 가장 위로 */
 const RECOMMENDED_Z_INDEX = 2
 
-/** 화면 크기의 이 비율만큼 바깥까지 미리 그림. 지도를 조금 끌 때 마커가 늦게 뜨지 않게 함 */
-const VIEW_MARGIN_RATIO = 0.3
+/** 화면 크기의 이 비율만큼 바깥까지 미리 그림 (기본값, 웹). 지도를 조금 끌 때 마커가 늦게 뜨지 않게 함 */
+export const DEFAULT_VIEW_MARGIN_RATIO = 0.3
 
 /** 너무 멀리 봐서 마커를 모두 숨기는 줌인지 */
 export function isHiddenZoom(zoom: number) {
@@ -48,10 +48,17 @@ export function toMarkerKey(station: Station, isRecommended: boolean) {
 
 export type ViewBounds = { south: number; west: number; north: number; east: number }
 
-/** 화면의 남서 · 북동 모서리에 여유를 더한 위경도 범위 */
-export function toViewBounds(southWest: LatLng, northEast: LatLng): ViewBounds {
-  const latMargin = (northEast.lat - southWest.lat) * VIEW_MARGIN_RATIO
-  const lngMargin = (northEast.lng - southWest.lng) * VIEW_MARGIN_RATIO
+/**
+ * 화면의 남서 · 북동 모서리에 여유를 더한 위경도 범위
+ * marginRatio는 위아래 · 좌우 각각에 더할 화면 크기 비율. 앱은 더 넓게(0.5) 미리 그림
+ */
+export function toViewBounds(
+  southWest: LatLng,
+  northEast: LatLng,
+  marginRatio = DEFAULT_VIEW_MARGIN_RATIO,
+): ViewBounds {
+  const latMargin = (northEast.lat - southWest.lat) * marginRatio
+  const lngMargin = (northEast.lng - southWest.lng) * marginRatio
   return {
     south: southWest.lat - latMargin,
     west: southWest.lng - lngMargin,
