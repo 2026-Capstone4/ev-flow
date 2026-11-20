@@ -285,6 +285,18 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 길찾기 버튼은 길찾기 화면(3번)을 만들 때까지 눌리지 않게 둠
 - 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버): 사용 가능 4/4 · 빈 충전기 없음(0/1, 충전 중 경과 시간) · 15분 후 선택 · 없는 ID(딥링크 `evflow://stations/…`)에 "찾을 수 없습니다" · 뒤로 가기. 실제 서버에 대기시간 예측이 아직 없어 `WaitRangeBar`는 임시 값(5~12 · 12~22 · 30~55분)으로 모양만 확인
 
+휴게소 목록 · 상세 + 하단 탭 — 완료 (`feat/app-service-areas`, 2026-11-20)
+- 하단 탭: 웹 `BottomTab`(도심 충전소 · 고속도로 휴게소)을 Expo Router `Tabs` + 글자만 있는 탭 바(`src/components/BottomTab.tsx`)로 옮김. 탭이 없으면 휴게소 목록에 들어갈 길이 없어서 이 PR에 넣음
+  - 지도 화면을 `src/app/(tabs)/index.tsx`로 옮김 (주소는 그대로 `/`). 탭을 바꿔도 두 화면을 살려 둬서 지도를 다시 불러오지 않음
+  - 루트 `Stack`의 `screenLayout`은 탭 묶음 전체에만 씌워져서, `(tabs)/_layout.tsx`의 `Tabs`에도 `screenLayout`으로 `ScreenActiveLayout`을 씌움 → 가려진 탭의 폴링이 멈춰야 함 (요청 기록으로 확인은 아직 안 함)
+- 목록: `src/app/(tabs)/service-areas.tsx` (`/service-areas?direction=`), core `useServiceAreaListData`. 방향은 `router.setParams`라 상세에서 돌아와도 유지
+- 상세: `src/app/service-areas/detail.tsx` (`/service-areas/detail?name=&direction=`), core `useServiceAreaDetailData`. 운영기관 · 충전소별로 충전기 상자를 나눔
+- 컴포넌트 추가: `BottomTab` · `DirectionSelector` · `DirectionTag` · `ServiceAreaCard`
+- 네이버 지도 길찾기: `src/lib/openNaverMapApp.ts`의 `openNaverMapCarRoute` — 10번 계획대로 `canOpenURL`로 앱이 있으면 `nmap://route/car`, 없으면 App Store(`itms-apps://`). appname은 번들 ID. 열 곳이 없으면(시뮬레이터) 오류 없이 아무 일도 안 함
+- `tailwind.config.js` `content`에 core `lib/`를 추가 — 휴게소 가용 색(`AVAILABILITY_TONE_CLASS`) 같은 클래스 이름 상수가 core에 있음 (웹 `@source`와 같음). 이 설정을 바꾸면 Metro를 다시 시작해야 반영됨
+- 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버): 탭 전환, 서울 · 부산 방향 목록(가용 색 초록 · 주황 · 빨강), 딥링크 `evflow://service-areas?direction=down`, 카드 → 상세(운영기관 2곳 묶음, 충전 경과 시간), 뒤로 가면 고른 방향 유지
+  - 시뮬레이터에는 네이버 지도 앱 · App Store가 없어 길찾기 버튼은 "아무 일도 안 일어남"까지만 확인. 실기기 확인은 6단계
+
 ### 5단계: 기기 기능 · 예외
 
 - 현재 위치(`expo-location`), 갱신 실패 시 마지막 정상값 유지 + 경고, 예외 화면 4종, 백그라운드 → 복귀 시 갱신

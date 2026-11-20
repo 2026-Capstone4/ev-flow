@@ -3,7 +3,8 @@ const { COLORS } = require('@ev-flow/core/lib/theme')
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./src/**/*.{ts,tsx}'],
+  // core lib에도 클래스 이름 상수가 있어서(휴게소 AVAILABILITY_TONE_CLASS 등) 같이 훑음 (웹 @source와 같음)
+  content: ['./src/**/*.{ts,tsx}', '../packages/core/src/lib/**/*.ts'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
