@@ -6,6 +6,7 @@ import { enableRecommendationsMock } from '@ev-flow/core/mocks/axiosMock'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { queryClient, setupQueryManagers } from '../app-setup/queryClient'
 import { ScreenActiveLayout } from '../app-setup/ScreenActiveLayout'
@@ -21,17 +22,20 @@ if (IS_RECOMMENDATIONS_MOCK) enableRecommendationsMock()
 // 모든 화면을 감싸는 최상위 레이아웃. 쿼리 · 지도 시점 상태를 화면 사이에 공유함
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <MapViewProvider>
-          {/* 화면마다 보이는지 여부를 쿼리 훅에 알려서 가려진 화면은 폴링을 멈춤 */}
-          <Stack
-            screenOptions={{ headerShown: false }}
-            screenLayout={({ children }) => <ScreenActiveLayout>{children}</ScreenActiveLayout>}
-          />
-          <StatusBar style="dark" />
-        </MapViewProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    // 추천 시트(@gorhom/bottom-sheet)의 끌기 제스처가 동작하려면 앱 전체를 감싸야 함
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <MapViewProvider>
+            {/* 화면마다 보이는지 여부를 쿼리 훅에 알려서 가려진 화면은 폴링을 멈춤 */}
+            <Stack
+              screenOptions={{ headerShown: false }}
+              screenLayout={({ children }) => <ScreenActiveLayout>{children}</ScreenActiveLayout>}
+            />
+            <StatusBar style="dark" />
+          </MapViewProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
