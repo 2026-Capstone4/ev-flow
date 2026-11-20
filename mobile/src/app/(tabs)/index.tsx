@@ -1,8 +1,10 @@
 import { NaverMapView, type Region } from '@mj-studio/react-native-naver-map'
 import { router } from 'expo-router'
+import { Search } from 'lucide-react-native'
 import { useStationsQuery } from '@ev-flow/core/hooks/useStationsQuery'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { isDotStation, isHiddenZoom, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
+import { COLORS } from '@ev-flow/core/lib/theme'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
@@ -93,7 +95,22 @@ export default function MapCheckScreen() {
       </NaverMapView>
 
       {/* 확인용 표시. 지도 터치를 막지 않게 필요한 곳만 누를 수 있음 */}
-      <SafeAreaView pointerEvents="box-none" className="absolute inset-x-0 top-0 px-4">
+      <SafeAreaView pointerEvents="box-none" className="absolute inset-x-0 top-0 gap-2 px-4">
+        {/* 검색 화면 들어가는 임시 버튼. 지도 홈(4단계 2번)에서 웹 SearchBar로 바꿈 */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/search')}
+          className="flex-row items-center gap-2 rounded-md bg-bg-page px-4 py-3"
+          style={{
+            shadowColor: '#000',
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+          }}
+        >
+          <Search size={20} strokeWidth={2} color={COLORS['text-secondary']} />
+          <Text className="font-sans text-[15px] text-text-secondary">충전소 이름·주소 검색</Text>
+        </Pressable>
         <View className="flex-row items-center gap-2 self-start rounded-full bg-white/90 px-3 py-1.5">
           <Text className="font-medium text-xs text-text-primary">
             웹 줌 {camera.webZoom.toFixed(1)}(단계 {camera.webZoomLevel}) · 가로{' '}
