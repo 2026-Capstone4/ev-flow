@@ -3,7 +3,13 @@
   "compilerOptions": {
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    // core 소스를 검사할 때도 React 타입을 앱 것(19) 한 벌로 맞춤 (metro.config.js의 한 벌 설정과 같은 이유)
+    // 없으면 core가 자기 폴더의 React 18 타입을 잡아 앱 JSX와 타입이 안 맞음
+    "paths": {
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"]
 }

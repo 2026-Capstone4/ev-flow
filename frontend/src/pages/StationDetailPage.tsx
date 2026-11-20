@@ -9,7 +9,7 @@ import { UpdateStatus } from '@/components/UpdateStatus'
 import { WaitRangeBar } from '@/components/WaitRangeBar'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
-import { formatWaitRange, NO_PREDICTION_LABEL } from '@ev-flow/core/lib/congestion'
+import { formatWaitRange } from '@ev-flow/core/lib/congestion'
 import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 
@@ -100,14 +100,11 @@ export function StationDetailPage() {
                 )}
                 <ChargerStatusBar statuses={station.chargers.map((c) => c.status)} />
               </section>
-            ) : (
+            ) : waitRange ? (
+              // 15 · 30분은 대기 예측이 있을 때만 보여 줌. 기준선이거나 대기 모델이 꺼져 있으면 혼잡 예측 칸만 남김
               <section className="flex flex-col gap-3">
                 <h3 className="text-base font-bold">{getHorizonWhen(horizon)} 예상 대기</h3>
-                <p
-                  className={`font-bold ${waitRange ? 'text-[28px]' : 'text-lg text-text-secondary'}`}
-                >
-                  {waitRange ?? NO_PREDICTION_LABEL}
-                </p>
+                <p className="text-[28px] font-bold">{waitRange}</p>
                 {selectedPrediction?.waitTimeP50Minutes != null &&
                   selectedPrediction.waitTimeP90Minutes != null && (
                     <WaitRangeBar
@@ -116,7 +113,7 @@ export function StationDetailPage() {
                     />
                   )}
               </section>
-            )}
+            ) : null}
 
             <section className="flex flex-col gap-3">
               <h3 className="text-base font-bold">충전기 현황</h3>

@@ -1,7 +1,7 @@
 """요일 · 시간대 기준선 - 최근 28일 도심 회차로 충전소 × 요일 × 시의 최빈 혼잡도를 Redis baseline:v1에 저장
 (docs/prediction.md 기준선, UC-U04 2b · UC-U05 2a)
 
-예측이 없거나(pred:v1 만료 · ml 미준비) 충전소 dataQuality가 baseline일 때 api가 대신 보여줌.
+예측이 없거나(pred:v2 만료 · ml 미준비) 충전소 dataQuality가 baseline일 때 api가 대신 보여줌.
 실패는 여기서 모두 삼킴 - 수집에 영향을 주면 안 됨
 """
 

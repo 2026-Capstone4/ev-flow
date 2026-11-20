@@ -4,6 +4,18 @@ import type { ExpoConfig } from 'expo/config'
  * Expo 앱 설정. app.json 대신 TS로 둬서 나중에 환경 변수(네이버 지도 Client ID 등)를 읽어 넣음
  * iOS만 만듦 (docs/rn-migration-plan.md 7번). 네이티브 폴더(ios/)는 이 설정으로 만들어지므로 직접 고치지 않음
  */
+
+/** 네이버 지도 Client ID (mobile/.env.local). 비어 있어도 빌드는 되지만 지도가 회색 격자로만 나옴 */
+const naverMapClientId = process.env.NAVER_MAP_CLIENT_ID ?? ''
+
+// 값이 없으면 설정을 읽을 때(prebuild · start) 바로 알려 줌. 빌드 성공만 보고 지도 인증 실패를 놓치지 않게 함
+if (!naverMapClientId) {
+  console.warn(
+    '[app.config] NAVER_MAP_CLIENT_ID가 비어 있어 지도가 뜨지 않습니다. ' +
+      'mobile/.env.local에 넣은 뒤 `expo prebuild --platform ios`부터 다시 빌드하세요',
+  )
+}
+
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
@@ -25,6 +37,29 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     [
+      'expo-location',
+      {
+        // 처음 현재 위치 버튼을 누를 때 iOS 권한 창에 뜨는 설명 (Info.plist NSLocationWhenInUseUsageDescription)
+        // 앱을 쓰는 동안만 요청하고, 백그라운드 위치는 쓰지 않음
+        locationWhenInUsePermission:
+          '현재 위치를 추천 · 검색 · 길찾기의 기준 위치로 쓰려고 위치 정보를 사용합니다. 마포구 안에서만 기준 위치를 바꿉니다.',
+        // 플러그인이 기본으로 넣는 항상 위치 · 움직임 권한 설명은 쓰지 않아서 뺌 (false면 Info.plist에서 지움)
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        motionUsagePermission: false,
+      },
+    ],
+    // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)
+    'expo-sqlite',
+    [
+      '@mj-studio/react-native-naver-map',
+      {
+        // 웹과 같은 NCP Client ID (계획 문서 9번). 앱 Info.plist의 NMFNcpKeyId로 들어감
+        // 공개 값이지만 저장소에 적지 않고 mobile/.env.local에서 읽음. 바꾸면 네이티브 빌드를 다시 해야 함
+        client_id: naverMapClientId,
+      },
+    ],
+    [
       'expo-font',
       {
         // 웹과 같은 Pretendard. 앱에 넣어 두고 fontFamily 이름(PostScript 이름)으로 씀
@@ -39,6 +74,9 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
+    // tsconfig.json의 paths는 타입 검사용(React 타입 한 벌)이라 Metro가 실제 모듈 찾기에 쓰지 않게 끔
+    // 켜 두면 react를 @types/react 폴더에서 찾다가 번들이 실패함
+    tsconfigPaths: false,
   },
 }
 

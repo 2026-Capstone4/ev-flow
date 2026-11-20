@@ -37,6 +37,7 @@ function result(
       waitTimeP50Minutes: p50,
       waitTimeP90Minutes: p50 === null ? null : p50 + 10,
       source: congestion ? 'model' : null,
+      modelVersion: congestion ? 'test_model' : null,
     },
   }
 }

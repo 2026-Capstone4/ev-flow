@@ -34,6 +34,7 @@ function prediction(horizonMinutes: 15 | 30, congestion: Prediction['congestion'
     waitTimeP50Minutes: null,
     waitTimeP90Minutes: null,
     source: 'model',
+    modelVersion: 'test_model',
   }
 }
 

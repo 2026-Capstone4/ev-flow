@@ -12,7 +12,10 @@ from app.services.snapshot import ChargerState  # noqa: E402
 NOW = datetime(2026, 11, 16, 7, 0, tzinfo=UTC)
 CITY_RUN = SimpleNamespace(id=1, started_at=NOW - timedelta(minutes=2))
 LIVE_RUN = SimpleNamespace(id=2, started_at=NOW - timedelta(minutes=4))
-MODEL = {"S1": [{"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 1.0}]}
+MODEL = {
+    "model_version": "v",
+    "stations": {"S1": [{"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 1.0}]},
+}
 
 
 def place(sid):

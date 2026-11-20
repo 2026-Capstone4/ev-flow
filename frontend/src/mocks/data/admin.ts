@@ -1,5 +1,5 @@
-import { findServiceAreaChargers, SERVICE_AREAS } from '@/mocks/data/serviceAreas'
-import { STATIONS, toKstIso } from '@/mocks/data/stations'
+import { findServiceAreaChargers, SERVICE_AREAS } from '@ev-flow/core/mocks/serviceAreas'
+import { STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
 import type {
   AdminCharger,
   AdminPeriod,

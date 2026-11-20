@@ -1,6 +1,26 @@
-import { bypass, delay, http, HttpResponse, type DefaultBodyType, type PathParams } from 'msw'
-import { isInMapo } from '@ev-flow/core/lib/coverage'
-import { HORIZONS } from '@ev-flow/core/lib/horizon'
+import {
+  bypass,
+  delay,
+  http,
+  HttpResponse,
+  type DefaultBodyType,
+  type JsonBodyType,
+  type PathParams,
+} from 'msw'
+import {
+  createMockRateLimit,
+  respondRecommendations,
+  type MockResponse,
+  type StationSource,
+} from '@ev-flow/core/mocks/mockApi'
+import { buildMockRoute } from '@ev-flow/core/mocks/routes'
+import { findServiceAreaChargers, SERVICE_AREAS } from '@ev-flow/core/mocks/serviceAreas'
+import {
+  fillMissingPredictions,
+  findStationDetail,
+  STATIONS,
+  toKstIso,
+} from '@ev-flow/core/mocks/stations'
 import {
   buildAdminChargers,
   buildCollectionTargets,
@@ -12,15 +32,6 @@ import {
   MOCK_MAX_LOGIN_FAILURES,
   MOCK_SESSION_MS,
 } from '@/mocks/data/admin'
-import { buildRecommendations } from '@/mocks/data/recommendations'
-import { buildMockRoute } from '@/mocks/data/routes'
-import { findServiceAreaChargers, SERVICE_AREAS } from '@/mocks/data/serviceAreas'
-import {
-  fillMissingPredictions,
-  findStationDetail,
-  STATIONS,
-  toKstIso,
-} from '@/mocks/data/stations'
 import type { AdminPeriod, AdminRegion, AuthSession, LoginRequest } from '@/types/admin'
 import type { ApiErrorBody } from '@ev-flow/core/types/api'
 import type {
@@ -29,7 +40,6 @@ import type {
 } from '@ev-flow/core/types/serviceArea'
 import type {
   RecommendationsRequest,
-  RecommendationsResponse,
   RouteRequest,
   RouteResponse,
   Station,
@@ -37,15 +47,9 @@ import type {
   StationsResponse,
 } from '@ev-flow/core/types/station'
 
-/**
- * 추천 · 길찾기 핸들러에 충전소 목록을 넘겨주는 함수 모양.
- * 전체 Mock은 Mock 충전소를, 혼합 모드는 실제 서버 충전소를 돌려준다. 못 가져오면 null
- */
-type StationSource = () => Promise<Station[] | null>
-
-/** 충전소 목록을 못 가져왔을 때 돌려주는 503 응답 본문 (API 명세의 DATA_UNAVAILABLE) */
-const DATA_UNAVAILABLE: ApiErrorBody = {
-  error: { code: 'DATA_UNAVAILABLE', message: '충전 상태 데이터를 불러올 수 없습니다.' },
+/** 공용 Mock 응답(@ev-flow/core/mocks/mockApi)을 MSW 응답으로 바꿈 */
+function toHttpResponse<T extends JsonBodyType>(mock: MockResponse<T>) {
+  return HttpResponse.json<T>(mock.body, { status: mock.status, headers: mock.headers })
 }
 
 /** 충전소 목록 · 상세 API - 전체 Mock 모드에서만 씀 (혼합 모드에서는 실제 서버가 응답) */
@@ -79,76 +83,19 @@ const stationHandlers = [
   }),
 ]
 
-/** 추천 · 길찾기를 합쳐 이 시간 안에 이만큼 넘게 부르면 429 RATE_LIMITED (화면 확인용, 실제 기준은 미정) */
-const MOCK_RATE_LIMIT = { maxCalls: 10, windowMs: 60_000 }
-
-/** 최근 추천 · 길찾기 호출 시각(ms). 새로고침하면 초기화됨 */
-const recentCalls: number[] = []
-
-/**
- * 호출 제한을 넘었으면 429 응답을, 아니면 이번 호출을 기록하고 null을 돌려준다.
- * Retry-After는 가장 오래된 호출이 기준 시간 밖으로 나갈 때까지 남은 초
- */
-function checkMockRateLimit() {
-  const now = Date.now()
-  // 기준 시간보다 오래된 호출은 세지 않도록 앞에서부터 버림
-  while (recentCalls.length > 0 && recentCalls[0] <= now - MOCK_RATE_LIMIT.windowMs)
-    recentCalls.shift()
-  // 한도를 채웠으면 기록하지 않고 429 - 추천 시트 · 길찾기 화면의 호출 제한 안내로 이어짐
-  if (recentCalls.length >= MOCK_RATE_LIMIT.maxCalls) {
-    const retryAfter = Math.ceil((recentCalls[0] + MOCK_RATE_LIMIT.windowMs - now) / 1000)
-    return HttpResponse.json<ApiErrorBody>(
-      {
-        error: {
-          code: 'RATE_LIMITED',
-          message: '요청이 많아 잠시 후 다시 시도해 주세요.',
-        },
-      },
-      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
-    )
-  }
-  recentCalls.push(now)
-  return null
-}
+/** 추천 · 길찾기를 합쳐 세는 호출 제한 (화면 확인용). 새로고침하면 초기화됨 */
+const checkMockRateLimit = createMockRateLimit()
 
 /**
  * 백엔드에 아직 없는 추천 API 핸들러를 만든다. 혼합 모드에서도 Mock으로 응답함.
- * 충전소 목록을 어디서 가져올지(getStations)만 바꿔 끼워서 전체 · 혼합 모드가 같은 핸들러를 쓴다
+ * 응답 만들기는 앱과 같이 쓰는 core 함수에 맡기고, 충전소 목록을 어디서 가져올지(getStations)만 바꿔 끼움
  */
 function createRecommendationHandler(getStations: StationSource) {
   // 추천 충전소. 내 위치와 필터를 받아 시점(지금 · 15분 후 등)마다 Top 3를 만들어 돌려줌
-  return http.post<never, RecommendationsRequest>(
-    '/api/v1/recommendations',
-    async ({ request }) => {
-      const { lat, lng, filters } = await request.json()
-      const limited = checkMockRateLimit()
-      // 호출 제한을 넘었으면 추천을 만들지 않고 429 그대로
-      if (limited) return limited
-      // 출발 위치가 마포구 밖이면 실제 서버처럼 422 - 추천 시트에 마포구만 지원한다는 안내가 뜸
-      if (!isInMapo({ lat, lng })) {
-        await delay(300)
-        return HttpResponse.json<ApiErrorBody>(
-          {
-            error: {
-              code: 'OUT_OF_SERVICE_AREA',
-              message: '현재 충전소 추천 기능은 마포구만 지원해요',
-            },
-          },
-          { status: 422 },
-        )
-      }
-      const stations = await getStations()
-      // 충전소 목록을 못 받았으면 추천을 만들 수 없으니 503 - 추천 시트의 오류 상태로 이어짐
-      if (!stations) return HttpResponse.json<ApiErrorBody>(DATA_UNAVAILABLE, { status: 503 })
-      await delay(300)
-      return HttpResponse.json<RecommendationsResponse>({
-        updatedAt: toKstIso(new Date()),
-        dataQuality: 'normal',
-        results: HORIZONS.map((horizon) =>
-          buildRecommendations(stations, { lat, lng }, horizon, filters),
-        ),
-      })
-    },
+  return http.post<never, RecommendationsRequest>('/api/v1/recommendations', async ({ request }) =>
+    toHttpResponse(
+      await respondRecommendations(await request.json(), getStations, checkMockRateLimit),
+    ),
   )
 }
 
@@ -162,7 +109,7 @@ const routeHandler = http.post<never, RouteRequest, ApiErrorBody | RouteResponse
     const { origin, stationId } = await request.json()
     const limited = checkMockRateLimit()
     // 호출 제한을 넘었으면 경로를 만들지 않고 429 그대로
-    if (limited) return limited
+    if (limited) return toHttpResponse(limited)
     await delay(400)
     const station = STATIONS.find((s) => s.stationId === stationId)
     // Mock 충전소 목록에 없는 ID면 404
