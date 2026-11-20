@@ -8,6 +8,8 @@ module.exports = {
   theme: {
     extend: {
       colors: COLORS,
+      // 웹 styles/index.css의 --radius-*와 같은 값 (Tailwind 기본값과 다름)
+      borderRadius: { sm: '6px', md: '12px', lg: '20px' },
       // RN은 글자 굵기마다 다른 폰트 파일을 씀 → 굵기별 이름으로 나눔 (font-medium 같은 굵기 클래스로는 바뀌지 않음)
       fontFamily: {
         sans: ['Pretendard-Regular'],

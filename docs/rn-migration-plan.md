@@ -271,6 +271,20 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 
 각 화면은 기존 `use*Data` 훅을 그대로 쓰고 JSX만 새로 씀.
 
+충전소 상세 — 완료 (`feat/app-station-detail`, 2026-11-20)
+- 화면: `src/app/stations/[stationId]/index.tsx` (웹과 같은 주소 `/stations/{id}?horizon=`). 데이터는 core `useStationDetailData` 그대로, 시점 바꾸기는 `router.setParams` (화면 기록 안 쌓임)
+- 공용 컴포넌트를 `src/components/`에 웹 이름 그대로 새로 씀: `BackButton` · `Button` · `CongestionBadge` · `UpdateStatus` · `PredictionTile` · `ChargerRow` · `ChargerStatusBar` · `WaitRangeBar`. 다른 화면에서 다시 씀
+- 웹과 다르게 한 것
+  - RN은 글자색 · 글꼴이 View에서 Text로 안 물려짐 → Text마다 `font-*` · `text-*` 색을 씀
+  - `last:` 선택자 없음 → `ChargerRow`에 `isLast`
+  - transform이 %를 못 씀(웹 `-translate-x-1/2`) → `WaitRangeBar` 눈금은 고정 너비 칸을 놓고 칸 안에서 정렬
+  - 한글 줄바꿈(웹 `break-keep`) → `lineBreakStrategyIOS="hangul-word"`
+  - 불러오는 중 회색 상자는 깜빡임 없이 (NativeWind v4 애니메이션은 실험 기능이라 안 씀)
+- `tailwind.config.js`에 웹과 같은 둥글기(`rounded-sm` 6px · `md` 12px · `lg` 20px) 추가 — Tailwind 기본값과 다름
+- 지도 검증 화면에서 마커를 누르면 상세로 감 (이전의 이름 · 대수 말풍선은 뺌)
+- 길찾기 버튼은 길찾기 화면(3번)을 만들 때까지 눌리지 않게 둠
+- 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버): 사용 가능 4/4 · 빈 충전기 없음(0/1, 충전 중 경과 시간) · 15분 후 선택 · 없는 ID(딥링크 `evflow://stations/…`)에 "찾을 수 없습니다" · 뒤로 가기. 실제 서버에 대기시간 예측이 아직 없어 `WaitRangeBar`는 임시 값(5~12 · 12~22 · 30~55분)으로 모양만 확인
+
 ### 5단계: 기기 기능 · 예외
 
 - 현재 위치(`expo-location`), 갱신 실패 시 마지막 정상값 유지 + 경고, 예외 화면 4종, 백그라운드 → 복귀 시 갱신
