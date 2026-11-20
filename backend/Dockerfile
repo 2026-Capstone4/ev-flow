@@ -15,6 +15,7 @@ COPY migrations ./migrations
 COPY scripts ./scripts
 COPY alembic.ini .
 # 수집 대상 고정 목록 - 마포구 69개소·190기 / 천안 휴게소 9 statId
-COPY data/mapo_fast_chargers.csv data/rest_area_mapping.csv ./data/
+# + 마포구 경계 - 추천 서비스 범위 판정 (프론트 coverage-boundary.json과 같은 경계)
+COPY data/mapo_fast_chargers.csv data/rest_area_mapping.csv data/mapo_boundary.json ./data/
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
