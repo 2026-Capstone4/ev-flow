@@ -1,4 +1,5 @@
 import { NaverMapView, type Region } from '@mj-studio/react-native-naver-map'
+import { router } from 'expo-router'
 import { useStationsQuery } from '@ev-flow/core/hooks/useStationsQuery'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { isDotStation, isHiddenZoom, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
@@ -35,7 +36,6 @@ export default function MapCheckScreen() {
     region: null,
   })
   const [isHideCollided, setIsHideCollided] = useState(false)
-  const [tapped, setTapped] = useState<Station | null>(null)
 
   // 화면 범위에 여유를 더한 곳의 충전소만 마커로 그림. 줌이 너무 작으면 하나도 안 그림
   const visibleStations = useMemo(() => {
@@ -60,8 +60,12 @@ export default function MapCheckScreen() {
     setCamera({ webZoom: toWebZoom(zoom), webZoomLevel: toWebZoomLevel(zoom), region })
   }, [])
 
-  // memo 마커가 다시 그려지지 않도록 함수 하나를 계속 씀
-  const handleMarkerTap = useCallback((station: Station) => setTapped(station), [])
+  // 마커를 누르면 충전소 상세로 감. memo 마커가 다시 그려지지 않도록 함수 하나를 계속 씀
+  const handleMarkerTap = useCallback(
+    (station: Station) =>
+      router.push({ pathname: '/stations/[stationId]', params: { stationId: station.stationId } }),
+    [],
+  )
 
   return (
     <View className="flex-1 bg-bg-page">
@@ -75,7 +79,6 @@ export default function MapCheckScreen() {
         isShowLocationButton={false}
         isShowZoomControls={false}
         onCameraIdle={handleCameraIdle}
-        onTapMap={() => setTapped(null)}
       >
         {visibleStations.map((station) => (
           <StationMarker
@@ -107,15 +110,6 @@ export default function MapCheckScreen() {
             </Text>
           </Pressable>
         </View>
-        {/* 마커를 누르면 어떤 충전소인지 보여 줌 (탭이 되는지 확인) */}
-        {tapped && (
-          <View className="mt-2 self-start rounded-xl bg-white/90 px-3 py-2">
-            <Text className="font-semibold text-sm text-text-primary">{tapped.name}</Text>
-            <Text className="font-sans text-xs text-text-secondary">
-              사용 가능 {tapped.availableChargers}/{tapped.totalChargers}대
-            </Text>
-          </View>
-        )}
       </SafeAreaView>
     </View>
   )
