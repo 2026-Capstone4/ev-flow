@@ -80,6 +80,8 @@ export default function SearchScreen() {
             accessibilityLabel="충전소 검색"
             returnKeyType="search"
             autoCorrect={false}
+            // 검색창이라 iOS 자동 완성(AutoFill) 말풍선이 뜨지 않게 함
+            autoComplete="off"
             className="min-w-0 flex-1 py-2.5 font-medium text-base text-text-primary"
           />
           {query !== '' && (
@@ -97,7 +99,7 @@ export default function SearchScreen() {
 
       {/* 시점은 모든 결과의 예측 기준을 바꾸는 필수 선택이라, 결과를 줄이는 필터 칩과 따로 세그먼트로 둠 */}
       <View className="border-b border-border-default px-4 pt-2 pb-3">
-        <HorizonSelector value={horizon} onChange={setHorizon} />
+        <HorizonSelector value={horizon} onChange={setHorizon} variant="inline" />
       </View>
 
       <View className="items-start gap-3 border-b border-border-default px-4 pt-3 pb-4">

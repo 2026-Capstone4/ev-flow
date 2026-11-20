@@ -307,6 +307,26 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버): 1,622곳 목록, 15분 후 · 사용 가능만 · 거리순(1,340곳), 결과 → 상세(15분 후 선택된 채) → 뒤로 오면 조건 유지, 더보기, 딥링크로 검색어 `홍대`(2곳), 결과 없음 + 필터 초기화
   - 시뮬레이터에 Mac 글자를 넣을 수 없어 한글 직접 입력과 검색어 지우기(X)는 못 봄 (X 자리를 개발 메뉴 버튼이 가림). 실기기 확인은 6단계
 
+지도 홈 + 추천 Top 3 시트 — 완료 (`feat/app-map-home`, 2026-11-20)
+- 화면: 3단계 지도 검증 화면을 `src/app/(tabs)/index.tsx` 지도 홈으로 바꿈. 데이터는 core `useMapHomeData` 그대로, 시점 · 필터는 검색 화면과 함께 쓰는 `MapViewProvider` 상태
+  - 위쪽 확인용 표시(웹 줌 · 마커 수 · 겹침 숨김 토글)는 뺌. 겹침 숨김은 켠 채로 둠 (점만, 마포 · 추천 숫자 마커는 `StationMarker`가 뺌)
+  - 마커는 필터를 적용하고 추천 Top 3는 추천 색(형광 파랑)으로, 필터와 상관없이 남김 (웹과 같음). 너무 멀리 보면 "확대하면 충전소가 보여요"
+  - 서비스 범위 칠하기(`src/map/CoverageMask.tsx`): 웹 `useCoverageMask`와 같은 경계 파일을 SDK 폴리곤으로. SDK 규칙대로 바깥 고리는 시계 방향, 구멍은 반시계. 마포구는 테두리만 그려서 폴리곤 대신 선(`NaverMapPolylineOverlay`)으로 그림 — 채움 없는 폴리곤은 `"transparent"` · `rgba(0, 0, 0, 0)` 둘 다 색 값 0이 되어 SDK가 흰색으로 칠함
+- 추천 시트(`src/components/RecommendSheet.tsx`): 계획 4번 6대로 `@gorhom/bottom-sheet` 5.2 + `react-native-gesture-handler` 3.3 (Expo SDK 58 권장 버전). 루트 레이아웃을 `GestureHandlerRootView`로 감쌈
+  - 최소(헤더만) · 접힘(첫 카드) · 펼침(Top 3) 3단계 = snapPoints. 헤더 · 첫 칸 · 내용 높이를 그린 뒤 재서 정함 (기본 글자 크기에선 헤더 32 · 카드 136 = 웹과 같음). iOS 글자 크기를 키우면 카드 · 헤더가 커지고 시트도 따라 커짐, 헤더는 한 줄에 안 들어가면 시점 선택을 다음 줄로. 펼침은 위 120px을 남기고, 넘치면 시트 안에서 스크롤
+  - 펼친 채로 추천이 오류 · 호출 제한으로 바뀌면 펼침 단계가 없어져 접힘으로 옮김. 손잡이는 `snapToIndex(2)` 대신 `expand()`(맨 끝 단계) · `snapToIndex(1)`을 씀 — 단계 수가 막 바뀐 직후엔 시트 안쪽(UI 스레드)이 옛 단계 수라 번호로 부르면 범위 오류로 앱이 멈춤
+  - 펼친 동안만 지도를 어둡게 덮고(`BottomSheetBackdrop`), 덮개를 누르면 접힘. 손잡이를 누르면 접힘 ↔ 펼침, 최소에서는 접힘
+  - 손잡이는 `handleComponent`가 아니라 내용 안에 직접 그림 — `handleComponent`에 함수를 넘기면 다시 그릴 때마다 새로 만들어져 누름을 놓침
+  - 그림자는 `backgroundStyle`에 줌 (바탕색 없는 바깥 칸에 주면 iOS가 느리게 그린다는 경고)
+  - 추천 상태별 문구(오류 · 없음 · 마포구 밖 · 호출 제한), 불러오는 동안 카드 3장 자리, 후보가 3곳 미만이면 안내 — 웹과 같음
+- 필터 패널(`src/components/FilterPanel.tsx`): 검색창 아래로 띄우고, 열린 동안 뒤에 투명한 판을 깔아 바깥을 누르면 고른 값을 버리고 닫음 (웹은 지도를 덮지 않고 바깥 누름을 감지). 검색 · 상세 · 다른 탭으로 떠나면 닫음(`useFocusEffect`)
+- 컴포넌트 추가: `SearchBar` · `FilterPanel` · `RecommendCard`(+자리표시) · `RecommendSheet` · `ZoomInNotice`. `HorizonSelector`에 floating 모양, `CongestionBadge`에 `className`
+- 이 PR에서 뺀 것: 현재 위치 버튼 · 첫 방문 안내(5단계), 추천 카드의 길찾기 버튼 · 길찾기에서 돌아오면 시트 펼치기(3번)
+- `@gorhom/bottom-sheet`를 넣자 pnpm 공용 위치의 `@types/react`가 18 → 19로 바뀌어 웹 타입 검사가 깨짐 (react-router가 의존성에 안 적힌 `@types/react`를 공용 위치에서 읽음). `pnpm-workspace.yaml` `packageExtensions`로 react-router에 `@types/react`를 적어 웹은 18을 쓰게 함
+- 네이티브 모듈(gesture-handler)이 늘어 **앱을 다시 빌드해야 함** (`expo run:ios`). `pod install`이 Ruby 인코딩 오류로 멈추면 `LANG=en_US.UTF-8`로 실행
+- 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버 + 추천 Mock): 첫 화면 접힘, 손잡이로 펼침(지도 어둡게) → 덮개 누르면 접힘 → 끌어서 최소 → 손잡이로 접힘, 30분 후로 바꾸면 추천 마커가 바뀜, 필터 패널(초급속 235곳 → 적용하면 "필터 1" · 추천 마커만 남음 → 초기화), 카드 → 상세(30분 후 선택된 채), 멀리 보면 확대 안내 · 서울 밖 회색 · 마포 테두리
+  - 시뮬레이터는 Mac GPU라 시트 끌기 부드러움 · 지도 위 버벅임은 실기기(6단계)에서 다시 봄
+
 ### 5단계: 기기 기능 · 예외
 
 - 현재 위치(`expo-location`), 갱신 실패 시 마지막 정상값 유지 + 경고, 예외 화면 4종, 백그라운드 → 복귀 시 갱신

@@ -15,12 +15,16 @@ const BADGE_CLASS: Record<CurrentCongestion | 'none', { box: string; text: strin
 type CongestionBadgeProps = {
   /** 현재 혼잡도 또는 예측 혼잡도. null은 예측 없음 */
   congestion: CurrentCongestion | null
+  /** 바깥에서 크기를 바꿀 때 (추천 카드는 길찾기 버튼과 같은 높이로 키움) */
+  className?: string
 }
 
-export function CongestionBadge({ congestion }: CongestionBadgeProps) {
+export function CongestionBadge({ congestion, className = '' }: CongestionBadgeProps) {
   const badgeClass = BADGE_CLASS[congestion ?? 'none']
   return (
-    <View className={`self-start rounded-sm px-2 py-1 ${badgeClass.box}`}>
+    <View
+      className={`self-start justify-center rounded-sm px-2 py-1 ${badgeClass.box} ${className}`}
+    >
       <Text className={`font-bold text-xs ${badgeClass.text}`}>
         {getCongestionLabel(congestion)}
       </Text>
