@@ -1,17 +1,46 @@
 # 예측 파이프라인
 
-> 🟡 **초안** — 모델을 받은 뒤 AI 팀과 맞춰 수정한다. [미정](#미정) 항목 참고.
+collector가 5분마다 도심 수집을 커밋한 직후 ml에 예측을 요청하고, 결과를 Redis `pred:v2`에 저장한다. api는 Redis만 읽는다 (`AI-07`). 휴게소는 예측 대상이 아니다 (DATA-003).
 
-collector가 5분마다 도심 수집을 커밋한 직후 ml에 예측을 요청하고, 결과를 Redis `pred:v1`에 저장한다. api는 Redis만 읽는다 (`AI-07`). 휴게소는 예측 대상이 아니다 (DATA-003).
+```
+collector (도심 SUCCESS · PARTIAL 커밋)
+  → producer: 체크포인트 게시 (아래 "체크포인트 producer")
+  → POST http://ml:8001/internal/v1/predict {"run_id": N}   (app/collector/prediction.py, 타임아웃 30초)
+      ml 컨테이너 = AI 패키지의 backend_app 그대로 (ml_read · ml_checkpoint를 읽기 전용으로 직접 읽음)
+  → 변환 · 검증 → SET pred:v2
+```
 
-## Redis `pred:v1`
+## ml (AI 패키지 그대로 실행)
 
-- **키 하나에 도심 충전소 전체를 담는다** — `SET pred:v1 <JSON> EX 1200` (20분)
+모델과 추론 코드는 AI v3.1 패키지를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
+
+- 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
+- 실행: `/package`에서 `uvicorn backend_app:app --workers 1` — 워커마다 모델을 따로 로드하므로 512MiB 예산은 워커 1개 기준
+- 접속: `evflow_ml_reader` (`EVFLOW_ML_READONLY_DSN`) — 원천 `ml_read`, 체크포인트 `ml_checkpoint`
+- 경로: `POST /internal/v1/predict` (본문 `{"run_id": 정수}`) · `GET /healthz`
+- 시점 15 · 30분 × 충전소. 혼잡 모델(`xgb_v1_20261108`)과 대기 모델(`station_wait_time_v1_20261115`)이 함께 돈다
+- 응답 HTTP: 200 = `success`(전부 있음) · `partial`(일부 빠짐), 503 = 예측 전부 없음 · DB 장애 · 모델 로드 실패, 409 = 회차 근거 불일치, 404 = 모르는 회차
+
+### 로컬 확인 (2026-11-20)
+
+맥 Docker에서 `linux/amd64` 이미지 · 512MiB
+
+| 확인 | 결과 |
+|---|---|
+| 이미지 빌드 · `pip check` | 통과 |
+| 패키지 예제 스냅샷(DB 없음, 4개소)으로 실제 모델 예측 | 로드 1.4초 · 예측 5.7초 · 200 `success`, 16칸 모두 `ok` |
+| 그 응답 → collector 변환 → api 응답 | 4개소 × 15 · 30 모두 저장, `modelVersion` 표시 |
+| 기본 명령으로 기동 · DB 없음 | 모델 2개 로드 · `/healthz` 503(`RepositoryUnavailable`) · 예측 503 `database_unavailable` · 메모리 213MiB |
+
+실제 DB · 체크포인트를 읽는 확인은 서버 배포 후에 한다.
+
+## Redis `pred:v2`
+
+- **키 하나에 도심 충전소 전체를 담는다** — `SET pred:v2 <JSON> EX 1200` (20분)
   - 목록 API는 항상 전체를 돌려주므로 GET 한 번으로 끝남
   - 통째로 교체되므로 서로 다른 회차의 예측이 섞이지 않음
-  - 크기는 66개소 × 3시점으로 약 15KB
 - ml 호출이 실패하거나 결과가 검증을 통과하지 못하면 **쓰지 않는다** — 기존 값과 TTL이 그대로 남음
-- 형식이 바뀌면 키를 `pred:v2`로 올린다 — 배포 중에 구버전 api가 새 형식을 읽지 않게 함
+- 형식이 바뀌면 키 번호를 올린다 — 배포 중에 구버전 api가 새 형식을 읽지 않게 함 (2026-11-20 `pred:v1` → `pred:v2`: 60분 제외 · 대기 null 허용 · 점유율 추가)
 
 ### 값
 
@@ -19,13 +48,13 @@ collector가 5분마다 도심 수집을 커밋한 직후 ml에 예측을 요청
 {
   "base_time": "2026-11-08T05:05:00+00:00",
   "collection_run_id": 123456,
-  "model_version": "20261110",
+  "model_version": "evflow_station_recommendation_1530_20261116",
+  "model_versions": { "congestion": "xgb_v1_20261108", "time": "station_wait_time_v1_20261115" },
   "created_at": "2026-11-08T05:05:41+00:00",
   "stations": {
     "ME19A601": [
-      { "horizon": 15, "congestion": "medium", "wait_p50": 0.0, "wait_p90": 6.2 },
-      { "horizon": 30, "congestion": "high", "wait_p50": 4.8, "wait_p90": 15.0 },
-      { "horizon": 60, "congestion": "medium", "wait_p50": 1.5, "wait_p90": 9.7 }
+      { "horizon": 15, "congestion": "medium", "wait_p50": 0.0, "wait_p90": 6.2, "occupancy": 0.42, "congestion_prob": 0.08 },
+      { "horizon": 30, "congestion": "high", "wait_p50": null, "wait_p90": null, "occupancy": 0.81, "congestion_prob": 0.35 }
     ]
   }
 }
@@ -35,40 +64,59 @@ collector가 5분마다 도심 수집을 커밋한 직후 ml에 예측을 요청
 |---|---|
 | `base_time` | 예측 기준 시각(UTC). 입력으로 쓴 수집 회차의 `started_at`이며 응답 `updatedAt`과 같은 값. "30분 후" = `base_time + 30분` |
 | `collection_run_id` | 입력으로 쓴 `collection_runs.id` |
-| `model_version` | ml이 로드한 모델 버전. 이름 규칙은 `AI-01` |
+| `model_version` | AI 패키지 배포 이름 (`deployment.deployment_id`) — 혼잡 · 대기 모델 조합 하나를 가리킴. API `modelVersion`으로 나감 |
+| `model_versions` | 혼잡 · 대기 모델 각각의 버전 (행의 `model_versions`에서 모음) |
 | `created_at` | collector가 저장한 시각 |
-| `stations` | 충전소 ID별 예측. 15 · 30 · 60 순서로 3개 |
-| `congestion` | `low` · `medium` · `high` |
-| `wait_p50` · `wait_p90` | 예상 대기(분, 실수). 정수 반올림은 api에서 |
+| `stations` | 충전소 ID별 예측. 15 · 30 순서로 2개 |
+| `congestion` | `low` · `medium` · `high` (패키지 `여유` · `보통` · `혼잡`) |
+| `wait_p50` · `wait_p90` | 예상 대기(분, 실수). 대기 예측이 빠진 칸은 `null`. 정수 반올림은 api에서 |
+| `occupancy` · `congestion_prob` | 예상 점유율 · 만차 확률 (0 ~ 1, 없으면 `null`). 추천 점수용 — 조회 API에는 아직 내보내지 않음 |
 
 - 내부 데이터라 `snake_case`를 쓴다. `camelCase` 변환은 HTTP 응답에서만 한다 (`API-05`)
 - 버스전용 충전기만 있는 충전소는 넣지 않는다
 
-## ml 응답 (`POST /predict`)
+## collector 변환 · 검증
 
-ml은 위 값 중 `model_version`과 `stations`만 돌려준다. `base_time` · `collection_run_id` · `created_at`은 collector가 채운다. 분위수 교차(P50 > P90)는 ml이 `min` · `max`로 정렬해서 보낸다.
-
-## collector 검증
+ml 응답 `predictions[]`는 충전소 × 시점 한 행씩이고, 행마다 `components.congestion` · `components.time`에 상태(`ok` · `unavailable`)가 따로 있다.
 
 | 대상 | 조건 | 실패하면 |
 |---|---|---|
-| 응답 전체 | 200 · JSON · `stations`가 객체 · `model_version` 있음 | 쓰지 않음 (기존 값 유지) |
-| 충전소 하나 | 수집 대상에 있는 ID · 시점 15 · 30 · 60이 정확히 하나씩 · `congestion` 값이 셋 중 하나 · 대기 0 이상 · `wait_p50 ≤ wait_p90` | 그 충전소만 뺌 |
+| 응답 전체 | 200 · JSON · `predictions`가 배열 · `deployment.deployment_id` 있음 | 쓰지 않음 (기존 값 유지) |
+| 한 칸의 혼잡도 | `congestion.status`가 `ok` · 단계가 `여유` · `보통` · `혼잡`(또는 영어) 중 하나 | 그 충전소만 뺌 |
+| 한 칸의 대기 | `time.status`가 `ok` · 0 이상 · `p50 ≤ p90` | 대기만 `null`, 혼잡도는 유지 |
+| 점유율 · 만차 확률 | 0 ~ 1 실수 | 그 값만 `null` |
+| 충전소 하나 | 수집 대상(버스전용 아닌 충전기가 있는 도심 충전소) · 시점 15 · 30이 정확히 하나씩 | 그 충전소만 뺌 → api가 기준선으로 대체 |
 | 남은 충전소 | 1개 이상 | 0개면 쓰지 않음 |
 
-ml 호출 타임아웃은 짧게 둔다 (🟡 10초). 실패해도 수집 결과에는 영향이 없다.
+ml 호출 타임아웃은 30초 (AI 실측 512MiB · 체크포인트 있음 약 7.4초). 200이 아니면 HTTP 코드와 `reason`만 경고 로그로 남기고 넘어간다. 실패해도 수집 결과에는 영향이 없다.
 
 ## api 조회 규칙
 
 | 상황 | `predictions` |
 |---|---|
-| 키가 있고 그 충전소가 들어 있음 · 충전소 `dataQuality`가 `baseline` 아님 | Redis 값, `source: model` |
+| 키가 있고 그 충전소가 들어 있음 · 충전소 `dataQuality`가 `baseline` 아님 | Redis 값, `source: model`, `modelVersion` = `model_version` |
 | 키 없음(만료 · ml 장애) · 충전소 빠짐 · `dataQuality`가 `baseline` | 요일 · 시간대 기준선, `source: baseline` |
 | 기준선도 없음 | 모두 `null` (UC-U05 E2) |
 
 - 모델 예측의 "30분 후"는 `base_time + 30분`, 기준선은 **조회 시각 + 30분**의 KST 요일 · 시 칸
-- 대기시간은 정수로 반올림한다 (0.5는 올림)
+- 대기시간은 정수로 반올림한다 (0.5는 올림). 모델이어도 대기가 `null`인 칸은 그대로 `null`
+- 대기 표시 설정 `SHOW_WAIT_PREDICTION`(api `.env`, 기본 꺼짐)이 꺼져 있으면 모델 대기도 `null`로 낸다 — v3.1의 빈 충전소 약 5분 문제([미정](#미정)) 때문. Redis에는 원값이 그대로 있음. v3.2로 교체한 뒤 `true`로 바꾸고 api 재시작
 - Redis를 못 읽으면 키가 없을 때와 같게 처리한다 — 조회 API는 실패시키지 않음
+
+## 모델 교체
+
+더 나은 모델이 오면 패키지째 바꾼다. 우리 코드는 그대로 두고, 응답 형식이 바뀐 경우에만 collector 변환을 고친다.
+
+1. 새 ZIP의 SHA-256을 AI가 알려 준 값과 맞춰 본다
+2. 지금 패키지를 옆에 보관 — `mv ml/package ml/package_<배포 이름>` (되돌릴 때 이름만 다시 바꿈)
+3. 새 패키지를 `ml/package/`에 푼다 (`python3 -m zipfile -e <zip> ml/package`)
+4. 의존성 버전이 바뀌었으면 `ml/requirements.txt` · `producer/requirements.txt`를 맞추고 이미지 재빌드
+5. producer · ml 재시작 — ml은 시작할 때 한 번만 모델을 읽음
+6. 입력 피처 · 이력 기점이 바뀐 패키지면 체크포인트 재구축 (아래 producer 최초 구축 명령, 서버 약 10분 — 그동안 대기는 `null`, 혼잡도는 나옴)
+7. 확인: `/healthz`의 `deployment.deployment_id` · collector 로그 `예측 저장 ... 모델 <배포 이름>` · API `modelVersion`
+8. 대기 표시를 켤 모델이면 api `.env`의 `SHOW_WAIT_PREDICTION=true` 후 api 재시작
+
+새 모델마다 512MiB 안에서 도는지 AI 실측을 받아 둔다.
 
 ## Redis `baseline:v1` (요일 · 시간대 기준선)
 
@@ -106,7 +154,7 @@ collector (도심 SUCCESS · PARTIAL 커밋, 저장 1행 이상)
   → POST http://producer:8002/runs/{run_id}       (app/collector/checkpoint.py, 타임아웃 60초)
       producer 컨테이너 (producer/server.py, 단일 스레드)
         → 회차마다 새 하위 프로세스: maintain_checkpoint.py --run-id N --publish-postgres
-  → refresh_predictions (ml 호출, 기존 그대로)
+  → refresh_predictions (ml 호출 — 맨 위 흐름)
 ```
 
 | producer 응답 | 뜻 | collector |
@@ -147,11 +195,6 @@ cd /home/ubuntu/ev-flow/backend && docker compose -f docker-compose.yml run --rm
 
 ## 미정
 
-모델을 받으면 AI 팀(김서현 · 이상윤)과 확인해 이 문서를 고친다.
-
-- **예측 단위** — API는 충전소 단위. 모델이 충전기 단위로 내면 충전소로 합치는 규칙이 필요함
-- **혼잡도 클래스 번호 ↔ `low` · `medium` · `high` 대응**, 대기시간 단위(분)
-- **ml 입력 형식** — 최근 몇 시간의 상태를 어떤 모양으로 넘길지. AI 팀 피처 코드에 따라 정함 (`AI-03`)
-- 모델 버전 이름 규칙 (`AI-01`)
+- **빈 충전소의 대기가 약 5분으로 나옴 (AI v3.2에서 수정 중)** — 대기 정답은 "목표 시각(t+h) 이후 처음으로 빈 충전기가 관측되기까지"인데, 목표 시각과 정확히 같은 수집만 0분으로 인정함. 수집 시각이 1초 미만으로 어긋나 목표 시각에 비어 있어도 다음 회차(5분)가 정답이 되는 경우가 생김 (AI 확인: 1,741건 중 602건). 백엔드에서 일괄 5분 빼기는 AI 측정상 전체 오차가 커져 하지 않음. AI가 "목표 시각과 1초 미만 차이 · 목표 시각 양쪽 관측에서 같은 호환 충전기 가용이면 0분"으로 정답을 고쳐 v3.2에 반영 예정 → 받으면 [모델 교체](#모델-교체)로 바꿈
 - **기준선 공휴일** — 요일만 나누므로 28일 안에 연휴가 있으면 그 요일 값이 흔들림
 - 기준선 표본 기준(12회차) · 기간(28일)

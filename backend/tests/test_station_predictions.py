@@ -13,22 +13,24 @@ os.environ.setdefault("EV_SERVICE_KEY", "test")
 from app.services import predictions  # noqa: E402
 from app.services.predictions import build_predictions, load_baseline, load_model_predictions  # noqa: E402
 
-# 월 00:40 KST - 기준선 대상 시각은 +15분 00:55(0번 칸), +30분 01:10 · +60분 01:40(1번 칸)
+# 월 00:40 KST - 기준선 대상 시각은 +15분 00:55(0번 칸), +30분 01:10(1번 칸)
 NOW = datetime(2026, 11, 8, 15, 40, tzinfo=UTC)
 BASELINE = {"A": ["low", "high"] + [None] * 166}
+VERSION = "evflow_station_recommendation_1530_20261116"
 MODEL = {
-    "A": [
-        {"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 2.5},
-        {"horizon": 30, "congestion": "medium", "wait_p50": 1.49, "wait_p90": 4.5},
-        {"horizon": 60, "congestion": "high", "wait_p50": 3.0, "wait_p90": 10.0},
-    ]
+    "model_version": VERSION,
+    "stations": {
+        "A": [
+            {"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 2.5},
+            {"horizon": 30, "congestion": "medium", "wait_p50": 1.49, "wait_p90": 4.5},
+        ]
+    },
 }
 FROM_BASELINE = [
-    (15, "low", None, None, "baseline"),
-    (30, "high", None, None, "baseline"),
-    (60, "high", None, None, "baseline"),
+    (15, "low", None, None, "baseline", None),
+    (30, "high", None, None, "baseline", None),
 ]
-ALL_NULL = [(h, None, None, None, None) for h in (15, 30, 60)]
+ALL_NULL = [(h, None, None, None, None, None) for h in (15, 30)]
 
 
 def run(quality="normal", model=MODEL, baseline=BASELINE):
@@ -39,6 +41,7 @@ def run(quality="normal", model=MODEL, baseline=BASELINE):
             p.wait_time_p50_minutes,
             p.wait_time_p90_minutes,
             p.source,
+            p.model_version,
         )
         for p in build_predictions("A", quality, model, baseline, NOW)
     ]
@@ -47,11 +50,30 @@ def run(quality="normal", model=MODEL, baseline=BASELINE):
 # --- 조회 규칙 (docs/prediction.md api 조회 규칙) ---
 
 
-def test_model_used_and_wait_rounded_half_up():
+def test_model_wait_hidden_by_default():
+    # v3.2 전까지 대기 표시를 끔 - 혼잡도 · source · modelVersion은 그대로
     assert run() == [
-        (15, "low", 0, 3, "model"),
-        (30, "medium", 1, 5, "model"),
-        (60, "high", 3, 10, "model"),
+        (15, "low", None, None, "model", VERSION),
+        (30, "medium", None, None, "model", VERSION),
+    ]
+
+
+def test_model_used_and_wait_rounded_half_up(monkeypatch):
+    monkeypatch.setattr(predictions.settings, "show_wait_prediction", True)
+    assert run() == [
+        (15, "low", 0, 3, "model", VERSION),
+        (30, "medium", 1, 5, "model", VERSION),
+    ]
+
+
+def test_model_without_wait_keeps_congestion(monkeypatch):
+    monkeypatch.setattr(predictions.settings, "show_wait_prediction", True)
+    # 대기 예측만 빠진 회차 - 혼잡도는 모델 값, 대기는 null
+    cells = [dict(c, wait_p50=None, wait_p90=None) for c in MODEL["stations"]["A"]]
+    model = {"model_version": VERSION, "stations": {"A": cells}}
+    assert run(model=model) == [
+        (15, "low", None, None, "model", VERSION),
+        (30, "medium", None, None, "model", VERSION),
     ]
 
 
@@ -64,7 +86,9 @@ def test_quality_baseline_ignores_model():
     assert run("baseline") == FROM_BASELINE
 
 
-@pytest.mark.parametrize("model", [None, {}, {"B": MODEL["A"]}])
+@pytest.mark.parametrize(
+    "model", [None, {}, {"model_version": VERSION, "stations": {"B": MODEL["stations"]["A"]}}]
+)
 def test_falls_back_to_baseline_without_model(model):
     assert run(model=model) == FROM_BASELINE
 
@@ -105,7 +129,7 @@ def stored(stations):
 
 def test_model_predictions_read(fake):
     assert load_model_predictions() is None  # 키 없음
-    fake.value = stored(MODEL)
+    fake.value = json.dumps(MODEL)
     assert load_model_predictions() == MODEL
     fake.fail = True
     assert load_model_predictions() is None

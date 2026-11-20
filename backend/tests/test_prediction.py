@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -11,79 +12,155 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost
 os.environ.setdefault("EV_SERVICE_KEY", "test")
 
 from app.collector import prediction  # noqa: E402
-from app.collector.prediction import build_value, valid_predictions  # noqa: E402
+from app.collector.prediction import build_value, convert_row  # noqa: E402
 
 BASE = datetime(2026, 11, 8, 5, 5, tzinfo=UTC)
 NOW = datetime(2026, 11, 8, 5, 5, 40, tzinfo=UTC)
 RUN = SimpleNamespace(started_at=BASE, id=7)
-ROWS = [{"station_id": "A", "charger_id": "01", "collected_at": BASE.isoformat(), "stat": "2"}]
+DEPLOYMENT = {
+    "deployment_id": "evflow_station_recommendation_1530_20261116",
+    "model_version": "station_wait_time_v1_20261115",
+}
+VERSIONS = {"congestion": "xgb_v1_20261108", "time": "station_wait_time_v1_20261115"}
 
 
-def preds(**override):
-    rows = [
-        {"horizon": 15, "congestion": "low", "wait_p50": 0.0, "wait_p90": 3.5},
-        {"horizon": 30, "congestion": "medium", "wait_p50": 2.0, "wait_p90": 8.0},
-        {"horizon": 60, "congestion": "high", "wait_p50": 6.5, "wait_p90": 15.0},
-    ]
-    rows[1].update(override)  # 30분 값만 바꿔 봄
-    return rows
+def row(station_id="A", horizon=15, level="여유", p50=0.0, p90=3.5, time_status="ok", **congestion):
+    """AI 패키지 응답 predictions[]의 한 행 (필요한 필드만)"""
+    return {
+        "station_id": station_id,
+        "horizon_minutes": horizon,
+        "model_versions": VERSIONS,
+        "components": {
+            "congestion": {
+                "status": "ok",
+                "congestion_level": level,
+                "occupancy": 0.25,
+                "congestion_prob": 0.1,
+                **congestion,
+            },
+            "time": {"status": time_status, "p50_minutes": p50, "p90_minutes": p90},
+        },
+    }
 
 
-# --- 검증 규칙 (docs/prediction.md collector 검증) ---
+def station(station_id="A"):
+    return [row(station_id, 15), row(station_id, 30, "보통", 2.0, 8.0)]
 
 
-def test_valid_predictions_sorts_by_horizon_and_drops_extra_fields():
-    shuffled = [dict(p, extra=1) for p in reversed(preds())]
-    assert valid_predictions(shuffled) == preds()
+def body(*rows):
+    return {"status": "partial", "deployment": DEPLOYMENT, "predictions": list(rows)}
+
+
+CELLS = [
+    {
+        "horizon": 15,
+        "congestion": "low",
+        "wait_p50": 0.0,
+        "wait_p90": 3.5,
+        "occupancy": 0.25,
+        "congestion_prob": 0.1,
+    },
+    {
+        "horizon": 30,
+        "congestion": "medium",
+        "wait_p50": 2.0,
+        "wait_p90": 8.0,
+        "occupancy": 0.25,
+        "congestion_prob": 0.1,
+    },
+]
+
+
+# --- 한 행 변환 (docs/prediction.md collector 검증) ---
+
+
+def test_convert_row_maps_level_and_keeps_scores():
+    assert convert_row(row()) == CELLS[0]
+    assert convert_row(row(level="congested"))["congestion"] == "high"
 
 
 @pytest.mark.parametrize(
-    "override",
+    "kwargs",
     [
-        {"congestion": "unknown"},
-        {"horizon": 45},
-        {"horizon": 15},  # 15분이 두 번
-        {"wait_p50": 9.0},  # P50 > P90
-        {"wait_p50": -1.0},
-        {"wait_p90": float("nan")},
-        {"wait_p90": float("inf")},
-        {"wait_p50": True},
-        {"wait_p50": "2"},
-        {"wait_p90": None},
+        {"time_status": "unavailable"},
+        {"p50": 9.0},  # P50 > P90
+        {"p50": -1.0},
+        {"p90": float("nan")},
+        {"p50": True},
+        {"p50": "2"},
+        {"p90": None},
     ],
 )
-def test_valid_predictions_rejects(override):
-    assert valid_predictions(preds(**override)) is None
-
-
-def test_valid_predictions_rejects_wrong_shape():
-    assert valid_predictions(preds()[:2]) is None
-    assert valid_predictions("x") is None
-
-
-def test_build_value_keeps_valid_target_stations_only():
-    body = {
-        "model_version": "20261110",
-        "stations": {"A": preds(), "B": preds(congestion="bad"), "Z": preds()},
-    }  # Z는 수집 대상 아님
-    value, dropped = build_value(body, {"A", "B"}, BASE, 7, NOW)
-    assert list(value["stations"]) == ["A"] and dropped == 2
-    assert value["base_time"] == "2026-11-08T05:05:00+00:00"
-    assert value["collection_run_id"] == 7 and value["model_version"] == "20261110"
+def test_convert_row_drops_only_wait(kwargs):
+    cell = convert_row(row(**kwargs))
+    assert cell["congestion"] == "low"
+    assert cell["wait_p50"] is None and cell["wait_p90"] is None
 
 
 @pytest.mark.parametrize(
-    "body",
+    "broken",
+    [
+        {"status": "unavailable"},
+        {"congestion_level": None},
+        {"congestion_level": "unknown"},
+    ],
+)
+def test_convert_row_rejects_without_congestion(broken):
+    r = row()
+    r["components"]["congestion"].update(broken)
+    assert convert_row(r) is None
+
+
+def test_convert_row_rejects_wrong_shape():
+    assert convert_row("x") is None
+    assert convert_row({"components": None}) is None
+
+
+def test_convert_row_drops_out_of_range_scores():
+    cell = convert_row(row(occupancy=1.5, congestion_prob=float("nan")))
+    assert cell["occupancy"] is None and cell["congestion_prob"] is None
+
+
+# --- 응답 전체 → pred:v2 값 ---
+
+
+def test_build_value_keeps_complete_target_stations_only():
+    half = [station("B")[0]]  # 30분 없음
+    broken = station("C")
+    broken[1]["components"]["congestion"]["status"] = "unavailable"
+    dup = [row("D", 15), row("D", 15)]  # 15분이 두 번
+    value, dropped = build_value(
+        body(*station("A"), *half, *broken, *dup, *station("Z")),  # Z는 수집 대상 아님
+        {"A", "B", "C", "D"},
+        BASE,
+        7,
+        NOW,
+    )
+    assert value["stations"] == {"A": CELLS} and dropped == 4
+    assert value["base_time"] == "2026-11-08T05:05:00+00:00"
+    assert value["collection_run_id"] == 7
+    assert value["model_version"] == DEPLOYMENT["deployment_id"]
+    assert value["model_versions"] == VERSIONS
+
+
+def test_build_value_sorts_by_horizon():
+    value, _ = build_value(body(*reversed(station())), {"A"}, BASE, 7, NOW)
+    assert value["stations"]["A"] == CELLS
+
+
+@pytest.mark.parametrize(
+    "response",
     [
         None,
-        {"stations": {"A": preds()}},  # model_version 없음
-        {"model_version": "v", "stations": []},
-        {"model_version": "v", "stations": {"A": preds(congestion="bad")}},  # 남는 충전소 없음
+        {"predictions": station()},  # deployment 없음
+        {"deployment": {}, "predictions": station()},
+        {"deployment": DEPLOYMENT, "predictions": {}},
+        body(),  # 남는 충전소 없음
     ],
 )
-def test_build_value_rejects(body):
+def test_build_value_rejects(response):
     with pytest.raises(ValueError):
-        build_value(body, {"A"}, BASE, 7, NOW)
+        build_value(response, {"A"}, BASE, 7, NOW)
 
 
 # --- refresh_predictions: 어떤 실패도 밖으로 내지 않음 ---
@@ -101,47 +178,53 @@ class FakeRedis:
 
 def setup(monkeypatch, response=None, error=None, redis_fail=False):
     fake = FakeRedis(redis_fail)
+    sent = []
     monkeypatch.setattr(prediction, "_redis", fake)
-    monkeypatch.setattr(prediction, "load_history", lambda db, since: ROWS)
+    monkeypatch.setattr(prediction, "load_targets", lambda db: {"A"})
 
     def post(url, json, timeout):
+        sent.append((url, json))
         if error:
             raise error
         status, kwargs = response
         return httpx.Response(status, request=httpx.Request("POST", url), **kwargs)
 
     monkeypatch.setattr(prediction.httpx, "post", post)
-    return fake
+    monkeypatch.setattr(prediction.settings, "ml_url", "http://ml:8001")
+    return fake, sent
 
 
-def test_refresh_saves_with_ttl(monkeypatch):
-    fake = setup(
-        monkeypatch, response=(200, {"json": {"model_version": "v1", "stations": {"A": preds()}}})
-    )
+def test_refresh_sends_run_id_and_saves_with_ttl(monkeypatch):
+    fake, sent = setup(monkeypatch, response=(200, {"json": body(*station())}))
     prediction.refresh_predictions(None, RUN)
+    assert sent == [("http://ml:8001/internal/v1/predict", {"run_id": 7})]
     key, value, ex = fake.calls[0]
-    assert key == "pred:v1" and ex == 1200 and list(value["stations"]) == ["A"]
+    assert key == "pred:v2" and ex == 1200 and value["stations"] == {"A": CELLS}
 
 
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"response": (503, {"json": {"detail": "모델 파일 없음"}})},
+        {"response": (503, {"json": {"status": "failed", "reason": "database_unavailable"}})},
+        {"response": (409, {"json": {"reason": "invalid_frozen_run_evidence"}})},
         {"response": (500, {"text": "error"})},
-        {"response": (200, {"json": {"model_version": "v1", "stations": {}}})},
+        {"response": (200, {"json": body()})},
         {"error": httpx.ConnectError("ml down")},
     ],
 )
 def test_refresh_keeps_existing_on_failure(monkeypatch, kwargs):
-    fake = setup(monkeypatch, **kwargs)
+    fake, _ = setup(monkeypatch, **kwargs)
     prediction.refresh_predictions(None, RUN)  # 예외가 나면 테스트 실패
     assert fake.calls == []
 
 
 def test_refresh_swallows_redis_error(monkeypatch):
-    setup(
-        monkeypatch,
-        response=(200, {"json": {"model_version": "v1", "stations": {"A": preds()}}}),
-        redis_fail=True,
-    )
+    setup(monkeypatch, response=(200, {"json": body(*station())}), redis_fail=True)
     prediction.refresh_predictions(None, RUN)
+
+
+def test_build_value_does_not_change_response():
+    response = body(*station())
+    before = deepcopy(response)
+    build_value(response, {"A"}, BASE, 7, NOW)
+    assert response == before
