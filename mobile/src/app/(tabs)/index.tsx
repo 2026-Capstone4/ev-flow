@@ -3,7 +3,7 @@ import { router, useFocusEffect } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
-import { isDotStation, isHiddenZoom, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
+import { isDotStation, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
@@ -24,23 +24,43 @@ import { OnboardingDialog } from '../../components/OnboardingDialog'
 import { RecommendSheet } from '../../components/RecommendSheet'
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
-import { ZoomInNotice } from '../../components/ZoomInNotice'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
 import { IS_GEOLOCATION_ENABLED } from '../../lib/config'
 import { appStorage } from '../../lib/storage'
 import { CoverageMask } from '../../map/CoverageMask'
+import { SEOUL_EXTENT } from '../../map/seoulExtent'
 import { StationMarker } from '../../map/StationMarker'
 import { toAppZoom, toWebZoomLevel } from '../../map/zoom'
 
 /** 첫 화면 줌 (웹 기준). 웹 지도 홈과 같은 넓이가 보이게 앱 줌으로 바꿔 씀 */
 const INITIAL_WEB_ZOOM = 14
 
+/**
+ * 가장 멀리 볼 수 있는 앱 줌. 서울 전체(가로 약 37km)가 화면 가로에 겨우 들어오는 넓이
+ * 앱 줌 14 = 가로 약 1.5km라 줌 9.3 = 약 39km (zoom.ts 측정 기준)
+ */
+const MIN_APP_ZOOM = 9.3
+
+/** 화면 위아래 · 좌우로 화면 크기의 50%씩 더 넓게 마커를 미리 그림. 지도를 끌 때 마커가 늦게 뜨지 않게 함 (웹은 30%) */
+const VIEW_MARGIN_RATIO = 0.5
+
+/**
+ * 이 웹 줌 이하에서는 마포 충전소도 숫자 대신 점으로 그림 (앱 줌 11 미만, 화면 가로 약 12km 넘게 보일 때)
+ * 마포 숫자 마커가 한곳에 뭉쳐 덩어리가 되지 않게 함. 추천 Top 3는 눈에 띄게 숫자 그대로 둠
+ */
+const MAPO_DOT_MAX_ZOOM = 11
+
+/** 이 충전소를 점으로 그릴지. core 기준(마포 밖, 웹 줌 13 이하)에 더해 멀리 보면 마포도 점 */
+const isDotMarker = (webZoomLevel: number, station: Station, isRecommended: boolean) =>
+  isDotStation(webZoomLevel, station, isRecommended) ||
+  (webZoomLevel <= MAPO_DOT_MAX_ZOOM && !isRecommended)
+
 /** 상태 표시줄 아래 검색창까지 띄우는 여백 (웹 top-4) */
 const TOP_GAP = 16
 
 /**
- * 겹친 마커를 SDK가 숨기게 할지. 서울 전역 색 점이 덜 빽빽해짐 (3단계 확인)
- * 마포 · 추천 숫자 마커는 StationMarker가 빼서 숫자가 사라지지 않음
+ * 겹친 점 마커를 SDK가 숨기게 할지. 서울 전역 색 점이 덜 빽빽해짐 (3단계 확인)
+ * 숫자 마커는 StationMarker가 늘 빼서 겹쳐도 숨기지 않음
  */
 const IS_HIDE_COLLIDED = true
 
@@ -81,19 +101,19 @@ export default function MapHomeScreen() {
   // 추천 시트 펼침 높이 상한을 정하려고 지도 영역 높이를 잼
   const [containerHeight, setContainerHeight] = useState(0)
 
-  // 화면 범위에 든 충전소만 마커로 그림. 줌이 너무 작으면 하나도 안 그림
+  // 화면 범위(+ 주변 여유)에 든 충전소만 마커로 그림
+  // 웹은 웹 줌 11 이하에서 마커를 숨기지만, 앱은 최소 줌이 서울 전체라 멀리 봐도 모두 그림 (2026-11-21 실기기에서 확인)
   const visibleStations = useMemo(() => {
-    // 처음 카메라 범위를 받기 전이거나 너무 멀리 보면 그리지 않음
-    if (!stations || !camera.region || isHiddenZoom(camera.webZoomLevel)) return []
+    // 처음 카메라 범위를 받기 전이면 그리지 않음
+    if (!stations || !camera.region) return []
     const { latitude, longitude, latitudeDelta, longitudeDelta } = camera.region
     const view = toViewBounds(
       { lat: latitude, lng: longitude },
       { lat: latitude + latitudeDelta, lng: longitude + longitudeDelta },
+      VIEW_MARGIN_RATIO,
     )
     return stations.filter((station) => isInView(station, view))
   }, [stations, camera])
-  /** 너무 멀리 봐서 마커를 숨긴 동안 확대 안내를 띄움 */
-  const isZoomedOut = camera.region !== null && isHiddenZoom(camera.webZoomLevel)
 
   // 카메라가 멈췄을 때만 범위를 다시 계산함. 움직이는 동안은 SDK가 그대로 옮겨 그림
   const handleCameraIdle = useCallback(({ zoom, region }: { zoom?: number; region: Region }) => {
@@ -187,6 +207,9 @@ export default function MapHomeScreen() {
           zoom: toAppZoom(INITIAL_WEB_ZOOM),
         }}
         isShowLocationButton={false}
+        minZoom={MIN_APP_ZOOM}
+        // 서비스 지역(서울) 밖으로 지도를 끌어가지 않게 지도 가운데를 서울 사각형 안으로 묶음
+        extent={SEOUL_EXTENT}
         isShowZoomControls={false}
         onCameraIdle={handleCameraIdle}
         // 추천 · 검색 기준 위치 표시 (웹 내 위치 마커). 시연 위치이거나 현재 위치 버튼으로 바꾼 위치
@@ -203,7 +226,7 @@ export default function MapHomeScreen() {
               key={station.stationId}
               station={station}
               isRecommended={isRecommended}
-              isDot={isDotStation(camera.webZoomLevel, station, isRecommended)}
+              isDot={isDotMarker(camera.webZoomLevel, station, isRecommended)}
               isHideCollided={IS_HIDE_COLLIDED}
               onTap={handleMarkerTap}
             />
@@ -275,12 +298,6 @@ export default function MapHomeScreen() {
         </View>
         <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
         {notice && <MapNotice key={notice.id} message={notice.message} />}
-        {/* 너무 멀리 봐서 마커를 숨긴 동안은 확대하라고 계속 안내. 왼쪽 정렬 줄에서 혼자 가운데로 */}
-        {isZoomedOut && (
-          <View className="mt-2 self-center">
-            <ZoomInNotice />
-          </View>
-        )}
       </View>
       {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
     </View>

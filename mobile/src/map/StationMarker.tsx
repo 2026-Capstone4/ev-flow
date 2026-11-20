@@ -34,7 +34,7 @@ type StationMarkerProps = {
   isRecommended: boolean
   /** 숫자 대신 색 점으로 그릴지 (mapMarkers.isDotStation) */
   isDot: boolean
-  /** 다른 마커와 겹치면 SDK가 숨기게 할지 (검증용 토글) */
+  /** 겹친 점 마커를 SDK가 숨기게 할지. 숫자 마커는 이 값과 상관없이 숨기지 않음 */
   isHideCollided: boolean
   onTap: (station: Station) => void
 }
@@ -65,7 +65,7 @@ export const StationMarker = memo(function StationMarker({
         height={DOT_SIZE}
         anchor={{ x: 0.5, y: 0.5 }}
         zIndex={zIndex}
-        // 겹친 점끼리는 SDK가 하나만 남김 (마포 · 추천은 점이 되지 않음)
+        // 겹친 점끼리는 SDK가 하나만 남김 (추천은 점이 되지 않음)
         isHideCollidedMarkers={isHideCollided}
         onTap={() => onTap(station)}
       />
@@ -91,8 +91,8 @@ export const StationMarker = memo(function StationMarker({
         haloColor: HALO_COLOR[color],
       }}
       zIndex={zIndex}
-      // 마포 · 추천 마커(zIndex > 0)는 겹침 숨김에서 뺌. 켜면 서로 겹친 마커의 숫자 캡션까지 사라짐
-      isHideCollidedMarkers={isHideCollided && zIndex === 0}
+      // 숫자 마커는 겹쳐도 숨기지 않음. 숨기면 그 충전소를 지도에서 찾을 수 없고, 겹친 마커의 숫자 캡션까지 사라짐
+      isHideCollidedMarkers={false}
       onTap={() => onTap(station)}
     />
   )
