@@ -1,6 +1,5 @@
 import { HORIZONS, toCurrentPrediction } from '../lib/horizon'
 import type {
-  ApiHorizonMinutes,
   Charger,
   ChargerStatus,
   ConnectorType,
@@ -206,6 +205,9 @@ const WAIT_TIME_RANGE: Record<PredictedCongestion, [number, number]> = {
   high: [15, 30],
 }
 
+/** 모델 예측에 붙는 AI 패키지 배포 이름 (화면에는 쓰지 않음) */
+const MOCK_MODEL_VERSION = 'mock_model'
+
 /** 서버가 계산하는 현재 혼잡도를 흉내 냄 (요구사항분석서 p.9 판정 기준) */
 function getCurrentCongestion(chargers: Charger[]): CurrentCongestion {
   const count = (status: ChargerStatus) => chargers.filter((c) => c.status === status).length
@@ -219,15 +221,23 @@ function getCurrentCongestion(chargers: Charger[]): CurrentCongestion {
 }
 
 function toPrediction(
-  horizonMinutes: ApiHorizonMinutes,
+  horizonMinutes: HorizonMinutes,
   congestion: PredictedCongestion | null,
   dataQuality: DataQuality,
 ): Prediction {
-  const [waitTimeP50Minutes, waitTimeP90Minutes] = congestion
-    ? WAIT_TIME_RANGE[congestion]
-    : [null, null]
   const source = congestion ? (dataQuality === 'baseline' ? 'baseline' : 'model') : null
-  return { horizonMinutes, congestion, waitTimeP50Minutes, waitTimeP90Minutes, source }
+  // 대기 구간은 모델 예측에만 있음. 기준선 · 예측 없음은 서버처럼 null
+  const [waitTimeP50Minutes, waitTimeP90Minutes] =
+    congestion && source === 'model' ? WAIT_TIME_RANGE[congestion] : [null, null]
+  const modelVersion = source === 'model' ? MOCK_MODEL_VERSION : null
+  return {
+    horizonMinutes,
+    congestion,
+    waitTimeP50Minutes,
+    waitTimeP90Minutes,
+    source,
+    modelVersion,
+  }
 }
 
 function toStation({ forecast, ...station }: MockStation): Station {

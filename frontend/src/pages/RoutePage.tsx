@@ -9,7 +9,7 @@ import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { useNaverMap } from '@/hooks/useNaverMap'
 import { useRouteData } from '@ev-flow/core/hooks/useRouteData'
 import { useRouteOverlay } from '@/hooks/useRouteOverlay'
-import { formatWaitRange, NO_PREDICTION_LABEL } from '@ev-flow/core/lib/congestion'
+import { formatWaitRange, getCongestionLabel } from '@ev-flow/core/lib/congestion'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { getHorizonWhen, parseHorizon } from '@ev-flow/core/lib/horizon'
 import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
@@ -141,10 +141,16 @@ export function RoutePage() {
                     }
                     label="지금 사용 가능"
                   />
-                ) : (
+                ) : waitRange ? (
                   <SummaryTile
-                    value={station ? (waitRange ?? NO_PREDICTION_LABEL) : null}
+                    value={station ? waitRange : null}
                     label={`${getHorizonWhen(horizon)} 예상 대기`}
+                  />
+                ) : (
+                  // 대기 예측이 없으면(기준선 · 대기 모델 꺼짐) 그 자리에 예상 혼잡도. 혼잡도도 없으면 조회 불가
+                  <SummaryTile
+                    value={station ? getCongestionLabel(prediction?.congestion ?? null) : null}
+                    label={`${getHorizonWhen(horizon)} 예상 혼잡`}
                   />
                 )}
               </div>
