@@ -161,7 +161,7 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `lat` · `lng` | number | 출발 위치. 위치 권한이 없으면 지도 중심 좌표 (REC-005). 마포구 밖이면 422 `OUT_OF_SERVICE_AREA` (🟡 제안, 아래 [이동시간 처리](#이동시간-처리)) |
+| `lat` · `lng` | number | 출발 위치. 위치 권한이 없으면 지도 중심 좌표 (REC-005). 마포구 밖이면 422 `OUT_OF_SERVICE_AREA` (아래 [이동시간 처리](#이동시간-처리)) |
 | `filters` | object | 화면에 적용 중인 필터를 그대로 보냄 (REC-004). 생략하면 전체. 판정은 [필터 판정 규칙](README.md#필터-판정-규칙) — 지도 필터와 같음 |
 | `filters.connectorTypes` | string[] | 하나라도 맞으면 후보 (FLT-001). 빈 배열이면 전체 |
 | `filters.minCapacityKw` | number \| null | 100 · 200, `null`이면 전체 (FLT-002) |
@@ -197,36 +197,50 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-19): `horizonMinutes` = **h분 후 출발**. 도착 시각이 h분 + 이동시간이므로, 후보마다 도착 시각에 맞는 예측 지평의 값을 씀 — 추천 모듈이 지금 출발에서 이동시간으로 지평을 고르는 방식에 출발 시점 h만 더하면 됨. ⏳ 추천 모듈에 출발 시점(h)을 넘겨 계산하는 기능 필요 (AI 팀) |
-| `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`에 대기 비교 문구를 넣지 않음 (⏳ 대신 쓸 비교 문구는 미정, 예: 사용 가능 대수 비교) |
+| `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-19): `horizonMinutes` = **h분 후 출발**. 도착 시각이 h분 + 이동시간이므로, 후보마다 도착 시각(h + 이동시간)에 가장 가까운 예측 시점(15 · 30분, 같으면 이른 쪽)의 값을 씀 — AI 추천 모듈과 같은 규칙에 출발 시점 h를 더해 백엔드가 계산 (2026-11-21) |
+| `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`은 혼잡도로 비교 (아래 계산 규칙) |
 | `recommendations` | object[] | 최대 3개. 후보가 부족하면 짧거나 빈 배열 (UC-U06 E1) |
-| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음) |
+| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 수정(AI v3.2) 전까지 `null` |
 | `station.availableChargers` | number | **현재** 사용 가능 대수 (REC-002) |
 | `travelTimeMinutes` · `distanceMeters` | number | 이동시간 · 이동거리 |
 | `travelTimeSource` | string | `directions` · `estimate`(Directions 실패 → 직선거리 추정, 🟡 잠정) |
 | `reason` | string | 가장 가까운 곳과 비교한 설명 문구 (REC-003) |
 
-추천 점수는 보내지 않는다 (REC-002). ⏳ 계산식 · 비교 문구 규칙은 팀 합의 후.
+추천 점수는 보내지 않는다 (REC-002).
+
+### 계산 규칙
+
+✅ 구현 (2026-11-21, `app/services/recommendations.py`)
+
+- **후보** — 마포 충전소 중 현재 `unavailable`을 빼고, 충전기 조건(커넥터 · 용량 · 사용 가능만)을 먼저 적용한 뒤 반경 15km 안에서 직선거리 가까운 20곳 (Q3)
+- **점수** = 이동시간(분) / 30 + 점유율 (낮을수록 좋음) — AI 추천 모듈 `combined_score`와 같은 식 (Q5, `wait_weight = 0`). 같으면 이동시간이 짧은 쪽
+  - 지금 출발: 점유율 = 충전 중 / (사용 가능 + 충전 중). 현재 혼잡도 `unknown`은 제외
+  - 15 · 30분 후 출발: 도착 시각에 가까운 예측 시점의 모델 점유율 (Redis `pred:v2`). 모델 예측이 없거나 충전소 `dataQuality`가 `baseline`이면 그 탭에서 제외
+  - `exclude_high`는 그 탭의 혼잡도로 판정 (필터 판정 규칙)
+- **`reason`** — 그 탭 후보 중 이동시간이 가장 짧은 곳과 비교
+  - 자기 자신이면 `가장 가까운 충전소`
+  - 아니면 `가장 가까운 곳보다 N분 더 이동` (같으면 `이동 시간은 비슷함`), 혼잡도가 더 나으면 `, 혼잡 → 여유`처럼 덧붙임
+- 같은 장소의 여러 충전소 ID는 합치지 않음 (대표 장소 ID 데이터 없음, Q4)
 
 ### 이동시간 처리
 
-🟡 제안 (`MAP-02`, 2026-11-15 김무겸 — 팀 확인 전)
+✅ 구현 (`MAP-02` 제안 · 2026-11-19 합의, 2026-11-21 구현)
 
 - 후보 선정 · 점수 · Top 3는 AI 팀 추천 모듈 기준을 따른다. **마포구 안**이면 출발 위치에서 직선거리 가까운 **20곳**(반경 15km)만 Directions 5를 동시에 호출한다
 - 호출마다 타임아웃(3초)을 두고, 넘긴 곳은 추천 모듈의 직선거리 추정(`2분 + 60 × km / 24`) + `travelTimeSource: "estimate"`
 - 이동시간은 출발 좌표 + `stationId`로 캐시한다 (TTL **30분**). 60초 폴링은 캐시만 읽는다. 4번 길찾기도 같은 캐시를 써서 추천 → 길찾기에 추가 호출이 없다
-  - ⏳ 추천 모듈은 5분 지난 경로를 추정값으로 바꾼다(`max_route_age_minutes = 5`). 30분으로 올려달라고 AI 팀에 요청함
+  - 점수는 백엔드가 계산해 AI 추천 모듈의 경로 유효시간(`max_route_age_minutes = 5`)은 적용되지 않음 — 캐시 30분 그대로 씀
 - 다시 호출하는 조건:
   - 마지막 요청 좌표에서 **500m 이상** 움직임 (프론트가 요청 좌표를 바꿈), 또는 캐시 TTL이 지남
   - 최소 간격 **5분**
 - 호출 제한: IP당 분당 10회 — 넘으면 429 `RATE_LIMITED` + `Retry-After` (2026-11-19 김무겸 · 장승민 합의)
 - 하루 예산: 서버 전체 Directions 실제 호출 2,000회/일(KST) — 넘으면 Directions를 부르지 않고 직선거리 추정 + `travelTimeSource: "estimate"` (길찾기는 503 `ROUTE_QUOTA_EXCEEDED`). 출발 좌표를 바꿔 캐시를 피하는 IP 하나가 한도를 다 쓰지 못하게 함 (2026-11-19 합의)
 - 호출량: 위치 1번에 20회. 추천 화면을 켜둔 사용자 1명이 1시간에 약 40회 → 월 한도 60,000회로 약 1,500시간 (TTL 5분이면 약 240회 · 250시간)
-- **마포구 밖**이면 Directions를 부르지 않고 422 `OUT_OF_SERVICE_AREA` (`message`: "현재 충전소 추천 기능은 마포구만 지원해요"). 판정은 서버가 마포구 행정 경계로 한다. ⏳ 경계 밖 여유 거리(예: 1km) 미정
-- 개발 환경에서는 Directions 대신 직선거리 추정만 쓴다 (한도 보호)
+- **마포구 밖**이면 Directions를 부르지 않고 422 `OUT_OF_SERVICE_AREA` (`message`: "현재 충전소 추천 기능은 마포구만 지원해요"). 판정은 서버가 마포구 행정 경계로 한다 — 프론트 지도의 서비스 범위(`coverage-boundary.json`)와 같은 경계(`backend/data/mapo_boundary.json`), 여유 거리 없음
+- 개발 환경에서는 Directions 대신 직선거리 추정만 쓴다 (한도 보호) — 네이버 키가 없으면 자동으로 추정
 - 근거 (2026-11-15 측정, 로컬 1회): 66곳 동시 호출 전체 1.08초 · 개별 p95 0.80초 · 66건 모두 성공 — 20곳은 이보다 짧다
 
-**에러**: 422 `VALIDATION_ERROR` · 422 `OUT_OF_SERVICE_AREA` (🟡 제안) · 429 `RATE_LIMITED` · 503 `DATA_UNAVAILABLE`
+**에러**: 422 `VALIDATION_ERROR` · 422 `OUT_OF_SERVICE_AREA` · 429 `RATE_LIMITED` · 503 `DATA_UNAVAILABLE`
 
 ---
 

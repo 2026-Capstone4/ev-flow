@@ -82,6 +82,15 @@ describe('toViewBounds · isInView', () => {
     })
   })
 
+  it('여유 비율을 넘기면 그만큼 더함 (앱 50%)', () => {
+    expect(toViewBounds({ lat: 37, lng: 126 }, { lat: 38, lng: 127 }, 0.5)).toEqual({
+      south: 36.5,
+      west: 125.5,
+      north: 38.5,
+      east: 127.5,
+    })
+  })
+
   it('여유 범위 안(경계 포함)이면 안, 밖이면 밖', () => {
     const view = { south: 37, west: 126, north: 38, east: 127 }
     expect(isInView(station({ lat: 37, lng: 127 }), view)).toBe(true)
