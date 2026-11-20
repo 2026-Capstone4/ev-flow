@@ -7,8 +7,8 @@ import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { StationMarker } from '../map/StationMarker'
-import { toAppZoom, toWebZoom, toWebZoomLevel } from '../map/zoom'
+import { StationMarker } from '../../map/StationMarker'
+import { toAppZoom, toWebZoom, toWebZoomLevel } from '../../map/zoom'
 
 /** 첫 화면 줌 (웹 기준). 웹 지도 홈과 같은 넓이가 보이게 앱 줌으로 바꿔 씀 */
 const INITIAL_WEB_ZOOM = 14
