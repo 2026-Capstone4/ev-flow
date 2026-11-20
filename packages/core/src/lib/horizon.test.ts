@@ -40,6 +40,7 @@ describe('findPrediction', () => {
     waitTimeP50Minutes: 15,
     waitTimeP90Minutes: 30,
     source: 'model',
+    modelVersion: 'test_model',
   }
 
   it('서버가 보낸 시점 예측을 그대로 반환', () => {
@@ -61,6 +62,7 @@ describe('findPrediction', () => {
       waitTimeP50Minutes: null,
       waitTimeP90Minutes: null,
       source: null,
+      modelVersion: null,
     })
   })
 

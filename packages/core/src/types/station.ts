@@ -3,9 +3,6 @@
 /** 화면에서 고를 수 있는 시점. 0 = 지금 출발. 60분은 서비스에서 뺌 (2026-11-15) */
 export type HorizonMinutes = 0 | 15 | 30
 
-/** 서버가 보내는 예측 시점. 백엔드 · ml에서 60분을 정리하기 전까지 60분도 올 수 있음 */
-export type ApiHorizonMinutes = HorizonMinutes | 60
-
 /** 예측 혼잡도. 예측 · 기준선이 모두 없으면 null */
 export type PredictedCongestion = 'low' | 'medium' | 'high'
 
@@ -31,11 +28,14 @@ export type Charger = {
 }
 
 export type Prediction = {
-  horizonMinutes: ApiHorizonMinutes
+  horizonMinutes: HorizonMinutes
   congestion: PredictedCongestion | null
+  /** 기준선이면 항상 null. 모델이어도 대기 예측이 빠진 회차면 null */
   waitTimeP50Minutes: number | null
   waitTimeP90Minutes: number | null
   source: PredictionSource | null
+  /** source가 model일 때 AI 패키지 배포 이름, 아니면 null. 화면에는 쓰지 않음 */
+  modelVersion: string | null
 }
 
 export type Station = {
@@ -53,7 +53,7 @@ export type Station = {
   congestion: CurrentCongestion
   dataQuality: DataQuality
   chargers: Charger[]
-  /** 시점 순서대로. 화면은 0(지금) · 15 · 30분만 씀 (서버가 60분을 보내도 무시) */
+  /** 시점 순서대로. 0(지금) · 15 · 30분 */
   predictions: Prediction[]
   /** 예측 제공 여부. 마포 true, 서울 다른 구 false (false면 predictions 값이 모두 null) */
   predictionAvailable: boolean
@@ -114,7 +114,7 @@ export type Recommendation = {
 }
 
 export type HorizonRecommendations = {
-  horizonMinutes: ApiHorizonMinutes
+  horizonMinutes: HorizonMinutes
   /** 최대 3개. 후보가 부족하면 짧거나 빈 배열 */
   recommendations: Recommendation[]
 }

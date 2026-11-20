@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
-import { formatWaitRange, NO_PREDICTION_LABEL } from '@ev-flow/core/lib/congestion'
+import { formatWaitRange } from '@ev-flow/core/lib/congestion'
 import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 import { BackButton } from '../../../components/BackButton'
@@ -106,18 +106,13 @@ export default function StationDetailScreen() {
                 )}
                 <ChargerStatusBar statuses={station.chargers.map((c) => c.status)} />
               </View>
-            ) : (
+            ) : waitRange ? (
+              // 15 · 30분은 대기 예측이 있을 때만 보여 줌. 기준선이거나 대기 모델이 꺼져 있으면 혼잡 예측 칸만 남김
               <View className="gap-3">
                 <Text className="font-bold text-base text-text-primary">
                   {getHorizonWhen(horizon)} 예상 대기
                 </Text>
-                <Text
-                  className={`font-bold ${
-                    waitRange ? 'text-[28px] text-text-primary' : 'text-lg text-text-secondary'
-                  }`}
-                >
-                  {waitRange ?? NO_PREDICTION_LABEL}
-                </Text>
+                <Text className="font-bold text-[28px] text-text-primary">{waitRange}</Text>
                 {selectedPrediction?.waitTimeP50Minutes != null &&
                   selectedPrediction.waitTimeP90Minutes != null && (
                     <WaitRangeBar
@@ -126,7 +121,7 @@ export default function StationDetailScreen() {
                     />
                   )}
               </View>
-            )}
+            ) : null}
 
             <View className="gap-3">
               <Text className="font-bold text-base text-text-primary">충전기 현황</Text>
