@@ -15,12 +15,7 @@ import {
 } from '@ev-flow/core/mocks/mockApi'
 import { buildMockRoute } from '@ev-flow/core/mocks/routes'
 import { findServiceAreaChargers, SERVICE_AREAS } from '@ev-flow/core/mocks/serviceAreas'
-import {
-  fillMissingPredictions,
-  findStationDetail,
-  STATIONS,
-  toKstIso,
-} from '@ev-flow/core/mocks/stations'
+import { findStationDetail, STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
 import {
   buildAdminChargers,
   buildCollectionTargets,
@@ -42,7 +37,6 @@ import type {
   RecommendationsRequest,
   RouteRequest,
   RouteResponse,
-  Station,
   StationDetailResponse,
   StationsResponse,
 } from '@ev-flow/core/types/station'
@@ -87,7 +81,7 @@ const stationHandlers = [
 const checkMockRateLimit = createMockRateLimit()
 
 /**
- * 백엔드에 아직 없는 추천 API 핸들러를 만든다. 혼합 모드에서도 Mock으로 응답함.
+ * 추천 API 핸들러를 만든다. 전체 Mock에서만 쓰고, 혼합 모드는 실제 서버가 응답함.
  * 응답 만들기는 앱과 같이 쓰는 core 함수에 맡기고, 충전소 목록을 어디서 가져올지(getStations)만 바꿔 끼움
  */
 function createRecommendationHandler(getStations: StationSource) {
@@ -373,25 +367,6 @@ function createImputedCountHandler(isLoggedIn: SessionCheck) {
   )
 }
 
-/**
- * 혼합 모드용 충전소 목록. MSW를 거치지 않고(bypass) 실제 서버의 /stations를 직접 호출한다.
- * 실제 충전소로 추천을 만들어야 추천 카드 → 상세 · 길찾기가 실제 API로 이어진다.
- * 예측은 아직 전부 null이라 그대로 쓰면 추천이 비어서 기준선으로 채움
- */
-async function fetchRealStations(): Promise<Station[] | null> {
-  try {
-    const response = await fetch(bypass('/api/v1/stations'))
-    // 서버 오류(5xx 등)면 null을 돌려서 핸들러가 503으로 응답하게 함
-    if (!response.ok) return null
-    const { stations }: StationsResponse = await response.json()
-    return stations.map(fillMissingPredictions)
-  } catch {
-    // 연결 자체가 안 되거나 응답이 JSON이 아니면 예외가 남 - 그대로 두면 MSW가 500으로 응답하므로
-    // 서버 오류와 똑같이 null을 돌려서 503(DATA_UNAVAILABLE)로 맞춤
-    return null
-  }
-}
-
 /** VITE_USE_MOCK=true - 모든 API를 Mock으로. 추천 · 길찾기도 Mock 충전소 기준 */
 export const handlers = [
   ...stationHandlers,
@@ -404,10 +379,7 @@ export const handlers = [
 ]
 
 /**
- * VITE_USE_MOCK=partial - 백엔드에 없는 API(추천 · 대시보드 보정 건수)만 Mock, 나머지는 실제 서버로.
- * 운영자 로그인 · 대시보드 10~13번은 실제 서버가 응답하고, 보정 건수 Mock은 실제 로그인 여부를 확인한 뒤 응답함
+ * VITE_USE_MOCK=partial - 백엔드에 없는 API(대시보드 보정 건수)만 Mock, 나머지는 실제 서버로.
+ * 추천 · 운영자 로그인 · 대시보드 10~13번은 실제 서버가 응답하고, 보정 건수 Mock은 실제 로그인 여부를 확인한 뒤 응답함
  */
-export const partialHandlers = [
-  createRecommendationHandler(fetchRealStations),
-  createImputedCountHandler(checkRealSession),
-]
+export const partialHandlers = [createImputedCountHandler(checkRealSession)]
