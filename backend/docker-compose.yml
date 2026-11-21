@@ -112,7 +112,9 @@ services:
     environment:
       EVFLOW_POSTGRES_SCHEMA: ml_read
       EVFLOW_CHECKPOINT_SCHEMA: ml_checkpoint
-      EVFLOW_CHECKPOINT_DIR: /state/evflow
+      # 상태 폴더는 체크포인트 형식(payload 버전)마다 따로 - v3.4는 v3.1과 형식이 달라 새로 구축함.
+      # 볼륨 맨 위(/state/evflow)는 v3.1 상태라 롤백용으로 둠. 되돌릴 때는 .env에서 /state/evflow로 지정
+      EVFLOW_CHECKPOINT_DIR: ${EVFLOW_CHECKPOINT_DIR:-/state/evflow/v34}
       # 로컬 · 서버 DB 이름이 같아 기본값(DB 이름:스키마)이 겹침 - 서버 .env에서 evflow-prod로 지정
       EVFLOW_SOURCE_ID: ${EVFLOW_SOURCE_ID:-evflow-local}
       # 계산은 읽기 전용 evflow_ckpt_reader, 게시만 evflow_ckpt_writer - 패키지가 이 두 이름으로 읽음
