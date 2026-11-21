@@ -1,4 +1,4 @@
-# AI v3.1 패키지 requirements-serving-linux.txt + runtime-constraints-linux.txt와 같은 버전 (CPython 3.11 / Linux amd64)
+# AI v3.1 · v3.4 패키지 requirements-serving-linux.txt + runtime-constraints-linux.txt와 같은 버전 (CPython 3.11 / Linux amd64)
 # 모델 · 추론 코드는 AI 패키지(서버 ml/package/)를 그대로 실행함 - 패키지가 바뀌면 이 목록도 같이 맞춤
 # scikit-learn · joblib은 필요 없음 (AI 확인: 모델 · 전처리는 .ubj · JSON)
 xgboost-cpu==3.2.0

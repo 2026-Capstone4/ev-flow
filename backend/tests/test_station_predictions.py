@@ -51,7 +51,7 @@ def run(quality="normal", model=MODEL, baseline=BASELINE):
 
 
 def test_model_wait_hidden_by_default():
-    # v3.2 전까지 대기 표시를 끔 - 혼잡도 · source · modelVersion은 그대로
+    # 대기 표시 설정이 꺼져 있으면(기본) 대기만 null - 혼잡도 · source · modelVersion은 그대로
     assert run() == [
         (15, "low", None, None, "model", VERSION),
         (30, "medium", None, None, "model", VERSION),

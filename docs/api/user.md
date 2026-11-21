@@ -44,7 +44,7 @@
 |---|---|---|
 | `horizonMinutes` | number | 15 · 30 |
 | `congestion` | string \| null | 예측 혼잡도 (`low` · `medium` · `high`). 예측 · 기준선 모두 없으면 `null` |
-| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | 예상 대기 구간 (분). 기준선이면 항상 `null`, 모델이어도 대기 예측이 빠진 회차면 `null` (혼잡도만 있음). 🟡 대기 모델 수정(AI v3.2) 전까지는 모델 예측도 항상 `null` |
+| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | 예상 대기 구간 (분). 기준선이면 항상 `null`, 모델이어도 대기 예측이 빠진 회차면 `null` (혼잡도만 있음). 🟡 대기 모델 교체(AI v3.4) · 서버 확인 전까지는 모델 예측도 항상 `null` |
 | `source` | string \| null | `model` · `baseline`. 값이 없으면 `null` |
 | `modelVersion` | string \| null | `source`가 `model`일 때 예측에 쓴 AI 패키지 배포 이름 (예: `evflow_station_recommendation_1530_20261116`), 아니면 `null` |
 
@@ -200,7 +200,7 @@
 | `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-19): `horizonMinutes` = **h분 후 출발**. 도착 시각이 h분 + 이동시간이므로, 후보마다 도착 시각(h + 이동시간)에 가장 가까운 예측 시점(15 · 30분, 같으면 이른 쪽)의 값을 씀 — AI 추천 모듈과 같은 규칙에 출발 시점 h를 더해 백엔드가 계산 (2026-11-21) |
 | `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`은 혼잡도로 비교 (아래 계산 규칙) |
 | `recommendations` | object[] | 최대 3개. 후보가 부족하면 짧거나 빈 배열 (UC-U06 E1) |
-| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 수정(AI v3.2) 전까지 `null` |
+| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 교체(AI v3.4) · 서버 확인 전까지 `null` |
 | `station.availableChargers` | number | **현재** 사용 가능 대수 (REC-002) |
 | `travelTimeMinutes` · `distanceMeters` | number | 이동시간 · 이동거리 |
 | `travelTimeSource` | string | `directions` · `estimate`(Directions 실패 → 직선거리 추정, 🟡 잠정) |
