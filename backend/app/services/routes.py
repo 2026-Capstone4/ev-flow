@@ -6,6 +6,7 @@
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
+from app.config import settings
 from app.schemas.route import RouteRequest, RouteResponse
 from app.services import directions
 from app.services.stations import MAPO, SEOUL
@@ -33,4 +34,6 @@ def get_route(db: Session, body: RouteRequest) -> RouteResponse:
         travel_time_minutes=minutes,
         distance_meters=route.distance_m,
         path=route.path,
+        # 캐시 키가 제공자별이라 지금 설정값이 곧 이 경로를 만든 제공자
+        provider=settings.directions_provider,
     )

@@ -137,6 +137,7 @@ def fake_redis(monkeypatch):
 def naver(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(directions, "_client", fake)
+    monkeypatch.setattr(settings, "directions_provider", "naver")
     monkeypatch.setattr(settings, "naver_client_id", "test-id")
     monkeypatch.setattr(settings, "naver_client_secret", SecretStr("test-secret"))
     return fake
@@ -171,6 +172,7 @@ def test_returns_route_with_lat_lng_path(client, naver, db):
         "travelTimeMinutes": 8,  # 487초 → 8분
         "distanceMeters": 2400,
         "path": [[37.5563, 126.9220], [37.5560, 126.9180], [37.5550, 126.8978]],
+        "provider": "naver",
     }
     # 네이버에는 경도,위도 순서 · 소수 4자리로 반올림한 출발 좌표를 보냄
     params = naver.calls[0]["params"]
@@ -195,7 +197,7 @@ def test_same_rounded_origin_uses_cache(client, naver, fake_redis):
     res = post(client, origin={"lat": 37.55634, "lng": 126.92196})  # 반올림하면 같은 좌표
     assert res.status_code == 200
     assert len(naver.calls) == 1
-    key = f"route:v1:37.5563:126.9220:{MAPO_ID}"
+    key = f"route:v2:naver:37.5563:126.9220:{MAPO_ID}"
     assert fake_redis.ttls[key] == directions.CACHE_TTL_SEC
 
 
