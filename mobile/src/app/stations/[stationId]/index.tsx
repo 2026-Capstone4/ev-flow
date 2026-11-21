@@ -37,6 +37,12 @@ export default function StationDetailScreen() {
     ? formatWaitRange(selectedPrediction.waitTimeP50Minutes, selectedPrediction.waitTimeP90Minutes)
     : null
 
+  // 충전기가 모두 확인 불가면 빈 충전기가 없는 게 아니라 상태를 모르는 것
+  const isAllUnknown =
+    !!station &&
+    station.chargers.length > 0 &&
+    station.chargers.every((c) => c.status === 'unknown')
+
   return (
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
@@ -87,7 +93,7 @@ export default function StationDetailScreen() {
             {horizon === 0 ? (
               <View className="gap-3">
                 <Text className="font-bold text-base text-text-primary">지금 사용 가능</Text>
-                {/* 빈 충전기가 있으면 대수를 크게, 없으면 15 · 30분 예측을 보도록 안내 */}
+                {/* 빈 충전기가 있으면 대수를 크게, 모두 확인 불가면 상태를 못 받았다고 안내, 그 밖에는 15 · 30분 예측을 보도록 안내 */}
                 {station.availableChargers > 0 ? (
                   <Text className="font-bold text-text-primary">
                     <Text className="text-[28px]">{station.availableChargers}대</Text>
@@ -96,11 +102,19 @@ export default function StationDetailScreen() {
                       / 전체 {station.totalChargers}대
                     </Text>
                   </Text>
+                ) : isAllUnknown ? (
+                  <View className="gap-1">
+                    <Text className="font-bold text-lg text-text-secondary">상태 확인 불가</Text>
+                    <Text className="font-sans text-[13px] text-text-secondary">
+                      지금은 충전기 상태를 받아오지 못했어요{'\n'}
+                      15분 후 · 30분 후 예측을 참고해보세요
+                    </Text>
+                  </View>
                 ) : (
                   <View className="gap-1">
                     <Text className="font-bold text-lg text-text-secondary">빈 충전기 없음</Text>
                     <Text className="font-sans text-[13px] text-text-secondary">
-                      15분 후 · 30분 후 예측을 눌러 언제 여유로워지는지 확인해 보세요
+                      15분 후 · 30분 후의 예상 대기시간을 확인해보세요
                     </Text>
                   </View>
                 )}
