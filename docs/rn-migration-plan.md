@@ -328,6 +328,23 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버 + 추천 Mock): 첫 화면 접힘, 손잡이로 펼침(지도 어둡게) → 덮개 누르면 접힘 → 끌어서 최소 → 손잡이로 접힘, 30분 후로 바꾸면 추천 마커가 바뀜, 필터 패널(초급속 235곳 → 적용하면 "필터 1" · 추천 마커만 남음 → 초기화), 카드 → 상세(30분 후 선택된 채), 멀리 보면 확대 안내 · 서울 밖 회색 · 마포 테두리
   - 시뮬레이터는 Mac GPU라 시트 끌기 부드러움 · 지도 위 버벅임은 실기기(6단계)에서 다시 봄
 
+길찾기 — 완료 (`feat/app-route`, 2026-11-21)
+- **길찾기를 카카오모빌리티로 바꾼 뒤를 기준으로 만듦** (백엔드 전환은 실험 브랜치 `exp/be-kakao-directions`, develop에는 아직 없음). 응답의 `provider`(`kakao` · `naver`)로 출처를 표시하고, 안내 버튼은 네이버 지도 · 카카오맵 두 개
+  - core: 실험 브랜치의 `lib/kakaoMapLink.ts`(+테스트)를 가져오고 `RouteResponse.provider`를 추가. 지금 develop 서버는 `provider`를 안 보내서 출처 줄만 비어 있음 (화면은 그대로 동작)
+- 화면: `src/app/stations/[stationId]/route.tsx` (웹과 같은 주소 `/stations/{id}/route?horizon=`), core `useRouteData` 그대로. 웹 `RoutePage`와 같은 구성 — 소요 · 거리 · 지금 사용 가능(지금 출발)/예상 대기, 받는 동안 같은 자리 회색 칸, 오류 3종(경로 없음 · 호출 제한 · 그 밖) + 다시 시도
+  - 지도: 경로 선(`src/map/RouteOverlay.tsx`, 브랜드 색 5pt) + 경로 끝 → 충전소 회색 점선(3pt, `[6, 6]`), 도착 충전소 마커, 출발지는 지도 홈과 같은 `locationOverlay`
+  - 화면 맞춤: 경로 전체 + 도착지(점선까지)가 보이게 `animateRegionTo`. 위 버튼 · 아래 시트에 안 가리게 시트 높이를 재서 `mapPadding`으로 줌 (SDK fitBounds가 이 여백 안에 맞춤). 경로를 받기 전엔 출발지 · 도착지만
+  - 경로 출처: 시트 소요 칸 아래 오른쪽에 "경로 정보: 카카오모빌리티" (11px 회색). 받기 전에도 한 줄 자리를 잡아 시트 높이가 안 튐
+  - 안내 버튼: `src/lib/openMapApp.ts`(이름 바꿈)의 `openMapCarRoute('naver' | 'kakao', 목적지)` — `canOpenURL`로 앱이 있으면 `nmap://route/car` · `kakaomap://route?ep=…&by=CAR`, 없으면 그 앱의 App Store. 출발지는 안 넘김 (지도 앱이 실제 현재 위치에서 안내). Info.plist `LSApplicationQueriesSchemes`에 `kakaomap` 추가
+  - 닫기 · "AI 추천 충전소 보기": `router.dismissTo('/')`. 추천 보기는 `?expandSheet=1`을 붙여 지도 홈이 추천 시트를 펼침(`RecommendSheet` ref의 `expand()`) → 값을 지워 탭을 오가도 다시 안 펼침 (웹 `state.expandSheet`)
+- 연결: 충전소 상세의 길찾기 버튼(고른 시점 그대로), 추천 카드의 길찾기 버튼(#143에서 네이버 지도 앱을 바로 열던 것)을 이 화면으로
+- **네이버 지도 RN 라이브러리 패치**: 2.11.0(최신)의 `NaverMapPolylineOverlay`가 `pattern`을 네이티브에 안 넘겨 점선이 실선으로 그려짐 → `pnpm patch`로 한 줄 고침 (`patches/`, `pnpm-workspace.yaml` `patchedDependencies`). 네이티브는 이미 처리해서 다시 빌드할 필요 없음
+  - 패치 뒤 이미 떠 있던 Metro는 예전 패키지 경로를 계속 씀 → Metro를 다시 시작해야 반영됨
+- **`kakaomap` 때문에 앱을 다시 빌드해야 함** (`expo prebuild --platform ios` 후 `expo run:ios`). 예전 빌드에서는 `canOpenURL`이 scheme이 없다고 예외를 던짐 → 예외면 앱이 없는 것으로 보고 App Store로 넘기게 해 둠
+- 확인 (iPhone 17 Pro 시뮬레이터, 실제 서버): 딥링크 `evflow://stations/CV000887/route?horizon=15`(17분 · 3.7km · 경로 전체가 시트 위에 맞춰짐), 추천 카드 → 길찾기(400m · 2분), 상세(30분 후) → 길찾기(30분 후 예상 대기), 닫기 → 홈, 추천 보기 → 홈 시트 펼침, 두 안내 버튼 눌러도 오류 없음(시뮬레이터엔 지도 앱 · App Store가 없어 아무 일 없음)
+  - 실제 서버가 `provider`를 안 보내고 네이버 경로는 마커 바로 앞에서 끝나서, 임시로 `provider`를 `kakao`로 채우고 도착점을 옮겨 출처 줄 · 점선 모양을 확인한 뒤 되돌림
+  - 경로 없음(05-1) · 호출 제한 화면은 실제로 띄워 보지 못함 (웹과 같은 core 값 · 문구)
+
 ### 5단계: 기기 기능 · 예외 — 완료 (`feat/app-device-edge`, 2026-11-20)
 
 계획 (당시 그대로)
@@ -385,9 +402,9 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 확인: 시뮬레이터에서 줌 하한 · 서울 모서리에서 멈춤 · 줌 13/12(숫자 마커 겹쳐도 모두 보임) · 줌 11(마포 점, 추천만 숫자), 실기기(iPhone 17 Pro)에서 사용자가 확인
 
 남은 것
-- 실기기 확인: 딥링크(네이버 지도 앱 있음 · 없음), 위치 권한 · 실제 GPS, 한글 입력 · 검색어 지우기
+- 실기기 확인: 딥링크(네이버 지도 · 카카오맵 앱 있음 · 없음, `kakaomap` scheme은 공식 문서가 없어 특히), 위치 권한 · 실제 GPS, 한글 입력 · 검색어 지우기
 - 시연용 빌드 방식 정하기 (이 Mac에서 Release 빌드 직접 설치 / EAS Build · TestFlight)
-- 충전소 상세의 길찾기 버튼은 길찾기 화면(4단계 3번) 전까지 눌리지 않게 그대로 둠
+- 백엔드 길찾기 카카오 전환(`exp/be-kakao-directions`)을 develop에 넣기 — 앱 · core는 전환된 응답(`provider`) 기준으로 이미 맞춰 둠
 
 ## 7. 정해야 할 것
 
