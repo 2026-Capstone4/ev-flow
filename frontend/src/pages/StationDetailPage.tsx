@@ -31,6 +31,12 @@ export function StationDetailPage() {
     ? formatWaitRange(selectedPrediction.waitTimeP50Minutes, selectedPrediction.waitTimeP90Minutes)
     : null
 
+  // 충전기가 모두 확인 불가면 빈 충전기가 없는 게 아니라 상태를 모르는 것
+  const isAllUnknown =
+    !!station &&
+    station.chargers.length > 0 &&
+    station.chargers.every((c) => c.status === 'unknown')
+
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
@@ -81,7 +87,7 @@ export function StationDetailPage() {
             {horizon === 0 ? (
               <section className="flex flex-col gap-3">
                 <h3 className="text-base font-bold">지금 사용 가능</h3>
-                {/* 빈 충전기가 있으면 대수를 크게, 없으면 15 · 30분 예측을 보도록 안내 */}
+                {/* 빈 충전기가 있으면 대수를 크게, 모두 확인 불가면 상태를 못 받았다고 안내, 그 밖에는 15 · 30분 예측을 보도록 안내 */}
                 {station.availableChargers > 0 ? (
                   <p className="font-bold">
                     <span className="text-[28px]">{station.availableChargers}대</span>
@@ -90,11 +96,20 @@ export function StationDetailPage() {
                       / 전체 {station.totalChargers}대
                     </span>
                   </p>
+                ) : isAllUnknown ? (
+                  <div className="flex flex-col gap-1">
+                    <p className="text-lg font-bold text-text-secondary">상태 확인 불가</p>
+                    <p className="text-[13px] text-text-secondary">
+                      지금은 충전기 상태를 받아오지 못했어요
+                      <br />
+                      15분 후 · 30분 후 예측을 참고해보세요
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-1">
                     <p className="text-lg font-bold text-text-secondary">빈 충전기 없음</p>
                     <p className="text-[13px] text-text-secondary">
-                      15분 후 · 30분 후 예측을 눌러 언제 여유로워지는지 확인해 보세요
+                      15분 후 · 30분 후의 예상 대기시간을 확인해보세요
                     </p>
                   </div>
                 )}
