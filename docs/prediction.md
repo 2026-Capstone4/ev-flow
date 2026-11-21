@@ -12,7 +12,7 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 
 ## ml (AI 패키지 그대로 실행)
 
-모델과 추론 코드는 AI v3.1 패키지를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
+모델과 추론 코드는 AI 패키지(현재 v3.4 — `evflow_backend_runtime_v3_4_20261121.zip`)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
 
 - 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
 - 실행: `/package`에서 `uvicorn backend_app:app --workers 1` — 워커마다 모델을 따로 로드하므로 512MiB 예산은 워커 1개 기준
@@ -101,7 +101,7 @@ ml 호출 타임아웃은 30초 (AI 실측 512MiB · 체크포인트 있음 약 
 
 - 모델 예측의 "30분 후"는 `base_time + 30분`, 기준선은 **조회 시각 + 30분**의 KST 요일 · 시 칸
 - 대기시간은 정수로 반올림한다 (0.5는 올림). 모델이어도 대기가 `null`인 칸은 그대로 `null`
-- 대기 표시 설정 `SHOW_WAIT_PREDICTION`(api `.env`, 기본 꺼짐)이 꺼져 있으면 모델 대기도 `null`로 낸다 — v3.1의 빈 충전소 약 5분 문제([미정](#미정)) 때문. Redis에는 원값이 그대로 있음. v3.2로 교체한 뒤 `true`로 바꾸고 api 재시작
+- 대기 표시 설정 `SHOW_WAIT_PREDICTION`(api `.env`, 기본 꺼짐)이 꺼져 있으면 모델 대기도 `null`로 낸다 — v3.1의 빈 충전소 약 5분 문제 때문에 꺼 둠 (v3.4에서 정답 수정). Redis에는 원값이 그대로 있음. v3.4로 교체 · 서버 확인 뒤 `true`로 바꾸고 api 재시작
 - Redis를 못 읽으면 키가 없을 때와 같게 처리한다 — 조회 API는 실패시키지 않음
 
 ## 모델 교체
@@ -114,6 +114,8 @@ ml 호출 타임아웃은 30초 (AI 실측 512MiB · 체크포인트 있음 약 
 4. 의존성 버전이 바뀌었으면 `ml/requirements.txt` · `producer/requirements.txt`를 맞추고 이미지 재빌드
 5. producer · ml 재시작 — ml은 시작할 때 한 번만 모델을 읽음
 6. 입력 피처 · 이력 기점이 바뀐 패키지면 체크포인트 재구축 (아래 producer 최초 구축 명령, 서버 약 10분 — 그동안 대기는 `null`, 혼잡도는 나옴)
+   - 체크포인트 형식(payload 버전)까지 바뀐 패키지면 상태 폴더도 새로 쓴다 — 예전 폴더는 롤백용으로 남김. 2번 전에 producer를 먼저 멈추고(`docker compose stop producer`), 다음에 커밋되는 **아직 게시되지 않은 회차**로 구축한다. 이미 예전 형식으로 게시된 회차에 다시 쓰면 충돌로 거부됨
+   - v3.1 → v3.4: 형식 `…_v1_20261116` → `…_v34_20261121`, 폴더 `/state/evflow` → `/state/evflow/v34` (compose `EVFLOW_CHECKPOINT_DIR` 기본값). 되돌릴 때는 패키지와 함께 `.env`에 `EVFLOW_CHECKPOINT_DIR=/state/evflow`를 넣고 producer · ml 재시작
 7. 확인: `/healthz`의 `deployment.deployment_id` · collector 로그 `예측 저장 ... 모델 <배포 이름>` · API `modelVersion`
 8. 대기 표시를 켤 모델이면 api `.env`의 `SHOW_WAIT_PREDICTION=true` 후 api 재시작
 
@@ -148,7 +150,7 @@ ml 호출 타임아웃은 30초 (AI 실측 512MiB · 체크포인트 있음 약 
 
 ## 체크포인트 producer
 
-ml이 대기시간을 계산할 때 과거 이력을 매번 읽지 않도록, 회차마다 기점(9/23)부터의 요약을 `ml_checkpoint.history_checkpoints`에 게시한다 ([database.md](database.md#ml-체크포인트-저장소-ml_checkpoint)). 계산 코드는 AI v3.1 패키지(`maintain_checkpoint.py`)를 그대로 쓰고, 백엔드는 실행 · 연결만 맡는다.
+ml이 대기시간을 계산할 때 과거 이력을 매번 읽지 않도록, 회차마다 기점(9/23)부터의 요약을 `ml_checkpoint.history_checkpoints`에 게시한다 ([database.md](database.md#ml-체크포인트-저장소-ml_checkpoint)). 계산 코드는 AI 패키지(`maintain_checkpoint.py`)를 그대로 쓰고, 백엔드는 실행 · 연결만 맡는다.
 
 ```
 collector (도심 SUCCESS · PARTIAL 커밋, 저장 1행 이상)
@@ -177,8 +179,10 @@ producer가 실패해도 수집 · 예측은 그대로 진행한다. 자동 재�
 
 ```bash
 cd /home/ubuntu/ev-flow/backend && docker compose -f docker-compose.yml run --rm --no-deps -w /package producer \
-  python -B maintain_checkpoint.py --run-id "$RUN_ID" --initialize --publish-postgres --checkpoint-dir /state/evflow
+  python -B maintain_checkpoint.py --run-id "$RUN_ID" --initialize --publish-postgres --checkpoint-dir /state/evflow/v34
 ```
+
+`--checkpoint-dir`는 producer의 `EVFLOW_CHECKPOINT_DIR`과 같아야 한다 — 다르면 producer가 `latest.json`을 못 찾아 503 `checkpoint_not_initialized`
 
 재구축(503 `rebuild_required`)도 같은 명령을 최신 도심 회차로 실행한다. 상태 볼륨(`evflow_checkpoint_state`)을 잃었을 때도 같다.
 
@@ -196,6 +200,7 @@ cd /home/ubuntu/ev-flow/backend && docker compose -f docker-compose.yml run --rm
 
 ## 미정
 
-- **빈 충전소의 대기가 약 5분으로 나옴 (AI v3.2에서 수정 중)** — 대기 정답은 "목표 시각(t+h) 이후 처음으로 빈 충전기가 관측되기까지"인데, 목표 시각과 정확히 같은 수집만 0분으로 인정함. 수집 시각이 1초 미만으로 어긋나 목표 시각에 비어 있어도 다음 회차(5분)가 정답이 되는 경우가 생김 (AI 확인: 1,741건 중 602건). 백엔드에서 일괄 5분 빼기는 AI 측정상 전체 오차가 커져 하지 않음. AI가 "목표 시각과 1초 미만 차이 · 목표 시각 양쪽 관측에서 같은 호환 충전기 가용이면 0분"으로 정답을 고쳐 v3.2에 반영 예정 → 받으면 [모델 교체](#모델-교체)로 바꿈
+- **만차일 때 대기 P90이 짧게 나옴 (v3.4)** — 11/18 전 자료로 학습해 11/18~20 88,322건으로 잰 AI 평가에서 P90 포함률(정답 ≤ P90)은 전체 15분 88.5% · 30분 87.3%, 목표 시각에 실제 만차였던 경우 61.3% · 45.5%. 전체의 약 70%가 '대기 없음'(P90 0.5분 미만)으로 표시됨. 혼잡도가 높은 칸의 '대기 없음' 문구를 어떻게 할지 미정
+  - 이전 문제(빈 충전소 약 5분, v3.1)는 v3.3부터 정답을 "목표 시각 ±1초 안의 가장 가까운 유효 수집"으로 맞춰 해결 — P50 MAE 15분 1.28 · 30분 1.47분 (항상 0분 1.94분)
 - **기준선 공휴일** — 요일만 나누므로 28일 안에 연휴가 있으면 그 요일 값이 흔들림
 - 기준선 표본 기준(12회차) · 기간(28일)

@@ -19,5 +19,6 @@ export function buildMockRoute(origin: LatLng, station: Station): RouteResponse 
     travelTimeMinutes: Math.max(1, Math.round(distanceMeters / METERS_PER_MINUTE)),
     distanceMeters,
     path,
+    provider: 'kakao',
   }
 }

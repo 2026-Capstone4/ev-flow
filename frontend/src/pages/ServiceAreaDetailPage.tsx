@@ -8,7 +8,7 @@ import { UpdateStatus } from '@/components/UpdateStatus'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useServiceAreaDetailData } from '@ev-flow/core/hooks/useServiceAreaDetailData'
 import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
-import { openNaverMapApp } from '@/lib/openNaverMapApp'
+import { openMapApp } from '@/lib/openMapApp'
 import {
   AVAILABILITY_TONE_CLASS,
   getAvailabilityTone,
@@ -112,7 +112,7 @@ export function ServiceAreaDetailPage() {
           <footer className="shrink-0 border-t border-border-default px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
             {/* 휴대폰은 네이버 지도 앱, PC는 네이버 지도 웹을 새 탭으로 엶 */}
             {naverMapUrl && (
-              <Button className="w-full" onClick={() => openNaverMapApp(naverMapUrl, platform)}>
+              <Button className="w-full" onClick={() => openMapApp(naverMapUrl, platform, 'naver')}>
                 네이버 지도로 길찾기
               </Button>
             )}

@@ -14,3 +14,8 @@ packageExtensions:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+# 네이버 지도 RN 라이브러리 2.11.0(최신)은 NaverMapPolylineOverlay가 pattern(점선)을 받기만 하고 네이티브에 안 넘김
+# → 넘기게 한 줄 고침 (앱 길찾기 경로 끝 점선). 네이티브 쪽은 이미 pattern을 처리해서 앱을 다시 빌드할 필요 없음
+patchedDependencies:
+  '@mj-studio/react-native-naver-map@2.11.0': patches/@mj-studio__react-native-naver-map@2.11.0.patch

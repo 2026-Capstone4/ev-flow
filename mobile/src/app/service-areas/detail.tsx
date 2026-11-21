@@ -15,7 +15,7 @@ import { Button } from '../../components/Button'
 import { ChargerRow } from '../../components/ChargerRow'
 import { DirectionTag } from '../../components/DirectionTag'
 import { UpdateStatus } from '../../components/UpdateStatus'
-import { openNaverMapCarRoute } from '../../lib/openNaverMapApp'
+import { openNaverMapCarRoute } from '../../lib/openMapApp'
 
 /** 아래 버튼 영역의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(12px, safe-area)) */
 const FOOTER_MIN_PADDING = 12

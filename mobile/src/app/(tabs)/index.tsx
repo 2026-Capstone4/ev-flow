@@ -1,5 +1,5 @@
 import { NaverMapView, type NaverMapViewRef, type Region } from '@mj-studio/react-native-naver-map'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
@@ -21,7 +21,7 @@ import { FilterPanel } from '../../components/FilterPanel'
 import { LOCATE_BUTTON_SIZE, LocateButton } from '../../components/LocateButton'
 import { MapNotice } from '../../components/MapNotice'
 import { OnboardingDialog } from '../../components/OnboardingDialog'
-import { RecommendSheet } from '../../components/RecommendSheet'
+import { RecommendSheet, type RecommendSheetHandle } from '../../components/RecommendSheet'
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
@@ -74,7 +74,6 @@ const LOCATE_BUTTON_GAP = 12
 type CameraState = { webZoomLevel: number; region: Region | null }
 
 // 지도 홈 (하단 탭 첫 번째). 데이터는 웹과 같은 core useMapHomeData
-// 추천 카드의 길찾기 버튼은 4단계 3번에서 더함
 export default function MapHomeScreen() {
   const insets = useSafeAreaInsets()
   const mapRef = useRef<NaverMapViewRef>(null)
@@ -187,6 +186,27 @@ export default function MapHomeScreen() {
       }),
     [],
   )
+  // 추천 카드의 길찾기 버튼 → 길찾기 화면 (웹 /stations/{id}/route?horizon=)
+  const openRoute = useCallback(
+    (station: Pick<Station, 'stationId'>) =>
+      router.push({
+        pathname: '/stations/[stationId]/route',
+        params: { stationId: station.stationId, horizon: String(horizonRef.current) },
+      }),
+    [],
+  )
+
+  // 길찾기 화면의 "AI 추천 충전소 보기"로 돌아오면(?expandSheet=1) 추천 시트를 펼침 (웹 state.expandSheet)
+  const sheetRef = useRef<RecommendSheetHandle>(null)
+  const { expandSheet } = useLocalSearchParams<{ expandSheet?: string }>()
+  useEffect(() => {
+    // 펼쳐 달라는 값이 없으면 그대로 둠
+    if (expandSheet !== '1') return
+    sheetRef.current?.expand()
+    // 한 번 펼친 뒤 값을 지워서 탭을 오가도 다시 펼치지 않게 함
+    router.setParams({ expandSheet: undefined })
+  }, [expandSheet])
+
   // memo 마커가 다시 그려지지 않도록 함수 하나를 계속 씀
   const handleMarkerTap = useCallback(
     (station: Station) => openStation(station.stationId),
@@ -236,12 +256,14 @@ export default function MapHomeScreen() {
 
       {containerHeight > 0 && (
         <RecommendSheet
+          ref={sheetRef}
           recommendations={recommendations}
           recommendState={recommendState}
           retryAfterSeconds={recommendRetryAfterSeconds}
           horizon={horizon}
           onHorizonChange={setHorizon}
           onSelect={openStation}
+          onRouteSelect={openRoute}
           containerHeight={containerHeight}
           animatedPosition={sheetPosition}
           animatedIndex={sheetIndex}

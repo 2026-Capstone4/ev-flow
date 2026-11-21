@@ -1,4 +1,4 @@
-# AI v3.1 패키지 requirements-producer-linux.txt와 같은 버전 (CPython 3.11 / Linux amd64)
+# AI v3.1 · v3.4 패키지 requirements-producer-linux.txt와 같은 버전 (CPython 3.11 / Linux amd64)
 # producer는 XGBoost · SciPy · scikit-learn · FastAPI가 필요 없음 - 패키지가 바뀌면 이 목록도 같이 맞춤
 numpy==2.4.6
 pandas==2.2.3

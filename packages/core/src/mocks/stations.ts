@@ -260,31 +260,6 @@ function toStation({ forecast, ...station }: MockStation): Station {
 
 export const STATIONS: Station[] = MOCK_STATIONS.map(toStation)
 
-/**
- * 예측이 비어 있는 시점을 "지금 혼잡도가 그대로 유지된다"는 기준선 값으로 채운다.
- * 혼합 모드에서 실제 충전소로 추천을 만들 때 씀 - 실제 서버 예측은 아직 전부 null이라
- * 그대로 두면 추천 후보가 하나도 남지 않음
- */
-export function fillMissingPredictions(station: Station): Station {
-  const current = station.congestion
-  // 지금 상태를 모르거나(unknown) 운영 불가(unavailable)면 유지할 혼잡도가 없으니 그대로 둠
-  // → 추천 후보에서 빠짐
-  if (current === 'unknown' || current === 'unavailable') return station
-  return {
-    ...station,
-    // 15 · 30분은 이미 예측이 있으면 그대로 쓰고, 없거나 null이면 현재 혼잡도(source: baseline)로 채움
-    // 실제 서버는 지금(0분) 값을 보내지 않아서 이 단계에서 새로 생김
-    predictions: HORIZONS.map((horizon) => {
-      // 지금(0분)은 현재 혼잡도만(대기시간 없음)
-      if (horizon === 0) return toCurrentPrediction(current)
-      const prediction = station.predictions.find((p) => p.horizonMinutes === horizon)
-      // 예측 혼잡도가 있는 시점은 서버 값 그대로
-      if (prediction?.congestion) return prediction
-      return toPrediction(horizon, current, 'baseline')
-    }),
-  }
-}
-
 /** 충전 중인 충전기마다 시작 시각을 몇 분씩 다르게 둠 */
 export function findStationDetail(stationId: string, now: Date): StationDetail | null {
   const station = STATIONS.find((s) => s.stationId === stationId)

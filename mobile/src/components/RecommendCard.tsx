@@ -12,13 +12,12 @@ export const RECOMMEND_CARD_HEIGHT = 136
 type RecommendCardProps = {
   recommendation: Recommendation
   onPress: () => void
+  /** 길찾기 버튼을 누를 때. 없으면 버튼을 그리지 않음 */
+  onRoutePress?: () => void
 }
 
-/**
- * 추천 충전소 카드. 대기는 범위(P50~P90)로 표시하고 신뢰도는 표시하지 않음
- * 웹 카드의 길찾기 버튼은 앱 길찾기 화면(4단계 3번)을 만들 때 더함
- */
-export function RecommendCard({ recommendation, onPress }: RecommendCardProps) {
+/** 추천 충전소 카드. 대기는 범위(P50~P90)로 표시하고 신뢰도는 표시하지 않음 */
+export function RecommendCard({ recommendation, onPress, onRoutePress }: RecommendCardProps) {
   const { rank, station, congestion, travelTimeMinutes, travelTimeSource, reason } = recommendation
   const summary = [
     // 길찾기 실패로 직선거리 추정이면 근사값임을 표시
@@ -47,6 +46,18 @@ export function RecommendCard({ recommendation, onPress }: RecommendCardProps) {
           {station.name}
         </Text>
         <CongestionBadge congestion={congestion} className="h-8" />
+        {/* RN은 Pressable 안에 Pressable을 둘 수 있어서 웹처럼 카드 위에 겹쳐 띄우지 않고 첫 줄에 바로 넣음 */}
+        {onRoutePress && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${station.name} 길찾기`}
+            onPress={onRoutePress}
+            // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함 (웹 w-14)
+            className="h-8 w-14 items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
+          >
+            <Text className="font-bold text-xs text-text-on-brand">길찾기</Text>
+          </Pressable>
+        )}
       </View>
       {/* 아래 추천 이유 글과 시작 위치를 맞추려고 같은 좌우 여백(px-3)을 줌 */}
       <Text numberOfLines={1} className="w-full px-3 font-sans text-sm text-text-primary">

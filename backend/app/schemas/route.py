@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 
 from app.schemas.base import CamelModel
@@ -20,3 +22,5 @@ class RouteResponse(CamelModel):
     distance_meters: int
     # [위도, 경도] 배열 - Directions 원본([경도, 위도])에서 순서를 바꿔 보냄
     path: list[tuple[float, float]]
+    # 경로를 만든 길찾기 제공자 - 화면에 출처("경로 정보: 카카오모빌리티")를 표시할 때 씀
+    provider: Literal["kakao", "naver"]

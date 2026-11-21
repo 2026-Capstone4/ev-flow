@@ -44,7 +44,7 @@
 |---|---|---|
 | `horizonMinutes` | number | 15 · 30 |
 | `congestion` | string \| null | 예측 혼잡도 (`low` · `medium` · `high`). 예측 · 기준선 모두 없으면 `null` |
-| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | 예상 대기 구간 (분). 기준선이면 항상 `null`, 모델이어도 대기 예측이 빠진 회차면 `null` (혼잡도만 있음). 🟡 대기 모델 수정(AI v3.2) 전까지는 모델 예측도 항상 `null` |
+| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | 예상 대기 구간 (분). 기준선이면 항상 `null`, 모델이어도 대기 예측이 빠진 회차면 `null` (혼잡도만 있음). 🟡 대기 모델 교체(AI v3.4) · 서버 확인 전까지는 모델 예측도 항상 `null` |
 | `source` | string \| null | `model` · `baseline`. 값이 없으면 `null` |
 | `modelVersion` | string \| null | `source`가 `model`일 때 예측에 쓴 AI 패키지 배포 이름 (예: `evflow_station_recommendation_1530_20261116`), 아니면 `null` |
 
@@ -200,7 +200,7 @@
 | `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-19): `horizonMinutes` = **h분 후 출발**. 도착 시각이 h분 + 이동시간이므로, 후보마다 도착 시각(h + 이동시간)에 가장 가까운 예측 시점(15 · 30분, 같으면 이른 쪽)의 값을 씀 — AI 추천 모듈과 같은 규칙에 출발 시점 h를 더해 백엔드가 계산 (2026-11-21) |
 | `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`은 혼잡도로 비교 (아래 계산 규칙) |
 | `recommendations` | object[] | 최대 3개. 후보가 부족하면 짧거나 빈 배열 (UC-U06 E1) |
-| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 수정(AI v3.2) 전까지 `null` |
+| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 교체(AI v3.4) · 서버 확인 전까지 `null` |
 | `station.availableChargers` | number | **현재** 사용 가능 대수 (REC-002) |
 | `travelTimeMinutes` · `distanceMeters` | number | 이동시간 · 이동거리 |
 | `travelTimeSource` | string | `directions` · `estimate`(Directions 실패 → 직선거리 추정, 🟡 잠정) |
@@ -226,7 +226,7 @@
 
 ✅ 구현 (`MAP-02` 제안 · 2026-11-19 합의, 2026-11-21 구현)
 
-- 후보 선정 · 점수 · Top 3는 AI 팀 추천 모듈 기준을 따른다. **마포구 안**이면 출발 위치에서 직선거리 가까운 **20곳**(반경 15km)만 Directions 5를 동시에 호출한다
+- 후보 선정 · 점수 · Top 3는 AI 팀 추천 모듈 기준을 따른다. **마포구 안**이면 출발 위치에서 직선거리 가까운 **20곳**(반경 15km)만 길찾기(서버 `.env` `DIRECTIONS_PROVIDER`, 기본 카카오모빌리티)를 동시에 호출한다
 - 호출마다 타임아웃(3초)을 두고, 넘긴 곳은 추천 모듈의 직선거리 추정(`2분 + 60 × km / 24`) + `travelTimeSource: "estimate"`
 - 이동시간은 출발 좌표 + `stationId`로 캐시한다 (TTL **30분**). 60초 폴링은 캐시만 읽는다. 4번 길찾기도 같은 캐시를 써서 추천 → 길찾기에 추가 호출이 없다
   - 점수는 백엔드가 계산해 AI 추천 모듈의 경로 유효시간(`max_route_age_minutes = 5`)은 적용되지 않음 — 캐시 30분 그대로 씀
@@ -235,9 +235,9 @@
   - 최소 간격 **5분**
 - 호출 제한: IP당 분당 10회 — 넘으면 429 `RATE_LIMITED` + `Retry-After` (2026-11-19 김무겸 · 장승민 합의)
 - 하루 예산: 서버 전체 Directions 실제 호출 2,000회/일(KST) — 넘으면 Directions를 부르지 않고 직선거리 추정 + `travelTimeSource: "estimate"` (길찾기는 503 `ROUTE_QUOTA_EXCEEDED`). 출발 좌표를 바꿔 캐시를 피하는 IP 하나가 한도를 다 쓰지 못하게 함 (2026-11-19 합의)
-- 호출량: 위치 1번에 20회. 추천 화면을 켜둔 사용자 1명이 1시간에 약 40회 → 월 한도 60,000회로 약 1,500시간 (TTL 5분이면 약 240회 · 250시간)
+- 호출량: 위치 1번에 20회. 추천 화면을 켜둔 사용자 1명이 1시간에 약 40회 → 네이버 월 한도 60,000회 기준 약 1,500시간 (TTL 5분이면 약 240회 · 250시간)
 - **마포구 밖**이면 Directions를 부르지 않고 422 `OUT_OF_SERVICE_AREA` (`message`: "현재 충전소 추천 기능은 마포구만 지원해요"). 판정은 서버가 마포구 행정 경계로 한다 — 프론트 지도의 서비스 범위(`coverage-boundary.json`)와 같은 경계(`backend/data/mapo_boundary.json`), 여유 거리 없음
-- 개발 환경에서는 Directions 대신 직선거리 추정만 쓴다 (한도 보호) — 네이버 키가 없으면 자동으로 추정
+- 개발 환경에서는 Directions 대신 직선거리 추정만 쓴다 (한도 보호) — 길찾기 키(카카오 `KAKAO_REST_API_KEY` · 네이버 `NAVER_CLIENT_*`)가 없으면 자동으로 추정
 - 근거 (2026-11-15 측정, 로컬 1회): 66곳 동시 호출 전체 1.08초 · 개별 p95 0.80초 · 66건 모두 성공 — 20곳은 이보다 짧다
 
 **에러**: 422 `VALIDATION_ERROR` · 422 `OUT_OF_SERVICE_AREA` · 429 `RATE_LIMITED` · 503 `DATA_UNAVAILABLE`
@@ -263,22 +263,24 @@
   "stationId": "ME19A601",
   "travelTimeMinutes": 8,
   "distanceMeters": 2400,
-  "path": [[37.5563, 126.9220], [37.5560, 126.9180], [37.55503247, 126.89778505]]
+  "path": [[37.5563, 126.9220], [37.5560, 126.9180], [37.55503247, 126.89778505]],
+  "provider": "kakao"
 }
 ```
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `path` | number[][] | 경로 좌표 `[위도, 경도]` 배열 — 지도에 선으로 그림. Directions 원본(`[경도, 위도]`)에서 순서를 바꿔 보냄 |
+| `provider` | string | 경로를 만든 길찾기 제공자 `kakao`(카카오모빌리티) · `naver`(네이버 Directions 5). 서버 `.env` `DIRECTIONS_PROVIDER`로 바꿈. 화면은 시트에 "경로 정보: …"로 작게 표시 |
 
 같은 출발지(반올림) · 목적지는 캐시 결과를 쓴다 — 출발 좌표 소수 4자리(약 10m) + `stationId`, TTL 30분. 3번 추천과 같은 캐시라 추천 → 길찾기에 추가 호출이 없다 (`MAP-02`, 2026-11-19).
 
 - 이미 충전소에 있으면(Directions가 출발지 = 도착지로 응답) `travelTimeMinutes: 0` · `distanceMeters: 0` · 두 점 경로. 그 밖에는 1분 미만도 1분
 - 출발 좌표가 한국 범위(위도 33~39 · 경도 124~132) 밖이면 422 `VALIDATION_ERROR` — Directions를 부르지 않음
 - 호출 제한: IP당 분당 10회 (캐시 적중 포함) — 넘으면 429 `RATE_LIMITED` + `Retry-After`
-- 하루 예산: 서버 전체 Directions 실제 호출 2,000회/일(KST, 월 60,000회 ÷ 30일) — 넘으면 503 `ROUTE_QUOTA_EXCEEDED`
+- 하루 예산: 서버 전체 Directions 실제 호출 2,000회/일(KST) — 네이버 월 60,000회 ÷ 30일로 정한 값을 카카오 전환 뒤에도 서버 보호용으로 유지. 넘으면 503 `ROUTE_QUOTA_EXCEEDED`
 
-길찾기 화면의 "네이버 지도로 안내받기"는 프론트가 목적지(이름 · 좌표)를 네이버 지도 앱으로 넘긴다 — 출발지는 넘기지 않아 앱이 실제 현재 위치에서 안내한다. 서버 요청은 없다.
+길찾기 화면의 "네이버 지도" · "카카오맵" 안내 버튼은 프론트가 목적지(이름 · 좌표)를 고른 지도 앱으로 넘긴다 — 출발지는 넘기지 않아 앱이 실제 현재 위치에서 안내한다. 서버 요청은 없다.
 
 **에러**: 404 `STATION_NOT_FOUND` · 404 `ROUTE_NOT_FOUND` · 422 `VALIDATION_ERROR` · 429 `RATE_LIMITED` · 502 `ROUTE_PROVIDER_ERROR` · 503 `ROUTE_QUOTA_EXCEEDED`
 
