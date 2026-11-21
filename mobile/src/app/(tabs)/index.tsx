@@ -26,6 +26,7 @@ import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
 import { IS_GEOLOCATION_ENABLED } from '../../lib/config'
+import { openNaverMapCarRoute } from '../../lib/openNaverMapApp'
 import { appStorage } from '../../lib/storage'
 import { CoverageMask } from '../../map/CoverageMask'
 import { SEOUL_EXTENT } from '../../map/seoulExtent'
@@ -74,7 +75,7 @@ const LOCATE_BUTTON_GAP = 12
 type CameraState = { webZoomLevel: number; region: Region | null }
 
 // 지도 홈 (하단 탭 첫 번째). 데이터는 웹과 같은 core useMapHomeData
-// 추천 카드의 길찾기 버튼은 4단계 3번에서 더함
+// 추천 카드의 길찾기 버튼은 앱 길찾기 화면(4단계 3번)이 없어서 지금은 네이버 지도 앱을 바로 엶
 export default function MapHomeScreen() {
   const insets = useSafeAreaInsets()
   const mapRef = useRef<NaverMapViewRef>(null)
@@ -242,6 +243,8 @@ export default function MapHomeScreen() {
           horizon={horizon}
           onHorizonChange={setHorizon}
           onSelect={openStation}
+          // TODO(app): 길찾기 화면(4단계 3번)을 만들면 웹처럼 /stations/{id}/route?horizon=으로 이동
+          onRouteSelect={openNaverMapCarRoute}
           containerHeight={containerHeight}
           animatedPosition={sheetPosition}
           animatedIndex={sheetIndex}

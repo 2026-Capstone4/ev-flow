@@ -49,6 +49,8 @@ type RecommendSheetProps = {
   horizon: HorizonMinutes
   onHorizonChange: (horizon: HorizonMinutes) => void
   onSelect: (stationId: string) => void
+  /** 추천 카드의 길찾기 버튼을 누를 때 */
+  onRouteSelect: (station: Recommendation['station']) => void
   /** 시트를 놓을 지도 영역 높이. 펼침 높이 상한을 정할 때 씀 */
   containerHeight: number
   /** 시트 위쪽 끝의 y 좌표(지도 영역 기준)를 받을 값. 현재 위치 버튼을 시트 위에 붙여 함께 움직일 때 씀 */
@@ -70,6 +72,7 @@ export function RecommendSheet({
   horizon,
   onHorizonChange,
   onSelect,
+  onRouteSelect,
   containerHeight,
   animatedPosition,
   animatedIndex,
@@ -220,6 +223,7 @@ export function RecommendSheet({
                 <RecommendCard
                   recommendation={recommendation}
                   onPress={() => onSelect(recommendation.station.stationId)}
+                  onRoutePress={() => onRouteSelect(recommendation.station)}
                 />
               </View>
             ))}
