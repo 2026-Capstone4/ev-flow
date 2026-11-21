@@ -43,12 +43,12 @@
 | `GET /service-areas`, `GET /service-areas/chargers` | 있음 | |
 | `POST /auth/login` · `logout`, `GET /auth/me` | 있음 | HttpOnly 쿠키 |
 | `GET /admin/utilization` · `chargers` · `collection-status` · `missing-stats` | 있음 | |
-| 추천 | **없음 (Mock)** | 응답 모양이 바뀔 수 있음 |
+| 추천 `POST /recommendations` | 있음 (#139) | IP당 분당 10회 |
 | 길찾기 `POST /routes` | 있음 (#117) | IP당 분당 10회 · Directions 하루 2,000회 |
 | 대시보드 보정 건수 | **없음 (Mock)** | 운영자 전용 |
 
-웹은 `VITE_USE_MOCK=partial`이면 위 Mock 2개만 MSW로, 나머지는 실제 서버로 보냄.
-앱은 `EXPO_PUBLIC_USE_MOCK=partial`이면 추천만 axios adapter로 Mock, 나머지는 실제 서버로 보냄 (보정 건수는 운영자 전용이라 앱에 없음).
+웹은 `VITE_USE_MOCK=partial`이면 보정 건수만 MSW로, 나머지는 실제 서버로 보냄.
+앱은 Mock 없이 모든 요청을 실제 서버로 보냄 (보정 건수는 운영자 전용이라 앱에 없음).
 
 ## 3. 그대로 쓰는 것 · 다시 짜는 것
 
@@ -213,6 +213,7 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 추천 응답 만들기(호출 제한 429 · 마포구 밖 422 · 충전소 못 받음 503 · Top 3)를 `mocks/mockApi.ts`로 빼서 웹 MSW 핸들러와 앱이 같이 씀
 - 앱: `mocks/axiosMock.ts`의 `enableRecommendationsMock()`이 공용 `api`의 adapter를 감싸 `POST /recommendations`만 Mock으로 답하고, 나머지는 원래 adapter로 실제 서버에 보냄. 추천 후보는 실제 서버 충전소에 기준선 예측을 채워 씀 (웹 혼합 모드와 같음)
 - 켜기: `mobile/.env.local`에 `EXPO_PUBLIC_USE_MOCK=partial` (`.env.example`에 적어 둠). 추천 API가 백엔드에 생기면 이 값만 지우면 됨
+- 추천 API가 백엔드에 생겨서(#139) 웹 partial · 앱의 추천 Mock과 `axiosMock.ts`를 지움 (2026-11-21)
 - 확인 (2026-11-20): core 테스트(추천 200 · 다른 요청은 실제 서버로 · 422 · 503 · 429 + Retry-After), 웹 전체 Mock에서 추천 200 · 422 · 11번째 429, 시뮬레이터에서 실제 충전소 1,622곳 + 실제 충전소 기준 추천 1위가 뜸
 
 남은 것
