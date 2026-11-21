@@ -32,8 +32,8 @@ const config: ExpoConfig = {
     appleTeamId: process.env.APPLE_TEAM_ID || undefined,
     supportsTablet: false,
     infoPlist: {
-      // 네이버 지도 앱 설치 여부를 canOpenURL로 확인하려면 nmap을 적어 둬야 함 (없으면 항상 false)
-      LSApplicationQueriesSchemes: ['nmap'],
+      // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
+      LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
     },
   },
   plugins: [

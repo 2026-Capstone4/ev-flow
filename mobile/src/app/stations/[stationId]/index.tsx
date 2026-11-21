@@ -33,6 +33,13 @@ export default function StationDetailScreen() {
   // 시점을 바꾸면 화면 기록을 쌓지 않고 이 화면의 값만 바꿈 (웹 replace와 같음)
   const selectHorizon = (value: HorizonMinutes) => router.setParams({ horizon: String(value) })
 
+  // 길찾기 화면으로 (웹 /stations/{id}/route?horizon=)
+  const openRoute = () =>
+    router.push({
+      pathname: '/stations/[stationId]/route',
+      params: { stationId, horizon: String(horizon) },
+    })
+
   const waitRange = selectedPrediction
     ? formatWaitRange(selectedPrediction.waitTimeP50Minutes, selectedPrediction.waitTimeP90Minutes)
     : null
@@ -156,8 +163,8 @@ export default function StationDetailScreen() {
             className="border-t border-border-default px-4 pt-3"
             style={{ paddingBottom: Math.max(FOOTER_MIN_PADDING, insets.bottom) }}
           >
-            {/* TODO(app): 길찾기 화면(4단계 3번)을 만들면 /stations/{id}/route?horizon=으로 이동 */}
-            <Button disabled className="w-full">
+            {/* 고른 시점을 그대로 넘겨 길찾기 화면에서도 같은 시점의 예상 대기를 보여 줌 */}
+            <Button className="w-full" onPress={openRoute}>
               길찾기
             </Button>
           </View>

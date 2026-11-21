@@ -6,7 +6,15 @@ import BottomSheet, {
 import type { RecommendState } from '@ev-flow/core/hooks/useMapHomeData'
 import { getRetryWaitText } from '@ev-flow/core/lib/rateLimit'
 import type { HorizonMinutes, Recommendation } from '@ev-flow/core/types/station'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { type LayoutChangeEvent, Pressable, Text, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 import { HorizonSelector } from './HorizonSelector'
@@ -41,7 +49,14 @@ const SHEET_SHADOW = {
   shadowOffset: { width: 0, height: -2 },
 }
 
+/** 지도 홈이 시트를 직접 움직일 때 쓰는 함수 */
+export type RecommendSheetHandle = {
+  /** 펼침(Top 3)으로 올림. 펼침 단계가 없으면(안내 문구뿐) 맨 끝 단계로 */
+  expand: () => void
+}
+
 type RecommendSheetProps = {
+  ref?: Ref<RecommendSheetHandle>
   recommendations: Recommendation[] | undefined
   recommendState: RecommendState
   /** 호출 제한일 때 다시 시도할 수 있기까지 남은 초 */
@@ -66,6 +81,7 @@ type RecommendSheetProps = {
  * 웹은 끌기 · 높이 계산을 직접 했지만 앱은 @gorhom/bottom-sheet의 snapPoints로 맡김
  */
 export function RecommendSheet({
+  ref,
   recommendations,
   recommendState,
   retryAfterSeconds,
@@ -79,6 +95,8 @@ export function RecommendSheet({
   onExpandedChange,
 }: RecommendSheetProps) {
   const sheetRef = useRef<BottomSheet>(null)
+  // 번호 없이 맨 끝 단계로 가는 expand()를 씀 (아래 toggleLevel과 같은 이유)
+  useImperativeHandle(ref, () => ({ expand: () => sheetRef.current?.expand() }), [])
   const [level, setLevel] = useState(LEVEL.collapsed)
   // 펼침 높이는 카드 수 · "후보가 n곳뿐" 안내에 따라 달라서 그린 뒤 잰 내용 높이로 정함
   const [contentHeight, setContentHeight] = useState(0)
