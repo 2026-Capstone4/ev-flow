@@ -101,3 +101,14 @@ def test_get_stations_without_seoul_run_returns_mapo_only(monkeypatch):
     res = stations.get_stations(None)
     assert [s.station_id for s in res.stations] == ["M1"]
     assert res.updated_at == CITY_RUN.started_at
+
+
+def test_charger_unstable_flag_in_response():
+    unstable = ChargerState("ME19A601", "21", "unknown", ["dc_combo"], 200, None, unstable=True)
+    body = stations.Charger.model_validate(unstable, from_attributes=True).model_dump(by_alias=True)
+    assert body["unstable"] is True
+    # 값을 안 넣은 충전기(서울 실시간 등)는 false - status는 그대로 둬서 혼잡도 계산에 영향 없음
+    body = stations.Charger.model_validate(state("S1"), from_attributes=True).model_dump(
+        by_alias=True
+    )
+    assert body["unstable"] is False

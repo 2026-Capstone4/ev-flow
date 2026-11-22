@@ -37,6 +37,7 @@
 | `status` | string | 충전기 상태 (README 참고) |
 | `connectorTypes` | string[] | 커넥터 타입 |
 | `capacityKw` | number | 충전 용량 (kW) — FLT-002 속도 필터 기준 |
+| `unstable` | boolean | 원천 데이터 문제로 30분마다 사용 가능(2) ↔ 상태미확인(9)을 반복하는 충전기인지 — 목록은 [database.md](../database.md) 데이터 사용 시 주의. "충전 중"에 고착된 충전기 등 다른 이상은 포함하지 않음. 화면 표시용이라 `status` · 혼잡도 · 추천 계산은 그대로 |
 
 **예측 `Prediction`** — `predictions`는 15 · 30분 순서로 2개 (60분은 2026-11-15에 서비스에서 뺌)
 
@@ -82,8 +83,8 @@
       "congestion": "medium",
       "dataQuality": "normal",
       "chargers": [
-        { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200 },
-        { "chargerId": "22", "status": "available", "connectorTypes": ["dc_combo"], "capacityKw": 200 }
+        { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200, "unstable": false },
+        { "chargerId": "22", "status": "available", "connectorTypes": ["dc_combo"], "capacityKw": 200, "unstable": false }
       ],
       "predictions": [
         { "horizonMinutes": 15, "congestion": "medium", "waitTimeP50Minutes": 0, "waitTimeP90Minutes": 6, "source": "model" },
@@ -125,7 +126,7 @@
     "stationId": "ME19A601",
     "...": "1번 항목과 같음",
     "chargers": [
-      { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200, "chargingStartedAt": "2026-10-30T13:42:00+09:00" }
+      { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200, "unstable": false, "chargingStartedAt": "2026-10-30T13:42:00+09:00" }
     ]
   }
 }

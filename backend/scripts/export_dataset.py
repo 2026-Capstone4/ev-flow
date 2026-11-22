@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.services.status import UNSTABLE_CHARGERS
 from scripts.restore_pre_switch import SWITCH_AT, get_engine
 
 # AI 팀 전달용 데이터 추출 - 테이블별 CSV(상태 기록은 gzip)로 저장함 (AI-05)
@@ -12,26 +13,6 @@ from scripts.restore_pre_switch import SWITCH_AT, get_engine
 # 원래 컬럼에 is_restored·is_failed_cycle(상태 기록)·data_flag(충전기)만 추가 - 컬럼 설명은 docs/database.md
 # 시각은 모두 UTC(+00) - 피처 생성 시 KST로 변환 (BE-09)
 BUS_ONLY_TYPE = "11"
-# 원천 데이터 문제로 30분마다 2↔9를 반복하는 충전기 (2026-10-22 확인, 2026-11-07 ME19A265-21 · ME19A601-21 · 22 추가)
-UNSTABLE_CHARGERS = [
-    "ME19A245-21",
-    "ME19A245-22",
-    "ME19A246-21",
-    "ME19A246-22",
-    "ME19A265-21",
-    "ME19A265-22",
-    "ME19A601-21",
-    "ME19A601-22",
-    "ME19A601-23",
-    "ME19A601-24",
-    "ME19A601-25",
-    "ME19A601-26",
-    "ME21B180-01",
-    "ME21B412-01",
-    "ME21B412-02",
-    "ME21B412-03",
-    "ME21B412-04",
-]
 ALWAYS_DOWN_RATIO = (
     0.9  # 기간 중 이 비율 이상이 통신이상·운영중지·점검중·미확인이면 상시 고장으로 표시
 )
@@ -85,7 +66,8 @@ def export(db_name: str | None, out_dir: str):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     params = {
-        "unstable": UNSTABLE_CHARGERS,
+        # SQL any()에 넘기려고 리스트로 바꿈 (목록은 app/services/status.py)
+        "unstable": sorted(UNSTABLE_CHARGERS),
         "down_ratio": ALWAYS_DOWN_RATIO,
         "down_stats": list(DOWN_STATS),
         "switch_at": SWITCH_AT,
