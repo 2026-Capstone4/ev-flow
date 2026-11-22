@@ -10,8 +10,9 @@ type HorizonSelectorProps = {
 
 const VARIANT_CLASS = {
   floating: {
-    group: 'h-8 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
-    option: 'px-4',
+    // 누르기 쉽게 묶음 높이 40 (칸은 묶음 높이를 채움)
+    group: 'h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
+    option: 'h-full px-4',
     selected: 'bg-bg-page text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.1)]',
   },
   inline: {

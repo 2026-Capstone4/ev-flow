@@ -15,12 +15,23 @@ type CongestionBadgeProps = {
   congestion: CurrentCongestion | null
   /** 놓이는 곳에 맞춰 높이 등을 덧붙일 때 씀 */
   className?: string
+  /** large = 추천 카드처럼 눌러야 하는 버튼 옆에 둘 때 글자 · 좌우 여백을 키움 */
+  size?: 'default' | 'large'
 }
 
-export function CongestionBadge({ congestion, className = '' }: CongestionBadgeProps) {
+const SIZE_CLASS = {
+  default: 'px-2 text-xs',
+  large: 'px-3 text-[13px]',
+}
+
+export function CongestionBadge({
+  congestion,
+  className = '',
+  size = 'default',
+}: CongestionBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-sm px-2 py-1 text-xs font-bold ${BADGE_CLASS[congestion ?? 'none']} ${className}`}
+      className={`inline-flex items-center rounded-sm py-1 font-bold ${SIZE_CLASS[size]} ${BADGE_CLASS[congestion ?? 'none']} ${className}`}
     >
       {getCongestionLabel(congestion)}
     </span>
