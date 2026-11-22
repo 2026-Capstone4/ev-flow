@@ -1,8 +1,9 @@
-"""충전소 추천 (POST /recommendations, UC-U06) - 마포 충전소 중 탭(0 · 15 · 30분 후 출발)별 Top 3
+"""충전소 추천 (POST /recommendations, UC-U06) - 마포 충전소 중 탭(지금 출발 · 15 · 30분 후 도착)별 Top 3
 
 docs/api/user.md 3번
 - 점수 = 이동시간/30 + 점유율 (낮을수록 좋음) - AI 추천 모듈 combined_score와 같은 식 (11/15 합의 Q5)
-- 지금 출발은 현재 상태로, 15 · 30분 후 출발은 도착 시각(h + 이동시간)에 가까운 예측 시점의 모델 값으로 계산
+- 지금 출발은 현재 상태로, 15 · 30분 후 도착은 그 시점(h분) 모델 예측으로 계산 - 이동시간이 h분을 넘는
+  충전소는 그 탭에서 제외 (AI 추천 모듈 고정 도착 탭과 같은 규칙, 11/15 합의 Q5)
 - 이동시간은 가까운 20곳만 Directions(길찾기와 같은 캐시 · 하루 예산), 3초 안에 못 받으면 직선거리 추정
 """
 
@@ -11,7 +12,7 @@ import logging
 import math
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -35,7 +36,6 @@ from app.services.status import elapsed_quality
 logger = logging.getLogger(__name__)
 
 HORIZONS = (0, 15, 30)
-PREDICTION_HORIZONS = (15, 30)
 TOP_N = 3
 CANDIDATE_LIMIT = 20  # Directions를 부르는 후보 수 (MAP-02)
 RADIUS_KM = 15
@@ -161,17 +161,8 @@ def current_occupancy(station: Station) -> float | None:
     return charging / (available + charging) if available + charging else None
 
 
-def pick_horizon(base_time: datetime, arrival: datetime) -> int:
-    """도착 시각에 가장 가까운 예측 시점, 같으면 이른 쪽 - AI 추천 모듈과 같은 규칙"""
-    return min(
-        PREDICTION_HORIZONS,
-        key=lambda h: (abs((base_time + timedelta(minutes=h) - arrival).total_seconds()), h),
-    )
-
-
-def score_tab(h, candidates, travel, filters, model, now) -> list[Scored]:
+def score_tab(h, candidates, travel, filters, model) -> list[Scored]:
     scored = []
-    base_time = datetime.fromisoformat(model["base_time"]) if model else None
     for s, _km in candidates:
         t = travel[s.station_id]
         if h == 0:
@@ -180,12 +171,14 @@ def score_tab(h, candidates, travel, filters, model, now) -> list[Scored]:
             if congestion not in CONGESTION_ORDER:  # 확인 불가(unknown)는 지금 출발 후보에서 뺌
                 continue
         else:
+            # h분 안에 도착하지 못하는 충전소는 h분 후 도착 탭에서 뺌
+            if t.minutes > h:
+                continue
             cells = model["stations"].get(s.station_id) if model else None
             if not cells:
                 continue
-            horizon = pick_horizon(base_time, now + timedelta(minutes=h + t.minutes))
-            cell = next((c for c in cells if c["horizon"] == horizon), None)
-            pred = next((p for p in s.predictions if p.horizon_minutes == horizon), None)
+            cell = next((c for c in cells if c["horizon"] == h), None)
+            pred = next((p for p in s.predictions if p.horizon_minutes == h), None)
             # 충전소 dataQuality가 baseline이면 예측이 기준선으로 바뀜 - 모델 값일 때만 씀
             if cell is None or pred is None or pred.source != "model":
                 continue
@@ -261,7 +254,7 @@ def get_recommendations(db: Session, body: RecommendationRequest) -> Recommendat
             HorizonRecommendations(
                 horizon_minutes=h,
                 recommendations=to_recommendations(
-                    score_tab(h, candidates, travel, body.filters, model, now)
+                    score_tab(h, candidates, travel, body.filters, model)
                 ),
             )
             for h in HORIZONS

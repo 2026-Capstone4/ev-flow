@@ -5,7 +5,7 @@ from pydantic import Field
 from app.schemas.base import CamelModel, KstDatetime
 from app.schemas.common import ConnectorType, ResponseDataQuality
 
-# 추천 탭 = h분 후 출발 (REC-006) - 0은 지금 출발(실시간 상태), 15 · 30은 예측
+# 추천 탭 = h분 후 도착 (REC-006) - 0은 지금 출발(실시간 상태), 15 · 30은 예측
 RecommendHorizon = Literal[0, 15, 30]
 
 
