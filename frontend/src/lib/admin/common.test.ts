@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPercent, isStale } from '@/lib/admin/common'
+import { formatPercent, formatStatUpdated, isStale } from '@/lib/admin/common'
 
 const now = new Date('2026-11-14T14:10:00+09:00')
 
@@ -17,5 +17,14 @@ describe('isStale', () => {
     expect(isStale('2026-11-14T13:50:00+09:00', now)).toBe(false)
     expect(isStale('2026-11-14T13:49:00+09:00', now)).toBe(true)
     expect(isStale(null, now)).toBe(true)
+  })
+})
+
+describe('formatStatUpdated', () => {
+  const reference = new Date(2026, 10, 22, 14, 30)
+
+  it('같은 날이면 시각만, 다른 날이면 날짜를 붙임', () => {
+    expect(formatStatUpdated(new Date(2026, 10, 22, 9, 5), reference)).toBe('09:05')
+    expect(formatStatUpdated(new Date(2026, 10, 20, 14, 5), reference)).toBe('11/20 14:05')
   })
 })

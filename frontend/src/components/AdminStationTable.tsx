@@ -6,12 +6,11 @@ import {
   formatStationOccupancy,
   type AdminStation,
 } from '@/lib/admin/chargerStatus'
-import { CHARGER_REGION_LABEL, isStale } from '@/lib/admin/common'
-import { formatClock, formatElapsed } from '@ev-flow/core/lib/formatUpdatedAt'
+import { CHARGER_REGION_LABEL, formatStatUpdated } from '@/lib/admin/common'
 
 type AdminStationTableProps = {
   stations: AdminStation[]
-  /** 목록 기준 시각 — 수신 시각이 이보다 20분 넘게 오래되면 빨갛게 표시 */
+  /** 목록 기준 시각 — 상태 갱신 시각이 다른 날이면 날짜를 붙이는 기준 */
   updatedAt: Date
   /**
    * 충전소 줄을 눌렀을 때 — 그 충전소의 충전기를 보러 감
@@ -84,13 +83,12 @@ export function AdminStationTable({
               </span>
             </th>
             <th className="px-5 py-2.5 font-medium">이상</th>
-            <th className="px-5 py-2.5 font-medium">마지막 수신</th>
+            <th className="px-5 py-2.5 font-medium">상태 갱신(운영사)</th>
           </tr>
         </thead>
         <tbody>
           {stations.map((station) => {
             const at = station.statUpdatedAt ? new Date(station.statUpdatedAt) : null
-            const stale = isStale(station.statUpdatedAt, updatedAt)
             const issues = formatStationIssues(station)
             return (
               <tr
@@ -129,13 +127,9 @@ export function AdminStationTable({
                 >
                   {issues ?? '없음'}
                 </td>
-                <td
-                  className={`px-5 py-3 ${stale ? 'text-congestion-busy' : 'text-text-secondary'}`}
-                >
-                  {/* 수신 기록이 없으면 대시, 20분 넘게 오래됐으면 몇 분 전인지 함께 표시 */}
-                  {at
-                    ? `${formatClock(at)}${stale ? ` (${formatElapsed(at, updatedAt)})` : ''}`
-                    : '—'}
+                {/* 운영사가 보내는 시각이라 수집이 끊긴 것으로 오해하지 않게 빨간 표시 · 경과 시간 없이 시각만. 값이 없으면 대시 */}
+                <td className="px-5 py-3 text-text-secondary">
+                  {at ? formatStatUpdated(at, updatedAt) : '—'}
                 </td>
               </tr>
             )

@@ -33,7 +33,7 @@ import {
   toUtilizationRows,
   type OccupancyLevel,
 } from '@/lib/admin/charts'
-import { formatPercent } from '@/lib/admin/common'
+import { formatPercent, STAT_UPDATED_NOTE } from '@/lib/admin/common'
 import type { AdminRegion } from '@/types/admin'
 
 const STATUS_VIEW_OPTIONS = (['station', 'charger'] as const).map((value) => ({
@@ -383,6 +383,8 @@ export function AdminStatusPage() {
         ) : (
           <AdminPlaceholder isError={data.chargersLoadState === 'error'} height={TABLE_HEIGHT} />
         )}
+        {/* 표의 '상태 갱신(운영사)'가 수집 시각이 아니라는 안내. 표가 짧아도 잘리지 않게 말풍선 대신 늘 보이게 둠 */}
+        <p className="px-5 text-xs text-text-secondary">{STAT_UPDATED_NOTE}</p>
       </AdminPanel>
     </div>
   )
