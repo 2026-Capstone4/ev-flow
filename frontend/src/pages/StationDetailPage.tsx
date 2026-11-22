@@ -2,15 +2,13 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { BackButton } from '@/components/BackButton'
 import { Button } from '@/components/Button'
 import { ChargerRow } from '@/components/ChargerRow'
-import { ChargerStatusBar } from '@/components/ChargerStatusBar'
 import { CongestionBadge } from '@/components/CongestionBadge'
+import { HorizonSummary } from '@/components/HorizonSummary'
 import { PredictionTile } from '@/components/PredictionTile'
 import { UpdateStatus } from '@/components/UpdateStatus'
-import { WaitRangeBar } from '@/components/WaitRangeBar'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
-import { formatWaitRange, getWaitNote, isWaitUncertain } from '@ev-flow/core/lib/congestion'
-import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
+import { findPrediction, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 
 export function StationDetailPage() {
@@ -19,29 +17,10 @@ export function StationDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const horizon = parseHorizon(searchParams.get('horizon'))
   const now = useNow()
-  const { station, updatedAt, isError, isNotFound, selectedPrediction } = useStationDetailData(
-    stationId,
-    horizon,
-  )
+  const { station, updatedAt, isError, isNotFound } = useStationDetailData(stationId, horizon)
 
   const selectHorizon = (value: HorizonMinutes) =>
     setSearchParams({ horizon: String(value) }, { replace: true })
-
-  const waitArgs = selectedPrediction
-    ? ([
-        selectedPrediction.waitTimeP50Minutes,
-        selectedPrediction.waitTimeP90Minutes,
-        selectedPrediction.congestion,
-      ] as const)
-    : null
-  const waitRange = waitArgs ? formatWaitRange(...waitArgs) : null
-  const waitNote = waitArgs ? getWaitNote(...waitArgs) : null
-
-  // 충전기가 모두 확인 불가면 빈 충전기가 없는 게 아니라 상태를 모르는 것
-  const isAllUnknown =
-    !!station &&
-    station.chargers.length > 0 &&
-    station.chargers.every((c) => c.status === 'unknown')
 
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
@@ -89,69 +68,18 @@ export function StationDetailPage() {
               </div>
             </section>
 
-            {/* 지금 출발은 예상 대기 대신 실시간 사용 가능 대수와 상태 막대 */}
-            {horizon === 0 ? (
-              <section className="flex flex-col gap-3">
-                <h3 className="text-base font-bold">지금 사용 가능</h3>
-                {/* 빈 충전기가 있으면 대수를 크게, 모두 확인 불가면 상태를 못 받았다고 안내, 그 밖에는 15 · 30분 예측을 보도록 안내 */}
-                {station.availableChargers > 0 ? (
-                  <p className="font-bold">
-                    <span className="text-[28px]">{station.availableChargers}대</span>
-                    <span className="text-sm text-text-secondary">
-                      {' '}
-                      / 전체 {station.totalChargers}대
-                    </span>
-                  </p>
-                ) : isAllUnknown ? (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-lg font-bold text-text-secondary">상태 확인 불가</p>
-                    <p className="text-[13px] text-text-secondary">
-                      지금은 충전기 상태를 받아오지 못했어요
-                      <br />
-                      15분 후 · 30분 후 예측을 참고해보세요
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-lg font-bold text-text-secondary">빈 충전기 없음</p>
-                    <p className="text-[13px] text-text-secondary">
-                      15분 후 · 30분 후의 예상 대기시간을 확인해보세요
-                    </p>
-                  </div>
-                )}
-                <ChargerStatusBar statuses={station.chargers.map((c) => c.status)} />
-              </section>
-            ) : waitRange ? (
-              // 15 · 30분은 대기 예측이 있을 때만 보여 줌. 기준선이거나 대기 모델이 꺼져 있으면 혼잡 예측 칸만 남김
-              <section className="flex flex-col gap-3">
-                <h3 className="text-base font-bold">{getHorizonWhen(horizon)} 예상 대기</h3>
-                <div className="flex flex-col gap-1">
-                  <p className="text-[28px] font-bold">{waitRange}</p>
-                  {waitNote && (
-                    <p className="text-[13px] text-text-secondary">
-                      {waitNote.map((line, i) => (
-                        <span key={line}>
-                          {i > 0 && <br />}
-                          {line}
-                        </span>
-                      ))}
-                    </p>
-                  )}
+            {/* 세 시점 설명을 같은 자리에 겹쳐 그리고 고른 것만 보여 줌. 칸 높이가 셋 중 가장 큰 높이로 고정돼 시점을 바꿔도 충전기 현황이 움직이지 않음 */}
+            <div className="grid">
+              {HORIZONS.map((option) => (
+                <div
+                  key={option}
+                  aria-hidden={option !== horizon}
+                  className={`col-start-1 row-start-1 ${option === horizon ? '' : 'invisible'}`}
+                >
+                  <HorizonSummary station={station} horizon={option} />
                 </div>
-                {/* 대기 예측을 믿기 어려우면 0분 막대도 숨김 */}
-                {selectedPrediction?.waitTimeP50Minutes != null &&
-                  selectedPrediction.waitTimeP90Minutes != null &&
-                  !isWaitUncertain(
-                    selectedPrediction.waitTimeP90Minutes,
-                    selectedPrediction.congestion,
-                  ) && (
-                    <WaitRangeBar
-                      p50={selectedPrediction.waitTimeP50Minutes}
-                      p90={selectedPrediction.waitTimeP90Minutes}
-                    />
-                  )}
-              </section>
-            ) : null}
+              ))}
+            </div>
 
             <section className="flex flex-col gap-3">
               <h3 className="text-base font-bold">충전기 현황</h3>

@@ -63,3 +63,28 @@ export function getWaitNote(
   if (p90 === 0) return ['바로 충전할 가능성이 높아요']
   return null
 }
+
+/** 대기 예측이 없을 때 혼잡도 큰 글씨 아래 설명 줄. 문장마다 한 줄 */
+export function getCongestionNote(congestion: PredictedCongestion | null, totalChargers: number) {
+  // 예측이 없으면 지금 상태를 보도록 안내
+  if (congestion === null) {
+    return ['이 시간대 예측을 받아오지 못했어요', '지금 사용 가능 대수를 참고해보세요']
+  }
+  // 1대뿐인 충전소는 빈 충전기가 적다는 말 대신 1대뿐이라는 점을 알려 줌
+  if (totalChargers === 1) {
+    // 혼잡이면 그 1대를 누가 쓰고 있을 수 있다고 안내
+    if (congestion === 'high') {
+      return ['1대뿐인 충전기를 누가 쓰고 있을 수 있어요', '근처 다른 충전소도 함께 살펴보세요']
+    }
+    // 1대는 규칙상 여유가 안 나와 여유 · 보통 모두 지금 출발과 같은 말
+    return ['충전기가 1대뿐이라 금방 찰 수 있어요', '도착 전에 다시 확인하는 게 좋아요']
+  }
+  // 여유면 대기 0분 설명과 같은 말로 확률이라는 느낌만 줌
+  if (congestion === 'low') return ['바로 충전할 가능성이 높아요']
+  // 보통이면 자리가 빠듯할 수 있다고 안내
+  if (congestion === 'medium') {
+    return ['빈 충전기가 적을 수 있어요', '도착 전에 다시 확인하는 게 좋아요']
+  }
+  // 혼잡이면 다른 충전소도 보도록 안내
+  return ['빈 충전기가 없을 수 있어요', '근처 다른 충전소도 함께 살펴보세요']
+}

@@ -28,7 +28,7 @@ export function ChargerStatusBar({ statuses }: ChargerStatusBarProps) {
   const groups = GROUPS.filter((group) => counts[group] > 0)
 
   return (
-    <View className="w-full gap-3">
+    <View className="w-full gap-2">
       <View className="h-2 flex-row gap-0.5 overflow-hidden rounded-full bg-bg-subtle">
         {groups.map((group) => (
           <View
