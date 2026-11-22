@@ -53,7 +53,7 @@ describe('formatWaitTime', () => {
 describe('getWaitNote', () => {
   it('혼잡인데 P90이 0이면 다시 확인하도록 안내함', () => {
     expect(getWaitNote(0, 0, 'high')).toBe(
-      '빈 충전기가 없을 수 있어요. 도착 전에 다시 확인하는 게 좋아요.',
+      '빈 충전기가 없을 수 있어요. 도착 전에 다시 확인하는 게 좋아요',
     )
   })
 
