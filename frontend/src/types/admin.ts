@@ -46,6 +46,8 @@ export type AdminCharger = {
   status: ChargerStatus
   /** API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 구분용. 마지막 성공 수집에 그 충전기가 없으면 null */
   stat: string | null
+  /** 원천 데이터 문제로 2↔9를 반복하는 충전기인지 (백엔드 status.py 목록, 사용자 API와 같은 기준) */
+  unstable: boolean
   todayOccupancyRate: number | null
   /** API의 상태 갱신 시각 (참고용) */
   statUpdatedAt: string | null

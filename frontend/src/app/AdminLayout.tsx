@@ -10,6 +10,7 @@ import type { AdminLoginState } from '@/pages/AdminLoginPage'
 /** 사이드바 메뉴 — 메뉴마다 화면이 따로 있음 */
 const NAV_ITEMS = [
   { label: '운영 현황', to: '/admin' },
+  { label: '상태 이상 충전기', to: '/admin/charger-issues' },
   { label: '데이터 수집', to: '/admin/collection' },
 ]
 

@@ -23,6 +23,7 @@ function charger(overrides: Partial<AdminCharger>): AdminCharger {
     chargerId: '01',
     status: 'available',
     stat: '2',
+    unstable: false,
     todayOccupancyRate: 0.5,
     statUpdatedAt: '2026-11-14T14:00:00+09:00',
     ...overrides,
