@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 import redis
 
+from app.collector.prediction import RAW_KEY  # 쓰는 쪽(collector)과 같은 키 - 한 곳에서만 정함
 from app.config import settings
 from app.schemas.base import KST
 from app.schemas.station import Prediction
@@ -47,6 +48,16 @@ def load_model_predictions() -> dict | None:
     return value or None
 
 
+def load_raw_predictions() -> dict | None:
+    """pred:raw:v1 - 추천의 AI 채점용 ml 응답 원본 (collector가 pred:v2와 같이 씀). 없거나 읽지 못하면 None"""
+    try:
+        value = _get_json(RAW_KEY)
+    except Exception:
+        logger.warning("pred:raw:v1 읽기 실패 - 추천은 최근 관측 근거만 씀", exc_info=True)
+        return None
+    return value or None
+
+
 def load_baseline() -> dict | None:
     global _baseline_cache
     now = time.monotonic()
@@ -64,7 +75,7 @@ def load_baseline() -> dict | None:
     return _baseline_cache[1]
 
 
-def _round_wait(minutes: float | None) -> int | None:
+def round_wait(minutes: float | None) -> int | None:
     # collector 검증으로 0 이상 또는 null만 들어옴. round()는 2.5 → 2(은행원 반올림)라 쓰지 않음
     return None if minutes is None else int(minutes + 0.5)
 
@@ -84,8 +95,8 @@ def build_predictions(
             Prediction(
                 horizon_minutes=p["horizon"],
                 congestion=p["congestion"],
-                wait_time_p50_minutes=_round_wait(p["wait_p50"]) if show_wait else None,
-                wait_time_p90_minutes=_round_wait(p["wait_p90"]) if show_wait else None,
+                wait_time_p50_minutes=round_wait(p["wait_p50"]) if show_wait else None,
+                wait_time_p90_minutes=round_wait(p["wait_p90"]) if show_wait else None,
                 source="model",
                 model_version=model["model_version"],
             )

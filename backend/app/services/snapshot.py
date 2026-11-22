@@ -31,6 +31,8 @@ class ChargerState:
     stat_upd_dt: datetime | None = None
     # 원천 데이터 문제로 상태가 계속 바뀌는 충전기인지 (status.UNSTABLE_CHARGERS) - 화면 표시용
     unstable: bool = False
+    # 마지막 성공 회차에서 이 충전기 상태를 받은 시각 - 추천의 AI 채점이 관측 나이(15분 미만)를 봄. 행이 없으면 None
+    observed_at: datetime | None = None
 
 
 def find_latest_success_run(db: Session, target: str) -> CollectionRun | None:
@@ -66,7 +68,7 @@ def load_charger_states(
     # collection_runs 도입 이전에는 FAILED 회차도 행을 남겼으므로 실행 id로 그 회차 행만 고름.
     # 시각 조건은 인덱스 범위를 좁히는 용도 - 행이 없으면 상태를 모르는 충전기
     latest = (
-        select(log.stat, log.stat_upd_dt, log.current_charge_start_dt)
+        select(log.stat, log.stat_upd_dt, log.current_charge_start_dt, log.collected_at)
         .where(
             log.station_id == charger.station_id,
             log.charger_id == charger.charger_id,
@@ -86,6 +88,7 @@ def load_charger_states(
             latest.c.stat,
             latest.c.stat_upd_dt,
             latest.c.current_charge_start_dt,
+            latest.c.collected_at,
         )
         .outerjoin(latest, true())
         .where(charger.charger_type != BUS_CHARGER_TYPE)
@@ -109,6 +112,7 @@ def load_charger_states(
                 stat=row.stat,
                 stat_upd_dt=row.stat_upd_dt,
                 unstable=is_unstable(row.station_id, row.charger_id),
+                observed_at=row.collected_at,
             )
         )
     return states

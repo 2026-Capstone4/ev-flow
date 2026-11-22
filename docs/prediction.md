@@ -7,14 +7,16 @@ collector (도심 SUCCESS · PARTIAL 커밋)
   → producer: 체크포인트 게시 (아래 "체크포인트 producer")
   → POST http://ml:8001/internal/v1/predict {"run_id": N}   (app/collector/prediction.py, 타임아웃 30초)
       ml 컨테이너 = AI 패키지의 backend_app 그대로 (ml_read · ml_checkpoint를 읽기 전용으로 직접 읽음)
-  → 변환 · 검증 → SET pred:v2
+  → 변환 · 검증 → SET pred:v2          (지도 · 상세 표시용)
+  → 응답 원본 일부 → SET pred:raw:v1   (추천 채점용 — api가 AI 패키지 채점 함수에 그대로 넘김)
 ```
 
 ## ml (AI 패키지 그대로 실행)
 
-모델과 추론 코드는 AI 패키지(현재 v3.4 — `evflow_backend_runtime_v3_4_20261121.zip`)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
+모델과 추론 코드는 AI 패키지(현재 v3.4 이력 검사 수정본 — `evflow_backend_runtime_v3_4_history_fix_20261122.zip`, 2026-11-22 교체 · 2026-11-21 원본은 서버 `ml/package_v34_20261121`에 보관)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
 
 - 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
+- **api도 같은 폴더를 `/package`로 마운트**해 추천 순위를 패키지의 채점 함수(`run_recommendation.score_snapshot`)로 계산한다 (2026-11-22, `app/services/ai_ranking.py`). 채점 모듈은 표준 라이브러리만 써서 모델 · pandas를 올리지 않음. 규칙은 [api/user.md 3번 계산 규칙](api/user.md#계산-규칙)
 - 실행: `/package`에서 `uvicorn backend_app:app --workers 1` — 워커마다 모델을 따로 로드하므로 512MiB 예산은 워커 1개 기준
 - 접속: `evflow_ml_reader` (`EVFLOW_ML_READONLY_DSN`) — 원천 `ml_read`, 체크포인트 `ml_checkpoint`
 - 원천 이름 `EVFLOW_SOURCE_ID`는 producer와 **같은 값**(서버 `evflow-prod`)이어야 한다 — 체크포인트에 묶여 있어 다르면 모든 체크포인트가 `checkpoint_incompatible_source_identity`로 거부되고 대기가 전부 빠짐 (2026-11-21 서버에서 확인)
@@ -76,6 +78,14 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 - 내부 데이터라 `snake_case`를 쓴다. `camelCase` 변환은 HTTP 응답에서만 한다 (`API-05`)
 - 버스전용 충전기만 있는 충전소는 넣지 않는다
 
+## Redis `pred:raw:v1` (추천 채점용)
+
+- collector가 `pred:v2`를 쓴 직후 같은 ml 응답에서 **AI 패키지 `run_recommendation.from_components`가 읽는 부분만** 남겨 `SET pred:raw:v1 <JSON> EX 1200` (2026-11-22)
+  - `run_id` · `clock_mode` · `prediction_snapshot_id` · `predictions[]`(`station_id` · `charger_ids` · `horizon_minutes` · `components.congestion` · `components.time`)
+- 값은 고치지 않는다 — 예측 유효시각 · 15분 신선도 · 확인 비율 검증은 api에서 AI 채점 함수가 함
+- ml 응답이 200이 아니면 `pred:v2`와 같이 쓰지 않음. 원본만 저장에 실패하면 로그만 남기고 `pred:v2`는 그대로
+- 키가 없으면 api는 예측 없이 채점 → 지금 출발의 최근 관측 근거만 남음
+
 ## collector 변환 · 검증
 
 ml 응답 `predictions[]`는 충전소 × 시점 한 행씩이고, 행마다 `components.congestion` · `components.time`에 상태(`ok` · `unavailable`)가 따로 있다.
@@ -115,7 +125,7 @@ ml 호출 타임아웃은 30초 (AI 실측 512MiB · 체크포인트 있음 약 
 2. 지금 패키지를 옆에 보관 — `mv ml/package ml/package_<배포 이름>` (되돌릴 때 이름만 다시 바꿈)
 3. 새 패키지를 `ml/package/`에 푼다 (`python3 -m zipfile -e <zip> ml/package`)
 4. 의존성 버전이 바뀌었으면 `ml/requirements.txt` · `producer/requirements.txt`를 맞추고 이미지 재빌드
-5. producer · ml 재시작 — ml은 시작할 때 한 번만 모델을 읽음
+5. producer · ml · api 재시작 — ml은 시작할 때 한 번만 모델을 읽고, api는 첫 추천 때 채점 함수를 한 번만 읽음
 6. 입력 피처 · 이력 기점이 바뀐 패키지면 체크포인트 재구축 (아래 producer 최초 구축 명령, 서버 약 10분 — 그동안 대기는 `null`, 혼잡도는 나옴)
    - 체크포인트 형식(payload 버전)까지 바뀐 패키지면 상태 폴더도 새로 쓴다 — 예전 폴더는 롤백용으로 남김. 2번 전에 producer를 먼저 멈추고(`docker compose stop producer`), 다음에 커밋되는 **아직 게시되지 않은 회차**로 구축한다. 이미 예전 형식으로 게시된 회차에 다시 쓰면 충돌로 거부됨
    - v3.1 → v3.4: 형식 `…_v1_20261116` → `…_v34_20261121`, 폴더 `/state/evflow` → `/state/evflow/v34` (compose `EVFLOW_CHECKPOINT_DIR` 기본값). 되돌릴 때는 패키지와 함께 `.env`에 `EVFLOW_CHECKPOINT_DIR=/state/evflow`를 넣고 producer · ml 재시작
