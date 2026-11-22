@@ -53,6 +53,25 @@ async function readPosition() {
 }
 
 /**
+ * 기기 위치를 한 번 재서 그대로 돌려줌. 추천 기준 위치는 바꾸지 않고, 마포구 밖이어도 돌려줌
+ * 상태 이상 충전기 화면이 처음 보여 줄 구를 정할 때 씀. 위치 서비스 꺼짐 · 권한 거부 · 시간 초과 등은 모두 null
+ */
+export async function readDeviceLocation(): Promise<LatLng | null> {
+  try {
+    // 기기 설정에서 위치 서비스를 끈 경우. 권한을 물어도 소용없어서 바로 포기함
+    if (!(await Location.hasServicesEnabledAsync())) return null
+    // 처음이면 iOS 권한 창을 띄우고, 이미 정했으면 창 없이 그 결과를 바로 돌려받음
+    const { granted } = await Location.requestForegroundPermissionsAsync()
+    // 거부했으면 위치 없이 진행 (기본 구를 그대로 씀)
+    if (!granted) return null
+    return await readPosition()
+  } catch {
+    // 시간 초과 · 위치 신호 없음 등은 위치 없이 진행
+    return null
+  }
+}
+
+/**
  * 현재 위치를 한 번 재서, 마포구 안이면 추천 · 검색 · 길찾기 기준 위치로 바꿈 (웹 useCurrentLocation과 같은 흐름)
  * 버튼을 누를 때만 재므로 앱을 열자마자 권한 창이 뜨지 않음
  */
