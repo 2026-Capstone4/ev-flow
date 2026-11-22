@@ -5,7 +5,7 @@ from pydantic import Field
 from app.schemas.base import CamelModel, KstDatetime
 from app.schemas.common import ConnectorType, ResponseDataQuality
 
-# 추천 탭 = h분 후 도착 (REC-006) - 0은 지금 출발(실시간 상태), 15 · 30은 예측
+# 추천 탭 (REC-006) - 0은 지금 출발, 15 · 30은 h분 후 도착. 순위는 AI 추천 모듈 채점 그대로 (2026-11-22)
 RecommendHorizon = Literal[0, 15, 30]
 
 
@@ -36,12 +36,14 @@ class RecommendedStation(CamelModel):
 class Recommendation(CamelModel):
     rank: int
     station: RecommendedStation
-    # 그 탭의 혼잡도 - 지금 출발은 현재 혼잡도, 15 · 30분은 도착 시각에 가까운 예측
-    congestion: Literal["low", "medium", "high"]
-    # 지금 출발은 항상 null. 예측 탭도 대기 표시를 끈 동안(SHOW_WAIT_PREDICTION)은 null
+    # 추천 근거 (AI 추천 모듈 단계) - forecast: 모델 예측(공식 추천) / recent_observation: 최근 15분 관측(참고 안내)
+    basis: Literal["forecast", "recent_observation"]
+    # forecast는 AI가 고른 예측 시점의 혼잡도, recent_observation은 현재 혼잡도 (확인 비율이 모자라면 null)
+    congestion: Literal["low", "medium", "high"] | None
+    # forecast일 때만 값. 대기 표시를 끈 동안(SHOW_WAIT_PREDICTION)은 null
     wait_time_p50_minutes: int | None
     wait_time_p90_minutes: int | None
-    source: Literal["model"] | None  # 지금 출발은 null
+    source: Literal["model"] | None  # forecast면 model, recent_observation이면 null
     travel_time_minutes: int
     distance_meters: int
     travel_time_source: Literal["directions", "estimate"]

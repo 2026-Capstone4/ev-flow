@@ -163,7 +163,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `lat` · `lng` | number | 출발 위치. 위치 권한이 없으면 지도 중심 좌표 (REC-005). 마포구 밖이면 422 `OUT_OF_SERVICE_AREA` (아래 [이동시간 처리](#이동시간-처리)) |
-| `filters` | object | 화면에 적용 중인 필터를 그대로 보냄 (REC-004). 생략하면 전체. 판정은 [필터 판정 규칙](README.md#필터-판정-규칙) — 지도 필터와 같음 |
+| `filters` | object | 화면에 적용 중인 필터를 그대로 보냄 (REC-004). 생략하면 전체. 커넥터 · 용량은 AI 추천 모듈 규칙이라 지도 필터보다 엄격함 — 충전소의 채점 범위 충전기가 **모두** 만족해야 후보 (아래 계산 규칙, 2026-11-22) |
 | `filters.connectorTypes` | string[] | 하나라도 맞으면 후보 (FLT-001). 빈 배열이면 전체 |
 | `filters.minCapacityKw` | number \| null | 100 · 200, `null`이면 전체 (FLT-002) |
 | `filters.statusFilter` | string | `all` · `available_only`(사용 가능만) · `exclude_high`(혼잡 제외) (FLT-003) |
@@ -181,6 +181,7 @@
         {
           "rank": 1,
           "station": { "stationId": "ME19A601", "name": "망원동 공영주차장1", "lat": 37.55503247, "lng": 126.89778505, "totalChargers": 6, "availableChargers": 1 },
+          "basis": "forecast",
           "congestion": "medium",
           "waitTimeP50Minutes": 0,
           "waitTimeP90Minutes": 6,
@@ -199,9 +200,12 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-22): `horizonMinutes` = **h분 후 도착**. 모든 후보에 h분 예측을 쓰고, 이동시간이 h분을 넘는 충전소는 그 탭에서 뺌 — AI 추천 모듈의 고정 도착 탭과 같은 규칙 (2026-11-15 AI 팀 합의 Q5). 2026-11-19의 "h분 후 출발"은 AI 팀에 전달되지 않아 되돌림 |
-| `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`은 혼잡도로 비교 (아래 계산 규칙) |
+| `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-22, AI 추천 모듈 규칙): **지금 출발** — 도착 시각(지금 + 이동시간)에 가장 가까운 모델 예측(15 · 30분, 같으면 이른 쪽)을 먼저 쓰고, 예측이 없으면 최근 15분 관측으로 빈 충전기가 확인된 곳을 참고 안내로 뒤에 붙임. 2026-11-19 "실시간 상태만"을 바꿈 — 충전소 상세 화면의 지금 출발(실시간 표시)은 그대로 |
 | `recommendations` | object[] | 최대 3개. 후보가 부족하면 짧거나 빈 배열 (UC-U06 E1) |
-| `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 교체(AI v3.4) · 서버 확인 전까지 `null` |
+| `basis` | string | 추천 근거 (2026-11-22). `forecast`: 모델 예측 근거(공식 추천) · `recent_observation`: 최근 15분 관측 근거(참고 안내 — 지금 출발 탭에만 나옴, 예측 근거 후보 뒤에 옴). 화면 표시는 프론트 후속 작업 |
+| `congestion` | string \| null | `forecast`는 AI가 고른 예측 시점의 예상 혼잡도, `recent_observation`은 현재 혼잡도. 상태 확인 비율이 모자라 판정하지 못하면 `null` |
+| `waitTimeP50Minutes` · `waitTimeP90Minutes` | number \| null | `forecast`일 때만 값 — 대기 표시(`SHOW_WAIT_PREDICTION`)를 끈 동안은 `null` |
+| `source` | string \| null | `forecast`면 `model`, `recent_observation`이면 `null` |
 | `station.availableChargers` | number | **현재** 사용 가능 대수 (REC-002) |
 | `travelTimeMinutes` · `distanceMeters` | number | 이동시간 · 이동거리 |
 | `travelTimeSource` | string | `directions` · `estimate`(Directions 실패 → 직선거리 추정, 🟡 잠정) |
@@ -211,13 +215,17 @@
 
 ### 계산 규칙
 
-✅ 구현 (2026-11-21, `app/services/recommendations.py`)
+✅ 구현 (2026-11-22, `app/services/recommendations.py` · `ai_ranking.py`) — **후보 제외 · 순위는 AI 추천 모듈 코드를 그대로 호출**한다. api가 AI 패키지(`ml/package`, compose 마운트 `/package`)의 공식 백엔드 연동 함수 `run_recommendation.score_snapshot` → `rank_candidates.score_tab`에 후보와 ml 예측 원본(Redis `pred:raw:v1`)을 넘기고, 돌려받은 `sort_key` 순서대로 Top 3를 고른다. 규칙은 AI 패키지가 정하므로 패키지를 바꾸면 따라 바뀜 (api 재시작 필요)
 
-- **후보** — 마포 충전소 중 현재 `unavailable`을 빼고, 충전기 조건(커넥터 · 용량 · 사용 가능만)을 먼저 적용한 뒤 반경 15km 안에서 직선거리 가까운 20곳 (Q3)
-- **점수** = 이동시간(분) / 30 + 점유율 (낮을수록 좋음) — AI 추천 모듈 `combined_score`와 같은 식 (Q5, `wait_weight = 0`). 같으면 이동시간이 짧은 쪽
-  - 지금 출발: 점유율 = 충전 중 / (사용 가능 + 충전 중). 현재 혼잡도 `unknown`은 제외
-  - 15 · 30분 후 도착: 그 시점(15 · 30분)의 모델 점유율 (Redis `pred:v2`). 이동시간이 탭 시간(15 · 30분)을 넘거나, 모델 예측이 없거나, 충전소 `dataQuality`가 `baseline`이면 그 탭에서 제외
-  - `exclude_high`는 그 탭의 혼잡도로 판정 (필터 판정 규칙)
+- **백엔드가 고르는 후보** — 마포 충전소 중 현재 `unavailable`을 빼고 반경 15km 안에서 직선거리 가까운 20곳 (Q3). 커넥터 · 용량은 AI 규칙대로 채점 범위 충전기(모델 범위 `compat_chargers`, 없으면 버스 제외 전체)가 **모두** 만족해야 하고, `available_only`면 지금 사용 가능 충전기가 있어야 함 — AI가 다시 거르지만 Directions 호출을 아끼려고 먼저 뺌
+- **AI 규칙 (정책 `ai-recommendation-tabs-20261116`)**
+  - 근거 단계: 모델 예측 근거가 먼저(점수 = 이동시간(분) / 30 + 예측 점유율, 낮을수록 좋음 · 같으면 이동시간 · ID), 예측이 없으면 최근 관측 근거(지금 출발만, 빈 충전기 수 많은 순 → 거리순). AI 공식 연동대로 직전 예측 · 과거 기준선 단계는 넘기지 않음
+  - 예측 쓰는 조건: 유효시각(`valid_until`) · 목표시각이 요청 시각보다 뒤, 기준시각 60분 미만, 원본 관측 15분 미만, 상태 확인 비율 80% 이상, 운영 충전기 1대 이상, 모델 범위 일치
+  - 탭: 지금 출발은 도착 시각에 가장 가까운 예측 시점(같으면 이른 쪽), 15 · 30분 후 도착은 그 시점 예측만 · 이동시간이 탭 시간을 넘으면 제외
+  - 최근 관측: 충전기마다 마지막 성공 수집이 **15분 미만**이고 그 뒤 실패 회차가 없어야 근거로 씀
+  - 경로: 원래 조회 시각부터 30분 미만인 Directions 결과만, 없으면 `2분 + 60 × km / 24`로 추정
+- **혼잡 제외(`exclude_high`)** — AI에 같은 규칙이 없어 **우리 규칙 유지**: AI 순서에서 그 탭 혼잡도가 `high`인 후보를 빼고 다음 후보로 채움 (2026-11-22 사용자 결정)
+- AI 패키지를 못 읽거나 채점이 실패하면 세 탭 모두 빈 배열 (조회 API는 실패시키지 않음, 로그 남김). 예측 원본이 없으면(ml 장애 · 만료) 예측 없이 채점 — 지금 출발의 최근 관측 근거만 남음
 - **`reason`** — 그 탭 후보 중 이동시간이 가장 짧은 곳과 비교
   - 자기 자신이면 `가장 가까운 충전소`
   - 아니면 `가장 가까운 곳보다 N분 더 이동` (같으면 `이동 시간은 비슷함`), 혼잡도가 더 나으면 `, 혼잡 → 여유`처럼 덧붙임
@@ -228,9 +236,9 @@
 ✅ 구현 (`MAP-02` 제안 · 2026-11-19 합의, 2026-11-21 구현)
 
 - 후보 선정 · 점수 · Top 3는 AI 팀 추천 모듈 기준을 따른다. **마포구 안**이면 출발 위치에서 직선거리 가까운 **20곳**(반경 15km)만 길찾기(서버 `.env` `DIRECTIONS_PROVIDER`, 기본 카카오모빌리티)를 동시에 호출한다
-- 호출마다 타임아웃(3초)을 두고, 넘긴 곳은 추천 모듈의 직선거리 추정(`2분 + 60 × km / 24`) + `travelTimeSource: "estimate"`
+- 호출마다 타임아웃(3초)을 두고, 넘긴 곳은 경로 없이 AI에 넘김 → AI가 직선거리 추정(`2분 + 60 × km / 24`) + `travelTimeSource: "estimate"`
 - 이동시간은 출발 좌표 + `stationId`로 캐시한다 (TTL **30분**). 60초 폴링은 캐시만 읽는다. 4번 길찾기도 같은 캐시를 써서 추천 → 길찾기에 추가 호출이 없다
-  - 점수는 백엔드가 계산해 AI 추천 모듈의 경로 유효시간(`max_route_age_minutes = 5`)은 적용되지 않음 — 캐시 30분 그대로 씀
+  - 캐시에 원래 조회 시각(`fetched_at`)을 같이 둬 AI의 경로 유효시간(`max_route_age_minutes = 30`)이 캐시를 읽은 시각이 아니라 조회 시각부터 셈 (2026-11-22)
 - 다시 호출하는 조건:
   - 마지막 요청 좌표에서 **500m 이상** 움직임 (프론트가 요청 좌표를 바꿈), 또는 캐시 TTL이 지남
   - 최소 간격 **5분**

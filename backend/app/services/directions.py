@@ -10,8 +10,8 @@
 
 import json
 import logging
-from dataclasses import asdict, dataclass
-from datetime import datetime
+from dataclasses import asdict, dataclass, replace
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import redis
@@ -51,6 +51,8 @@ class Route:
     duration_sec: int
     distance_m: int
     path: list[tuple[float, float]]  # [위도, 경도] - 두 제공자 원본은 [경도, 위도]
+    # 제공자를 실제로 부른 시각(ISO, UTC) - 추천에서 AI 채점 함수가 경로 나이(30분 미만)를 봄
+    fetched_at: str | None = None
 
 
 class DirectionsUnavailable(ApiError):
@@ -82,7 +84,23 @@ def _cache_get(key: str) -> Route | None:
     if raw is None:
         return None
     data = json.loads(raw)
-    return Route(data["duration_sec"], data["distance_m"], [tuple(p) for p in data["path"]])
+    return Route(
+        data["duration_sec"],
+        data["distance_m"],
+        [tuple(p) for p in data["path"]],
+        data.get("fetched_at") or _fetched_from_ttl(key),
+    )
+
+
+def _fetched_from_ttl(key: str) -> str | None:
+    """조회 시각이 없는 예전 캐시 항목 - 남은 TTL로 저장 시각을 되짚음 (배포 뒤 30분 동안만 생김)"""
+    try:
+        left = _redis.ttl(key)
+    except redis.RedisError:
+        return None
+    if not isinstance(left, int) or left < 0:
+        return None
+    return (datetime.now(UTC) - timedelta(seconds=CACHE_TTL_SEC - left)).isoformat()
 
 
 def _cache_set(key: str, route: Route) -> None:
@@ -242,6 +260,6 @@ def get_route(origin: tuple[float, float], station_id: str, dest: tuple[float, f
     cached = _cache_get(key)
     if cached is not None:
         return cached
-    route = _REQUESTERS[provider](origin, dest)
+    route = replace(_REQUESTERS[provider](origin, dest), fetched_at=datetime.now(UTC).isoformat())
     _cache_set(key, route)
     return route

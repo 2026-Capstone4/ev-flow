@@ -82,9 +82,14 @@ def area_stations(
     now: datetime,
     model: dict | None,
     baseline: dict | None,
+    states: dict[str, list[ChargerState]] | None = None,
 ) -> list[Station]:
-    """한 출처의 충전소 목록 - 충전소별 dataQuality는 그 출처의 회차 기준"""
-    states = load_charger_states(db, area.charger_model, area.log_model, run, now)
+    """한 출처의 충전소 목록 - 충전소별 dataQuality는 그 출처의 회차 기준
+
+    states: 이미 읽은 충전기 상태가 있으면 다시 조회하지 않음 (추천이 AI 채점용 관측 시각과 같이 씀)
+    """
+    if states is None:
+        states = load_charger_states(db, area.charger_model, area.log_model, run, now)
     stations = db.scalars(
         select(area.station_model)
         .where(area.station_model.station_id.in_(list(states)))
