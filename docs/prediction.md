@@ -12,7 +12,7 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 
 ## ml (AI 패키지 그대로 실행)
 
-모델과 추론 코드는 AI 패키지(현재 v3.4 — `evflow_backend_runtime_v3_4_20261121.zip`)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
+모델과 추론 코드는 AI 패키지(현재 v3.4 이력 검사 수정본 — `evflow_backend_runtime_v3_4_history_fix_20261122.zip`, 2026-11-22 교체 · 2026-11-21 원본은 서버 `ml/package_v34_20261121`에 보관)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
 
 - 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
 - 실행: `/package`에서 `uvicorn backend_app:app --workers 1` — 워커마다 모델을 따로 로드하므로 512MiB 예산은 워커 1개 기준
