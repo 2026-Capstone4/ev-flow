@@ -1,7 +1,6 @@
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { getAdminChargerStatusLabel, TODAY_OCCUPANCY_TOOLTIP } from '@/lib/admin/chargerStatus'
-import { CHARGER_REGION_LABEL, formatPercent, isStale } from '@/lib/admin/common'
-import { formatClock, formatElapsed } from '@ev-flow/core/lib/formatUpdatedAt'
+import { CHARGER_REGION_LABEL, formatPercent, formatStatUpdated } from '@/lib/admin/common'
 import type { AdminCharger } from '@/types/admin'
 import type { ChargerStatus } from '@ev-flow/core/types/station'
 
@@ -16,7 +15,7 @@ const STATUS_CLASS: Record<ChargerStatus, string> = {
 
 type AdminChargerTableProps = {
   chargers: AdminCharger[]
-  /** 목록 기준 시각 — 수신 시각이 이보다 20분 넘게 오래되면 빨갛게 표시 */
+  /** 목록 기준 시각 — 상태 갱신 시각이 다른 날이면 날짜를 붙이는 기준 */
   updatedAt: Date
 }
 
@@ -39,13 +38,12 @@ export function AdminChargerTable({ chargers, updatedAt }: AdminChargerTableProp
                 <InfoTooltip text={TODAY_OCCUPANCY_TOOLTIP} label="오늘 이용률 설명" />
               </span>
             </th>
-            <th className="px-5 py-2.5 font-medium">마지막 수신</th>
+            <th className="px-5 py-2.5 font-medium">상태 갱신(운영사)</th>
           </tr>
         </thead>
         <tbody>
           {chargers.map((charger) => {
             const at = charger.statUpdatedAt ? new Date(charger.statUpdatedAt) : null
-            const stale = isStale(charger.statUpdatedAt, updatedAt)
             return (
               <tr
                 key={`${charger.stationId}-${charger.chargerId}`}
@@ -60,13 +58,9 @@ export function AdminChargerTable({ chargers, updatedAt }: AdminChargerTableProp
                   {getAdminChargerStatusLabel(charger)}
                 </td>
                 <td className="px-5 py-3">{formatPercent(charger.todayOccupancyRate)}</td>
-                <td
-                  className={`px-5 py-3 ${stale ? 'text-congestion-busy' : 'text-text-secondary'}`}
-                >
-                  {/* 수신 기록이 없으면 대시, 20분 넘게 오래됐으면 몇 분 전인지 함께 표시 */}
-                  {at
-                    ? `${formatClock(at)}${stale ? ` (${formatElapsed(at, updatedAt)})` : ''}`
-                    : '—'}
+                {/* 운영사가 보내는 시각이라 수집이 끊긴 것으로 오해하지 않게 빨간 표시 · 경과 시간 없이 시각만. 값이 없으면 대시 */}
+                <td className="px-5 py-3 text-text-secondary">
+                  {at ? formatStatUpdated(at, updatedAt) : '—'}
                 </td>
               </tr>
             )
