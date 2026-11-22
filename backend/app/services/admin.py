@@ -227,6 +227,7 @@ def get_chargers(db: Session, region: str, now: datetime | None = None) -> Admin
                         charger_id=c.charger_id,
                         status=c.status,
                         stat=c.stat,
+                        unstable=c.unstable,
                         today_occupancy_rate=ratio(*today.get((station_id, c.charger_id), (0, 0))),
                         stat_updated_at=c.stat_upd_dt,
                     )

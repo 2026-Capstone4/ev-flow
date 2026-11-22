@@ -119,6 +119,7 @@
       "chargerId": "21",
       "status": "unknown",
       "stat": "9",
+      "unstable": true,
       "todayOccupancyRate": 0.42,
       "statUpdatedAt": "2026-10-28T09:12:00+09:00"
     }
@@ -132,6 +133,7 @@
 | `status` | string | 화면 상태 (README) |
 | `updatedAt` | string | 대상별 마지막 성공 수집 시각 중 오래된 쪽 (`region=all`) |
 | `stat` | string \| null | API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 등 이상 충전기 구분용. 마지막 성공 회차에 그 충전기 행이 없으면 `null` |
+| `unstable` | boolean | 원천 데이터 문제로 2↔9를 반복하는 충전기인지 — 사용자 API `Charger.unstable`과 같은 기준. `stat`이 9여도 이 값이 `true`면 고장이 아니라 원래 오가는 충전기 |
 | `todayOccupancyRate` | number \| null | 오늘 이용률. 관측이 없으면 `null` |
 | `statUpdatedAt` | string \| null | API의 상태 갱신 시각 — [분석서 해석](#분석서-해석) 참고 |
 
