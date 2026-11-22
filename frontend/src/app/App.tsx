@@ -5,6 +5,7 @@ import { AdminLayout } from '@/app/AdminLayout'
 import { MapViewProvider } from '@ev-flow/core/app/MapViewProvider'
 import { queryClient } from '@/app/queryClient'
 import { AdminLoginPage } from '@/pages/AdminLoginPage'
+import { ChargerIssuesPage } from '@/pages/ChargerIssuesPage'
 import { MapHomePage } from '@/pages/MapHomePage'
 import { ServiceAreaDetailPage } from '@/pages/ServiceAreaDetailPage'
 import { ServiceAreaListPage } from '@/pages/ServiceAreaListPage'
@@ -28,6 +29,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<MapHomePage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/charger-issues" element={<ChargerIssuesPage />} />
             <Route path="/stations/:stationId" element={<StationDetailPage />} />
             <Route path="/stations/:stationId/route" element={<RoutePage />} />
             <Route path="/service-areas" element={<ServiceAreaListPage />} />

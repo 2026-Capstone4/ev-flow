@@ -25,6 +25,21 @@ function readPosition() {
 }
 
 /**
+ * 기기 위치를 한 번 재서 그대로 돌려줌. 추천 기준 위치는 바꾸지 않고, 마포구 밖이어도 돌려줌
+ * 상태 이상 충전기 화면이 처음 보여 줄 구를 정할 때 씀. HTTP 주소 · 권한 거부 · 시간 초과 등은 모두 null
+ */
+export async function readDeviceLocation(): Promise<LatLng | null> {
+  // HTTP 주소이거나 위치 API가 없는 브라우저면 재지 않음
+  if (!window.isSecureContext || !('geolocation' in navigator)) return null
+  try {
+    return await readPosition()
+  } catch {
+    // 권한 거부 · 시간 초과 등은 위치 없이 진행 (기본 구를 그대로 씀)
+    return null
+  }
+}
+
+/**
  * 현재 위치를 한 번 재서, 마포구 안이면 추천 · 검색 · 길찾기 기준 위치로 바꿈.
  * 버튼을 누를 때만 재므로 화면을 열자마자 권한 창이 뜨지 않음
  */
