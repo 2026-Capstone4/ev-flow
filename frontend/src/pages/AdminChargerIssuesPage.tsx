@@ -30,7 +30,7 @@ const CARD_CAPTION: Record<ChargerIssueKind, string> = {
   communication: '원본 코드 1 · 바로 확인 필요',
   unconfirmed: '원본 코드 9',
   other: '코드 없음 · 수집 끊김 등',
-  unstable: '2↔9 반복 · 고장 아님',
+  unstable: '9일 때만 셈 · 30분마다 바뀔 수 있음',
 }
 
 type IssueFilter = 'all' | ChargerIssueKind
