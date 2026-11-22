@@ -217,14 +217,7 @@ export function ChargerIssuesPage() {
           <Section
             title="상태 불안정 충전기"
             count={issues.unstableCount}
-            description={
-              <>
-                원천 데이터 문제로 30분마다 &apos;사용 가능&apos;과 &apos;확인 불가&apos;가
-                바뀌어요.
-                <br />
-                지금은 확인 불가지만, 충전되는 경우가 많아요.
-              </>
-            }
+            description="운영사 정보 오류로 상태가 계속 바뀌는 충전기예요."
           >
             {issues.unstable.map((station) => (
               <StationIssueCard

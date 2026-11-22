@@ -29,6 +29,9 @@ export const UNSTABLE_CHARGER_KEYS: ReadonlySet<string> = new Set([
 /** 위치를 못 잡았을 때 처음 보여 주는 구. 예측을 제공하는 지역이자 시연 위치가 있는 곳 */
 export const DEFAULT_DISTRICT = '마포구'
 
+/** 구 선택 목록 맨 위 '전체'. 고르면 서울 전체 충전소를 보여 줌 (실제 구 이름과 겹치지 않음) */
+export const ALL_DISTRICTS = '전체'
+
 /** 충전소 ID와 충전기 ID로 불안정 충전기인지 확인함 (목록 키 형식: 충전소ID-충전기ID) */
 export function isUnstableCharger(stationId: string, chargerId: string) {
   return UNSTABLE_CHARGER_KEYS.has(`${stationId}-${chargerId}`)
@@ -104,19 +107,33 @@ export function groupChargerIssues(stations: Station[]): ChargerIssues {
 /** 구 선택 목록의 한 줄. count = 그 구에서 지금 확인 불가인 충전기 수 */
 export type DistrictIssueCount = { district: string; count: number }
 
-/** 충전소가 있는 구마다 확인 불가 충전기 수를 셈. 0인 구도 고를 수 있게 넣고, 구 이름순 */
+/**
+ * 충전소가 있는 구마다 확인 불가 충전기 수를 셈. 0인 구도 고를 수 있게 넣고, 구 이름순
+ * 맨 위에는 모든 충전소를 합친 '전체'를 둠
+ */
 export function countIssuesByDistrict(stations: Station[]): DistrictIssueCount[] {
   const counts = new Map<string, number>()
+  let total = 0
   for (const station of stations) {
+    const unknownCount = station.chargers.filter((c) => c.status === 'unknown').length
+    // 전체에는 주소에 구가 없는 충전소도 셈
+    total += unknownCount
     const district = getDistrict(station.address)
     // 주소에 구가 없으면 어느 구에도 넣지 않음
     if (!district) continue
-    const unknownCount = station.chargers.filter((c) => c.status === 'unknown').length
     counts.set(district, (counts.get(district) ?? 0) + unknownCount)
   }
-  return [...counts]
+  const districts = [...counts]
     .map(([district, count]) => ({ district, count }))
     .sort((a, b) => a.district.localeCompare(b.district, 'ko'))
+  return [{ district: ALL_DISTRICTS, count: total }, ...districts]
+}
+
+/** 고른 구의 충전소만 남김. '전체'면 모두 */
+export function filterStationsByDistrict(stations: Station[], district: string) {
+  // 전체를 골랐으면 거르지 않음
+  if (district === ALL_DISTRICTS) return stations
+  return stations.filter((station) => getDistrict(station.address) === district)
 }
 
 /**
