@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { DevZoomBadge } from '@/components/DevZoomBadge'
+import { ChargerIssuesButton } from '@/components/ChargerIssuesButton'
 import { FilterPanel } from '@/components/FilterPanel'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { LocateButton } from '@/components/LocateButton'
@@ -179,9 +180,9 @@ export function MapHomePage() {
         </div>
         {status !== 'ready' && <MapFallback status={status} />}
 
-        {/* 개발 모드에서만 지금 줌 표시. 배포 빌드에서는 코드째 빠짐 */}
+        {/* 개발 모드에서만 지금 줌 표시. 배포 빌드에서는 코드째 빠짐. 상태 이상 버튼 아래에 둠 */}
         {import.meta.env.DEV && (
-          <div className="absolute top-[76px] right-4">
+          <div className="absolute top-[124px] right-4">
             <DevZoomBadge map={map} />
           </div>
         )}
@@ -211,7 +212,11 @@ export function MapHomePage() {
               </div>
             )}
           </div>
-          <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
+          {/* 왼쪽 갱신 상태, 오른쪽 상태 이상 충전기 버튼 (검색창 오른쪽 아래) */}
+          <div className="flex w-full items-start justify-between gap-2">
+            <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
+            <ChargerIssuesButton onClick={() => navigate('/charger-issues')} />
+          </div>
           {notice && <MapNotice key={notice.id} message={notice.message} />}
           {/* 너무 멀리 봐서 마커를 숨긴 동안은 확대하라고 계속 안내. 왼쪽 정렬 줄에서 혼자 가운데로 */}
           {isZoomedOut && (

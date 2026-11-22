@@ -1,0 +1,264 @@
+import { ChevronRight } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router'
+import { BackButton } from '@/components/BackButton'
+import { DistrictPicker } from '@/components/DistrictPicker'
+import { FilterChip } from '@/components/FilterChip'
+import { UpdateStatus } from '@/components/UpdateStatus'
+import { readDeviceLocation } from '@/hooks/useCurrentLocation'
+import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
+import { useChargerIssuesData } from '@ev-flow/core/hooks/useChargerIssuesData'
+import { useMapView } from '@ev-flow/core/hooks/useMapView'
+import { CHARGER_STATUS_LABEL, formatChargerSpec } from '@ev-flow/core/lib/charger'
+import type { ChargerIssueFilter, StationChargerIssues } from '@ev-flow/core/lib/chargerIssues'
+import type { LatLng } from '@ev-flow/core/types/geo'
+
+/** 칩 순서와 이름 */
+const FILTER_OPTIONS: { value: ChargerIssueFilter; label: string }[] = [
+  { value: 'all', label: '전체' },
+  { value: 'unknown', label: '상태 미확인' },
+  { value: 'unstable', label: '상태 불안정' },
+]
+
+type SectionProps = {
+  title: string
+  count: number
+  description: ReactNode
+  children: ReactNode
+}
+
+/** 목록 한 묶음 (제목 · 대수 · 설명 · 충전소 카드들) */
+function Section({ title, count, description, children }: SectionProps) {
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-bold">
+          {title} <span className="text-text-secondary">{count}기</span>
+        </h2>
+        <p className="text-[13px] break-keep text-text-secondary">{description}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+type StationIssueCardProps = {
+  station: StationChargerIssues
+  /** 충전기 행 오른쪽 상태 문구. 목록의 충전기는 모두 지금 확인 불가라 카드마다 하나 */
+  statusLabel: string
+  onClick: (stationId: string) => void
+}
+
+/** 충전소 한 곳의 상태 이상 충전기. 위쪽 충전소 이름을 누르면 충전소 상세로 감 */
+function StationIssueCard({ station, statusLabel, onClick }: StationIssueCardProps) {
+  return (
+    <div className="overflow-hidden rounded-md border border-border-default">
+      <button
+        type="button"
+        aria-label={`${station.name} 상세 보기`}
+        onClick={() => onClick(station.stationId)}
+        className="flex w-full items-center gap-2 border-b border-border-default bg-bg-subtle px-4 py-2.5 text-left active:opacity-70"
+      >
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-bold">{station.name}</span>
+          <span className="truncate text-xs text-text-secondary">{station.address}</span>
+        </span>
+        <ChevronRight aria-hidden size={18} className="shrink-0 text-text-secondary" />
+      </button>
+      <ul>
+        {station.chargers.map((charger) => (
+          <li
+            key={charger.chargerId}
+            className="flex items-center justify-between gap-2 border-b border-border-default px-4 py-2.5 last:border-b-0"
+          >
+            <span className="min-w-0 text-[13px] font-medium break-keep">
+              급속 {charger.chargerId} ·{' '}
+              {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
+            </span>
+            <span className="shrink-0 text-[13px] font-bold text-congestion-unknown">
+              {statusLabel}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** 목록이 비었을 때 칸 */
+function EmptyRow({ message }: { message: string }) {
+  return (
+    <p className="rounded-md bg-bg-subtle py-5 text-center text-sm text-text-secondary">
+      {message}
+    </p>
+  )
+}
+
+// 상태 이상 충전기 목록 (앱 charger-issues 화면과 같음). 지도 홈 검색창 아래 '상태 이상' 버튼으로 들어옴
+// 미확인 = 지금 상태를 알 수 없는 충전기, 불안정 = 원천 데이터 문제로 상태가 계속 바뀌는 정해진 충전기 중 지금 확인 불가인 것
+// 구는 처음에 현재 위치에서 가장 가까운 충전소의 구, 못 잡으면 마포구. 화면을 나가면 고른 구 · 칩은 초기화됨
+export function ChargerIssuesPage() {
+  const navigate = useNavigate()
+  const { horizon } = useMapView()
+
+  // 사용자가 직접 고른 구. 고르기 전이면 null이라 위치로 잡은 구 또는 기본 구를 씀
+  const [pickedDistrict, setPickedDistrict] = useState<string | null>(null)
+  const [filter, setFilter] = useState<ChargerIssueFilter>('all')
+
+  // 화면에 들어올 때 기기 위치를 한 번 잼. GPS 기능이 꺼져 있으면(시연 빌드) 재지 않고 기본 구를 씀
+  const [deviceLocation, setDeviceLocation] = useState<LatLng | null>(null)
+  useEffect(() => {
+    // GPS를 쓰지 않는 빌드면 권한 창도 띄우지 않음
+    if (!IS_GEOLOCATION_ENABLED) return
+    let isActive = true
+    readDeviceLocation().then((location) => {
+      // 재는 동안 화면을 나갔으면 값을 버림
+      if (isActive) setDeviceLocation(location)
+    })
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  // 고른 구 → 위치에서 가장 가까운 구 → 마포구 순으로 정해서 그 구의 목록을 받음
+  const { district, isLocatedDistrict, issues, districts, updatedAt, isError, isAllUnknown } =
+    useChargerIssuesData(pickedDistrict, deviceLocation)
+
+  // 충전소 상세로. 지도 홈에서 보던 시점을 그대로 넘김
+  const openStation = (stationId: string) => navigate(`/stations/${stationId}?horizon=${horizon}`)
+
+  /** 받은 데이터 상태에 따라 본문을 고름 */
+  const renderBody = () => {
+    // 아직 못 받았으면 실패 안내 또는 빈 자리
+    if (!issues) {
+      // 처음 불러오기가 실패했으면 안내, 아니면 불러오는 동안 회색 상자
+      if (isError) {
+        return (
+          <p className="pt-16 text-center text-sm text-text-secondary">
+            충전기 정보를 불러오지 못했습니다
+          </p>
+        )
+      }
+      return (
+        <div className="flex animate-pulse flex-col gap-3">
+          <div className="h-5 w-1/2 rounded-sm bg-bg-subtle" />
+          <div className="h-24 rounded-md bg-bg-subtle" />
+          <div className="h-24 rounded-md bg-bg-subtle" />
+        </div>
+      )
+    }
+    // 수집이 오래 끊기면 모든 충전기가 확인 불가라 목록 대신 안내만
+    if (isAllUnknown) {
+      return (
+        <p className="rounded-md bg-status-warning-bg px-4 py-3 text-sm font-medium break-keep text-status-warning">
+          상태 수집이 늦어지고 있어요.
+          <br />
+          지금은 모든 충전기 상태를 확인할 수 없어요.
+        </p>
+      )
+    }
+
+    const counts: Record<ChargerIssueFilter, number> = {
+      all: issues.unknownCount + issues.unstableCount,
+      unknown: issues.unknownCount,
+      unstable: issues.unstableCount,
+    }
+    // 고른 칩이 0대가 되면(다른 구로 바꾼 경우 등) 전체로 보여 줌
+    const activeFilter = counts[filter] > 0 ? filter : 'all'
+    // 미확인 칸은 전체 · 상태 미확인일 때 보임
+    const showUnknown = activeFilter !== 'unstable'
+    // 불안정 칸은 상태 불안정을 골랐거나, 전체인데 1대 이상일 때만 보임 (마포구 밖은 늘 0이라 숨김)
+    const showUnstable =
+      activeFilter === 'unstable' || (activeFilter === 'all' && issues.unstableCount > 0)
+
+    return (
+      <>
+        <div className="flex flex-wrap gap-2">
+          {FILTER_OPTIONS.map((option) => (
+            <FilterChip
+              key={option.value}
+              label={`${option.label} ${counts[option.value]}`}
+              isSelected={option.value === activeFilter}
+              // 0대인 칩은 골라도 볼 게 없어서 흐리게 두고 누를 수 없게 함 ('전체'는 늘 누를 수 있음)
+              disabled={option.value !== 'all' && counts[option.value] === 0}
+              onClick={() => setFilter(option.value)}
+            />
+          ))}
+        </div>
+
+        {showUnknown && (
+          <Section
+            title="상태 미확인 충전기"
+            count={issues.unknownCount}
+            description={
+              <>
+                통신이 끊겼거나 운영사가 상태를 보내지 않는 충전기예요.
+                <br />
+                현장 상태와 다를 수 있어요.
+              </>
+            }
+          >
+            {issues.unknown.length > 0 ? (
+              issues.unknown.map((station) => (
+                <StationIssueCard
+                  key={station.stationId}
+                  station={station}
+                  statusLabel={CHARGER_STATUS_LABEL.unknown}
+                  onClick={openStation}
+                />
+              ))
+            ) : (
+              <EmptyRow message="지금은 상태를 모르는 충전기가 없어요" />
+            )}
+          </Section>
+        )}
+
+        {showUnstable && (
+          <Section
+            title="상태 불안정 충전기"
+            count={issues.unstableCount}
+            description={
+              <>
+                원천 데이터 문제로 30분마다 &apos;사용 가능&apos;과 &apos;확인 불가&apos;가
+                바뀌어요.
+                <br />
+                지금은 확인 불가지만, 충전되는 경우가 많아요.
+              </>
+            }
+          >
+            {issues.unstable.map((station) => (
+              <StationIssueCard
+                key={station.stationId}
+                station={station}
+                statusLabel="상태 자주 바뀜"
+                onClick={openStation}
+              />
+            ))}
+          </Section>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
+      <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
+        <BackButton />
+        <h1 className="text-[17px] font-bold">상태 이상 충전기</h1>
+      </header>
+      <main className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 pt-2 pb-6">
+        {/* 갱신 시각 알약을 구 버튼 높이에 맞춤 */}
+        <div className="flex flex-wrap items-stretch gap-2">
+          <DistrictPicker
+            value={district}
+            districts={districts}
+            isCurrentLocation={isLocatedDistrict}
+            onChange={setPickedDistrict}
+          />
+          <UpdateStatus updatedAt={updatedAt} isError={isError} />
+        </div>
+        {renderBody()}
+      </main>
+    </div>
+  )
+}
