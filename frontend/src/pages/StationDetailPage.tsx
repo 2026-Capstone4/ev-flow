@@ -127,7 +127,16 @@ export function StationDetailPage() {
                 <h3 className="text-base font-bold">{getHorizonWhen(horizon)} 예상 대기</h3>
                 <div className="flex flex-col gap-1">
                   <p className="text-[28px] font-bold">{waitRange}</p>
-                  {waitNote && <p className="text-[13px] text-text-secondary">{waitNote}</p>}
+                  {waitNote && (
+                    <p className="text-[13px] text-text-secondary">
+                      {waitNote.map((line, i) => (
+                        <span key={line}>
+                          {i > 0 && <br />}
+                          {line}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                 </div>
                 {/* 대기 예측을 믿기 어려우면 0분 막대도 숨김 */}
                 {selectedPrediction?.waitTimeP50Minutes != null &&

@@ -47,7 +47,7 @@ export function formatWaitTime(
   return `대기 ${range}`
 }
 
-/** 상세 화면 큰 글씨 아래 설명 줄. 설명이 필요 없으면 null */
+/** 상세 화면 큰 글씨 아래 설명 줄. 문장마다 한 줄, 설명이 필요 없으면 null */
 export function getWaitNote(
   p50: number | null,
   p90: number | null,
@@ -57,9 +57,9 @@ export function getWaitNote(
   if (p50 === null || p90 === null) return null
   // 혼잡인데 대기 0분이면 빈 충전기가 없을 수 있다고 안내
   if (isWaitUncertain(p90, congestion)) {
-    return '빈 충전기가 없을 수 있어요. 도착 전에 다시 확인하는 게 좋아요'
+    return ['빈 충전기가 없을 수 있어요', '도착 전에 다시 확인하는 게 좋아요']
   }
   // 대기가 거의 없으면 확률이라는 느낌만 줌
-  if (p90 === 0) return '바로 충전할 가능성이 높아요'
+  if (p90 === 0) return ['바로 충전할 가능성이 높아요']
   return null
 }

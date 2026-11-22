@@ -142,7 +142,10 @@ export default function StationDetailScreen() {
                 <View className="gap-1">
                   <Text className="font-bold text-[28px] text-text-primary">{waitRange}</Text>
                   {waitNote && (
-                    <Text className="font-sans text-[13px] text-text-secondary">{waitNote}</Text>
+                    // 문장마다 줄을 나눔
+                    <Text className="font-sans text-[13px] text-text-secondary">
+                      {waitNote.join('\n')}
+                    </Text>
                   )}
                 </View>
                 {/* 대기 예측을 믿기 어려우면 0분 막대도 숨김 */}

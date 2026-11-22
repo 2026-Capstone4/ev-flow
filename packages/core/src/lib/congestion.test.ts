@@ -52,13 +52,14 @@ describe('formatWaitTime', () => {
 
 describe('getWaitNote', () => {
   it('혼잡인데 P90이 0이면 다시 확인하도록 안내함', () => {
-    expect(getWaitNote(0, 0, 'high')).toBe(
-      '빈 충전기가 없을 수 있어요. 도착 전에 다시 확인하는 게 좋아요',
-    )
+    expect(getWaitNote(0, 0, 'high')).toEqual([
+      '빈 충전기가 없을 수 있어요',
+      '도착 전에 다시 확인하는 게 좋아요',
+    ])
   })
 
   it('P90이 0이면 확률로 안내함', () => {
-    expect(getWaitNote(0, 0, 'medium')).toBe('바로 충전할 가능성이 높아요')
+    expect(getWaitNote(0, 0, 'medium')).toEqual(['바로 충전할 가능성이 높아요'])
   })
 
   it('범위가 있거나 값이 없으면 null', () => {
