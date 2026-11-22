@@ -2,7 +2,6 @@ import { NaverMapView, type NaverMapViewRef, type Region } from '@mj-studio/reac
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
-import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { isDotStation, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
@@ -26,7 +25,7 @@ import { RecommendSheet, type RecommendSheetHandle } from '../../components/Reco
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
-import { IS_GEOLOCATION_ENABLED } from '../../lib/config'
+import { INITIAL_MAP_CENTER, IS_GEOLOCATION_ENABLED } from '../../lib/config'
 import { appStorage } from '../../lib/storage'
 import { CoverageMask } from '../../map/CoverageMask'
 import { SEOUL_EXTENT } from '../../map/seoulExtent'
@@ -223,8 +222,8 @@ export default function MapHomeScreen() {
         ref={mapRef}
         style={{ flex: 1 }}
         initialCamera={{
-          latitude: MAPO_CENTER.lat,
-          longitude: MAPO_CENTER.lng,
+          latitude: INITIAL_MAP_CENTER.lat,
+          longitude: INITIAL_MAP_CENTER.lng,
           zoom: toAppZoom(INITIAL_WEB_ZOOM),
         }}
         isShowLocationButton={false}
