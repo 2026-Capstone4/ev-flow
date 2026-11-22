@@ -17,15 +17,27 @@ type CongestionBadgeProps = {
   congestion: CurrentCongestion | null
   /** 바깥에서 크기를 바꿀 때 (추천 카드는 길찾기 버튼과 같은 높이로 키움) */
   className?: string
+  /** large = 추천 카드처럼 눌러야 하는 버튼 옆에 둘 때 글자 · 좌우 여백을 키움 */
+  size?: 'default' | 'large'
 }
 
-export function CongestionBadge({ congestion, className = '' }: CongestionBadgeProps) {
+const SIZE_CLASS = {
+  default: { box: 'px-2', text: 'text-xs' },
+  large: { box: 'px-3', text: 'text-[13px]' },
+}
+
+export function CongestionBadge({
+  congestion,
+  className = '',
+  size = 'default',
+}: CongestionBadgeProps) {
   const badgeClass = BADGE_CLASS[congestion ?? 'none']
+  const sizeClass = SIZE_CLASS[size]
   return (
     <View
-      className={`self-start justify-center rounded-sm px-2 py-1 ${badgeClass.box} ${className}`}
+      className={`self-start justify-center rounded-sm py-1 ${sizeClass.box} ${badgeClass.box} ${className}`}
     >
-      <Text className={`font-bold text-xs ${badgeClass.text}`}>
+      <Text className={`font-bold ${sizeClass.text} ${badgeClass.text}`}>
         {getCongestionLabel(congestion)}
       </Text>
     </View>

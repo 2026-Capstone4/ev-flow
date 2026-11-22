@@ -12,9 +12,9 @@ type HorizonSelectorProps = {
 // RN은 글자색이 View에서 Text로 물려지지 않아 칸 · 글자를 나눠 둠
 const VARIANT_CLASS = {
   floating: {
-    // 기본 글자 크기에서 묶음 높이 32 (웹 h-8). 높이를 고정하지 않아 글자 크기를 키우면 함께 커짐
+    // 기본 글자 크기에서 묶음 높이 40 (웹 h-10). 높이를 고정하지 않아 글자 크기를 키우면 함께 커짐
     group: 'self-start',
-    option: 'px-4 py-1',
+    option: 'px-4 py-2',
     selectedBox: 'bg-bg-page',
     selectedText: 'text-text-primary',
   },

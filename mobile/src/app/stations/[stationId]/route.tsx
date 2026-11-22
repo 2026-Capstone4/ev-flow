@@ -93,7 +93,11 @@ export default function RouteScreen() {
   // 충전소 정보를 받은 뒤에만 목적지를 알 수 있어 그 전엔 null
   const destination = station ? { lat: station.lat, lng: station.lng, name: station.name } : null
   const waitRange = prediction
-    ? formatWaitRange(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes)
+    ? formatWaitRange(
+        prediction.waitTimeP50Minutes,
+        prediction.waitTimeP90Minutes,
+        prediction.congestion,
+      )
     : null
   // 서버가 제공자를 안 보내면(전환 전 서버) 출처 줄을 비워 둠
   const providerLabel = route?.provider ? ROUTE_PROVIDER_LABEL[route.provider] : undefined

@@ -6,10 +6,10 @@ import type { Recommendation } from '@ev-flow/core/types/station'
  * 추천 카드 높이. 로딩 자리표시도 같은 값을 써서 데이터가 와도 시트 크기가 그대로임
  * 글이 길어도 높이가 변하지 않게 카드 안 글은 모두 한 줄로 자름
  */
-export const RECOMMEND_CARD_HEIGHT_CLASS = 'h-[136px]'
+export const RECOMMEND_CARD_HEIGHT_CLASS = 'h-[140px]'
 
 /** 길찾기 버튼 너비. 첫 줄에 같은 너비의 빈자리를 두어 겹치지 않게 함 */
-const ROUTE_BUTTON_WIDTH_CLASS = 'w-14'
+const ROUTE_BUTTON_WIDTH_CLASS = 'w-16'
 
 type RecommendCardProps = {
   recommendation: Recommendation
@@ -30,7 +30,11 @@ export function RecommendCard({
   const summary = [
     // 길찾기 실패로 직선거리 추정이면 근사값임을 표시
     `이동 ${travelTimeSource === 'estimate' ? '약 ' : ''}${travelTimeMinutes}분`,
-    formatWaitTime(recommendation.waitTimeP50Minutes, recommendation.waitTimeP90Minutes),
+    formatWaitTime(
+      recommendation.waitTimeP50Minutes,
+      recommendation.waitTimeP90Minutes,
+      recommendation.congestion,
+    ),
     `사용 가능 ${station.availableChargers}/${station.totalChargers}대`,
   ]
     .filter(Boolean)
@@ -50,8 +54,8 @@ export function RecommendCard({
             {rank}
           </span>
           <h3 className="min-w-0 flex-1 truncate text-base font-bold">{station.name}</h3>
-          {/* 옆 길찾기 버튼과 같은 높이(32px)로 키움 */}
-          <CongestionBadge congestion={congestion} className="h-8" />
+          {/* 옆 길찾기 버튼과 같은 높이(36px)로 키움 */}
+          <CongestionBadge congestion={congestion} size="large" className="h-9" />
           {/* 길찾기 버튼이 올라갈 자리. 혼잡도 태그가 버튼 바로 왼쪽에 오게 비워 둠 */}
           {onRouteClick && <span aria-hidden className={`shrink-0 ${ROUTE_BUTTON_WIDTH_CLASS}`} />}
         </div>
@@ -69,7 +73,7 @@ export function RecommendCard({
           aria-label={`${station.name} 길찾기`}
           // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함
           // 첫 줄과 위치를 맞춤. 카드 테두리 1px + 안쪽 여백 16px
-          className={`absolute top-[17px] right-[17px] flex h-8 items-center justify-center rounded-sm bg-brand-primary text-xs font-bold text-text-on-brand ${ROUTE_BUTTON_WIDTH_CLASS}`}
+          className={`absolute top-[17px] right-[17px] flex h-9 items-center justify-center rounded-sm bg-brand-primary text-[13px] font-bold text-text-on-brand ${ROUTE_BUTTON_WIDTH_CLASS}`}
         >
           길찾기
         </button>

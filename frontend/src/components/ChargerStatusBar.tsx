@@ -27,7 +27,7 @@ export function ChargerStatusBar({ statuses }: ChargerStatusBarProps) {
   const groups = GROUPS.filter((group) => counts[group] > 0)
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-2">
       <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-bg-subtle" aria-hidden>
         {groups.map((group) => (
           <div

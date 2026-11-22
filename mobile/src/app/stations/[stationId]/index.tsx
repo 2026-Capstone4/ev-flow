@@ -1,19 +1,18 @@
 import { router, useLocalSearchParams } from 'expo-router'
+import { useState } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
-import { formatWaitRange } from '@ev-flow/core/lib/congestion'
-import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
+import { findPrediction, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 import { BackButton } from '../../../components/BackButton'
 import { Button } from '../../../components/Button'
 import { ChargerRow } from '../../../components/ChargerRow'
-import { ChargerStatusBar } from '../../../components/ChargerStatusBar'
 import { CongestionBadge } from '../../../components/CongestionBadge'
+import { HorizonSummary } from '../../../components/HorizonSummary'
 import { PredictionTile } from '../../../components/PredictionTile'
 import { UpdateStatus } from '../../../components/UpdateStatus'
-import { WaitRangeBar } from '../../../components/WaitRangeBar'
 
 /** 아래 버튼 영역의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(12px, safe-area)) */
 const FOOTER_MIN_PADDING = 12
@@ -25,10 +24,7 @@ export default function StationDetailScreen() {
   const horizon = parseHorizon(params.horizon ?? null)
   const now = useNow()
   const insets = useSafeAreaInsets()
-  const { station, updatedAt, isError, isNotFound, selectedPrediction } = useStationDetailData(
-    stationId,
-    horizon,
-  )
+  const { station, updatedAt, isError, isNotFound } = useStationDetailData(stationId, horizon)
 
   // 시점을 바꾸면 화면 기록을 쌓지 않고 이 화면의 값만 바꿈 (웹 replace와 같음)
   const selectHorizon = (value: HorizonMinutes) => router.setParams({ horizon: String(value) })
@@ -40,15 +36,8 @@ export default function StationDetailScreen() {
       params: { stationId, horizon: String(horizon) },
     })
 
-  const waitRange = selectedPrediction
-    ? formatWaitRange(selectedPrediction.waitTimeP50Minutes, selectedPrediction.waitTimeP90Minutes)
-    : null
-
-  // 충전기가 모두 확인 불가면 빈 충전기가 없는 게 아니라 상태를 모르는 것
-  const isAllUnknown =
-    !!station &&
-    station.chargers.length > 0 &&
-    station.chargers.every((c) => c.status === 'unknown')
+  // 시점별 설명 칸 높이. 가장 큰 값으로 칸을 고정해 시점을 바꿔도 충전기 현황이 움직이지 않게 함
+  const [summaryHeights, setSummaryHeights] = useState<Partial<Record<HorizonMinutes, number>>>({})
 
   return (
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
@@ -96,53 +85,30 @@ export default function StationDetailScreen() {
               </View>
             </View>
 
-            {/* 지금 출발은 예상 대기 대신 실시간 사용 가능 대수와 상태 막대 */}
-            {horizon === 0 ? (
-              <View className="gap-3">
-                <Text className="font-bold text-base text-text-primary">지금 사용 가능</Text>
-                {/* 빈 충전기가 있으면 대수를 크게, 모두 확인 불가면 상태를 못 받았다고 안내, 그 밖에는 15 · 30분 예측을 보도록 안내 */}
-                {station.availableChargers > 0 ? (
-                  <Text className="font-bold text-text-primary">
-                    <Text className="text-[28px]">{station.availableChargers}대</Text>
-                    <Text className="text-sm text-text-secondary">
-                      {' '}
-                      / 전체 {station.totalChargers}대
-                    </Text>
-                  </Text>
-                ) : isAllUnknown ? (
-                  <View className="gap-1">
-                    <Text className="font-bold text-lg text-text-secondary">상태 확인 불가</Text>
-                    <Text className="font-sans text-[13px] text-text-secondary">
-                      지금은 충전기 상태를 받아오지 못했어요{'\n'}
-                      15분 후 · 30분 후 예측을 참고해보세요
-                    </Text>
+            {/* 세 시점 설명을 모두 그려 높이를 재고, 칸 높이를 가장 큰 높이로 고정함. 고른 것만 보이고 나머지는 같은 자리에 투명하게 겹침 */}
+            <View style={{ minHeight: Math.max(0, ...Object.values(summaryHeights)) }}>
+              {HORIZONS.map((option) => {
+                const isSelected = option === horizon
+                return (
+                  <View
+                    key={option}
+                    // 고른 시점만 흐름 안에 두고, 나머지는 위에 겹쳐 높이만 잼
+                    className={isSelected ? '' : 'absolute inset-x-0 top-0 opacity-0'}
+                    pointerEvents={isSelected ? 'auto' : 'none'}
+                    accessibilityElementsHidden={!isSelected}
+                    importantForAccessibility={isSelected ? 'auto' : 'no-hide-descendants'}
+                    onLayout={(e) => {
+                      const height = e.nativeEvent.layout.height
+                      setSummaryHeights((prev) =>
+                        prev[option] === height ? prev : { ...prev, [option]: height },
+                      )
+                    }}
+                  >
+                    <HorizonSummary station={station} horizon={option} />
                   </View>
-                ) : (
-                  <View className="gap-1">
-                    <Text className="font-bold text-lg text-text-secondary">빈 충전기 없음</Text>
-                    <Text className="font-sans text-[13px] text-text-secondary">
-                      15분 후 · 30분 후의 예상 대기시간을 확인해보세요
-                    </Text>
-                  </View>
-                )}
-                <ChargerStatusBar statuses={station.chargers.map((c) => c.status)} />
-              </View>
-            ) : waitRange ? (
-              // 15 · 30분은 대기 예측이 있을 때만 보여 줌. 기준선이거나 대기 모델이 꺼져 있으면 혼잡 예측 칸만 남김
-              <View className="gap-3">
-                <Text className="font-bold text-base text-text-primary">
-                  {getHorizonWhen(horizon)} 예상 대기
-                </Text>
-                <Text className="font-bold text-[28px] text-text-primary">{waitRange}</Text>
-                {selectedPrediction?.waitTimeP50Minutes != null &&
-                  selectedPrediction.waitTimeP90Minutes != null && (
-                    <WaitRangeBar
-                      p50={selectedPrediction.waitTimeP50Minutes}
-                      p90={selectedPrediction.waitTimeP90Minutes}
-                    />
-                  )}
-              </View>
-            ) : null}
+                )
+              })}
+            </View>
 
             <View className="gap-3">
               <Text className="font-bold text-base text-text-primary">충전기 현황</Text>
