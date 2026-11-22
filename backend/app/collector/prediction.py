@@ -21,6 +21,8 @@ from app.services.status import BUS_CHARGER_TYPE
 logger = logging.getLogger(__name__)
 
 PRED_KEY = "pred:v2"
+# 추천 채점용 ml 응답 원본 - api가 AI 패키지 채점 함수(score_snapshot)에 그대로 넘김 (docs/prediction.md)
+RAW_KEY = "pred:raw:v1"
 PRED_TTL_SEC = 1200  # 20분 - 4회차 연속 갱신이 안 되면 만료돼 api가 기준선으로 대체함
 PREDICT_PATH = "/internal/v1/predict"
 # AI 실측(512MiB · 체크포인트 있음) 약 7.4초 - 첫 요청 · 서버 부하를 감안해 여유를 둠. 수집 주기는 5분
@@ -142,6 +144,31 @@ def build_value(
     return value, len(by_station) - len(stations)
 
 
+def build_raw(body) -> dict:
+    """ml 응답 → pred:raw:v1 값. AI 패키지 run_recommendation.from_components가 읽는 부분만 남김
+
+    예측 · 만료 · 신선도 검증은 api에서 AI 채점 함수가 하므로 여기서는 값을 고치지 않음
+    """
+    return {
+        "run_id": body["run_id"],
+        "clock_mode": body.get("clock_mode"),
+        "prediction_snapshot_id": body.get("prediction_snapshot_id"),
+        "predictions": [
+            {
+                "station_id": row["station_id"],
+                "charger_ids": row["charger_ids"],
+                "horizon_minutes": row["horizon_minutes"],
+                "components": {
+                    "congestion": row["components"]["congestion"],
+                    "time": row["components"].get("time"),
+                },
+            }
+            for row in body["predictions"]
+            if isinstance(row, dict) and isinstance(row.get("components"), dict)
+        ],
+    }
+
+
 def refresh_predictions(db: Session, run: CollectionRun) -> None:
     try:
         targets = load_targets(db)
@@ -158,10 +185,15 @@ def refresh_predictions(db: Session, run: CollectionRun) -> None:
                 reason = resp.text[:200]
             logger.warning("예측 건너뜀 [run %d] - ml HTTP %d %s", run.id, resp.status_code, reason)
             return
-        value, dropped = build_value(
-            resp.json(), targets, run.started_at, run.id, datetime.now(UTC)
-        )
+        body = resp.json()
+        value, dropped = build_value(body, targets, run.started_at, run.id, datetime.now(UTC))
         _redis.set(PRED_KEY, json.dumps(value, ensure_ascii=False), ex=PRED_TTL_SEC)
+        # 추천 채점용 원본은 표시용과 같은 회차 · 같은 TTL로 둠 - 따로 실패해도 표시용은 남음
+        try:
+            raw = build_raw(body)
+            _redis.set(RAW_KEY, json.dumps(raw, ensure_ascii=False), ex=PRED_TTL_SEC)
+        except Exception:
+            logger.exception("추천용 예측 원본 저장 실패 [run %d] - 기존 %s 유지", run.id, RAW_KEY)
         waits = sum(
             1 for cells in value["stations"].values() for c in cells if c["wait_p50"] is not None
         )

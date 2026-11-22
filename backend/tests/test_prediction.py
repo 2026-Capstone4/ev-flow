@@ -28,6 +28,7 @@ def row(station_id="A", horizon=15, level="여유", p50=0.0, p90=3.5, time_statu
     """AI 패키지 응답 predictions[]의 한 행 (필요한 필드만)"""
     return {
         "station_id": station_id,
+        "charger_ids": ["01"],
         "horizon_minutes": horizon,
         "model_versions": VERSIONS,
         "components": {
@@ -48,7 +49,7 @@ def station(station_id="A"):
 
 
 def body(*rows):
-    return {"status": "partial", "deployment": DEPLOYMENT, "predictions": list(rows)}
+    return {"run_id": 7, "status": "partial", "deployment": DEPLOYMENT, "predictions": list(rows)}
 
 
 CELLS = [
@@ -200,6 +201,23 @@ def test_refresh_sends_run_id_and_saves_with_ttl(monkeypatch):
     assert sent == [("http://ml:8001/internal/v1/predict", {"run_id": 7})]
     key, value, ex = fake.calls[0]
     assert key == "pred:v2" and ex == 1200 and value["stations"] == {"A": CELLS}
+    # 추천 채점용 원본 - AI 채점 함수가 읽는 필드만, 값은 고치지 않음
+    key, raw, ex = fake.calls[1]
+    assert key == "pred:raw:v1" and ex == 1200
+    assert raw["run_id"] == 7 and len(raw["predictions"]) == 2
+    first = raw["predictions"][0]
+    assert first["charger_ids"] == ["01"] and first["horizon_minutes"] == 15
+    assert first["components"]["congestion"]["congestion_level"] == "여유"
+    assert first["components"]["time"]["p90_minutes"] == 3.5
+    assert "model_versions" not in first
+
+
+def test_refresh_keeps_pred_v2_when_raw_build_fails(monkeypatch):
+    broken = body(*station())
+    del broken["run_id"]
+    fake, _ = setup(monkeypatch, response=(200, {"json": broken}))
+    prediction.refresh_predictions(None, RUN)
+    assert [key for key, _, _ in fake.calls] == ["pred:v2"]
 
 
 @pytest.mark.parametrize(

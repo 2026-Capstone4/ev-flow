@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # 모델 대기시간을 응답에 낼지 - AI v3.1은 빈 충전소도 약 5분으로 나와 끔. v3.4(정답 수정)로 교체 · 서버 확인 뒤 켬 (docs/prediction.md)
     # 꺼도 Redis pred:v2에는 원값이 그대로 저장됨. 켜려면 .env에 true 후 api 재시작
     show_wait_prediction: bool = False
+    # AI 패키지 폴더 - 추천 순위를 패키지의 채점 함수(run_recommendation.score_snapshot)로 계산함 (docs/prediction.md)
+    # 컨테이너는 compose가 ml/package를 /package로 마운트. 호스트에서 직접 실행하면 .env에 ../ml/package
+    ai_package_dir: str = "/package"
 
     # 길찾기 제공자 - 추천 · 경로 API에서 사용. kakao(기본) · naver. 바꾸면 재시작만 하면 됨 (캐시 키가 제공자별로 따로)
     directions_provider: Literal["kakao", "naver"] = "kakao"

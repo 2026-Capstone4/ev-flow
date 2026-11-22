@@ -49,6 +49,11 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       # 예측 조회용 (docs/prediction.md) - 없으면 기본값 localhost를 봐서 예측이 항상 null이 됨
       REDIS_URL: redis://redis:6379/0
+      AI_PACKAGE_DIR: /package
+    # 추천 순위를 AI 패키지 채점 함수로 계산함 (표준 라이브러리만 씀 - 모델은 읽지 않음). ml · producer와 같은 폴더
+    # 패키지를 바꾸면 api도 재시작해야 반영됨 (docs/prediction.md 모델 교체)
+    volumes:
+      - ../ml/package:/package:ro
     expose:
       - "8000"
     depends_on:
