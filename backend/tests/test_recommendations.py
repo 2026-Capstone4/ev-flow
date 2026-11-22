@@ -119,13 +119,6 @@ def test_nearest_candidates_skip_unavailable_far_and_keep_20():
 # --- 채점 ---
 
 
-def test_pick_horizon_closest_and_earlier_on_tie():
-    assert rec.pick_horizon(NOW, NOW + timedelta(minutes=18)) == 15
-    assert rec.pick_horizon(NOW, NOW + timedelta(minutes=27)) == 30
-    assert rec.pick_horizon(NOW, NOW + timedelta(minutes=22, seconds=30)) == 15  # 같으면 이른 쪽
-    assert rec.pick_horizon(NOW, NOW + timedelta(minutes=50)) == 30
-
-
 def test_leave_now_uses_current_occupancy():
     busy_near = station(
         "NEAR", chargers=[charger("charging"), charger(cid="02")], congestion="medium"
@@ -134,13 +127,13 @@ def test_leave_now_uses_current_occupancy():
     unknown = station("UNK", congestion="unknown")
     cands = [(busy_near, 0.1), (idle_far, 2.0), (unknown, 0.2)]
     times = {"NEAR": travel(3), "FAR": travel(9), "UNK": travel(4)}
-    ranked = rec.score_tab(0, cands, times, ALL, None, NOW)
+    ranked = rec.score_tab(0, cands, times, ALL, None)
     # NEAR 3/30 + 0.5 = 0.6 · FAR 9/30 + 0 = 0.3 → FAR 먼저, 확인 불가는 제외
     assert [x.station.station_id for x in ranked] == ["FAR", "NEAR"]
     assert ranked[0].source is None and ranked[0].wait_p50 is None
 
 
-def test_prediction_tab_uses_model_occupancy_at_arrival():
+def test_prediction_tab_uses_model_occupancy_of_tab_horizon():
     a = station("A", preds=[pred(15, "high"), pred(30, "low")])
     b = station("B", preds=[pred(15, "low"), pred(30, "medium")])
     no_model = station("C", preds=[pred(15, "low", "baseline"), pred(30, "low", "baseline")])
@@ -153,18 +146,45 @@ def test_prediction_tab_uses_model_occupancy_at_arrival():
     )
     cands = [(a, 1.0), (b, 1.0), (no_model, 1.0)]
     times = {"A": travel(10), "B": travel(10), "C": travel(10)}
-    # 15분 후 출발 + 10분 = 25분 뒤 도착 → 30분 예측(base+30 = 28분 뒤)이 가장 가까움
-    ranked = rec.score_tab(15, cands, times, ALL, m, NOW)
+    # 15분 후 도착 탭은 이동시간과 상관없이 15분 예측을 씀
+    ranked = rec.score_tab(15, cands, times, ALL, m)
+    assert [(x.station.station_id, x.congestion) for x in ranked] == [
+        ("B", "low"),
+        ("A", "high"),
+    ]
+    assert ranked[0].source == "model"
+    # 30분 후 도착 탭은 30분 예측
+    ranked = rec.score_tab(30, cands, times, ALL, m)
     assert [(x.station.station_id, x.congestion) for x in ranked] == [
         ("A", "low"),
         ("B", "medium"),
     ]
-    assert ranked[0].source == "model"
+
+
+def test_arrival_tab_excludes_travel_longer_than_tab():
+    near = station("NEAR", preds=[pred(15, "low"), pred(30, "low")])
+    edge = station("EDGE", preds=[pred(15, "low"), pred(30, "low")])
+    far = station("FAR", preds=[pred(15, "low"), pred(30, "low")])
+    m = model(
+        {sid: [cell(15, "low", 0.0), cell(30, "low", 0.0)] for sid in ("NEAR", "EDGE", "FAR")}
+    )
+    cands = [(near, 1.0), (edge, 3.0), (far, 5.0)]
+    times = {"NEAR": travel(5), "EDGE": travel(15), "FAR": travel(20)}
+    # 15분 탭: 이동 15분까지는 넣고 20분은 뺌 / 30분 탭: 셋 다 들어감
+    assert [x.station.station_id for x in rec.score_tab(15, cands, times, ALL, m)] == [
+        "NEAR",
+        "EDGE",
+    ]
+    assert [x.station.station_id for x in rec.score_tab(30, cands, times, ALL, m)] == [
+        "NEAR",
+        "EDGE",
+        "FAR",
+    ]
 
 
 def test_prediction_tab_empty_without_model():
     a = station("A", preds=[pred(15, "low"), pred(30, "low")])
-    assert rec.score_tab(30, [(a, 1.0)], {"A": travel(5)}, ALL, None, NOW) == []
+    assert rec.score_tab(30, [(a, 1.0)], {"A": travel(5)}, ALL, None) == []
 
 
 def test_exclude_high_uses_tab_congestion():
@@ -172,7 +192,7 @@ def test_exclude_high_uses_tab_congestion():
     b = station("B", congestion="low")
     times = {"A": travel(2), "B": travel(20)}
     f = RecommendationFilters(status_filter="exclude_high")
-    ranked = rec.score_tab(0, [(a, 0.1), (b, 3.0)], times, f, None, NOW)
+    ranked = rec.score_tab(0, [(a, 0.1), (b, 3.0)], times, f, None)
     assert [x.station.station_id for x in ranked] == ["B"]
 
 
