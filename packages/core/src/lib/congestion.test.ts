@@ -30,11 +30,20 @@ describe('formatWaitRange', () => {
     expect(formatWaitRange(0, 0, 'low')).toBe('대기 거의 없음')
     expect(formatWaitRange(15, 30, 'high')).toBe('15~30분')
   })
+
+  it('P50과 P90이 같으면 한 번만 씀', () => {
+    expect(formatWaitRange(5, 5)).toBe('5분')
+    expect(formatWaitRange(5, 5, 'high')).toBe('5분')
+  })
 })
 
 describe('formatWaitTime', () => {
   it('P50~P90 구간으로 표기함', () => {
     expect(formatWaitTime(5, 15)).toBe('대기 5~15분')
+  })
+
+  it('P50과 P90이 같으면 대기 5분처럼 한 번만 씀', () => {
+    expect(formatWaitTime(5, 5)).toBe('대기 5분')
   })
 
   it('P90이 0이면 대기 거의 없음으로 표기함', () => {
