@@ -344,7 +344,7 @@
                    "totalChargers": 7, "availableChargers": 3 },
   "chargers": [
     { "stationId": "ST441324", "operator": "SK일렉링크", "chargerId": "01", "status": "charging",
-      "connectorTypes": ["dc_combo"], "capacityKw": 100, "chargingStartedAt": "2026-10-30T13:50:00+09:00" }
+      "connectorTypes": ["dc_combo"], "capacityKw": 100, "unstable": false, "chargingStartedAt": "2026-10-30T13:50:00+09:00" }
   ]
 }
 ```
