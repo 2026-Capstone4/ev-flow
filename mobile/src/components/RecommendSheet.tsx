@@ -35,7 +35,7 @@ const LEVEL = { minimized: 0, collapsed: 1, expanded: 2 }
 /** 손잡이 칸 높이. 위 여백 10 + 손잡이 4 + 아래 여백 12 */
 const HANDLE_HEIGHT = 26
 /** 헤더(제목 · 시점 선택)의 기본 높이. 시점 선택(32)이 가장 큼. 글자 크기를 키우면 재서 바꿈 */
-const DEFAULT_HEADER_HEIGHT = 32
+const DEFAULT_HEADER_HEIGHT = 40
 /** 헤더 · 카드 사이와 시트 아래 여백 */
 const GAP = 12
 /** 펼쳐도 위쪽 검색창 · 갱신 상태가 보이게 남겨 두는 높이 (웹 max-h: 100% - 120px) */

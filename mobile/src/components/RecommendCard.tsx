@@ -7,7 +7,7 @@ import { CongestionBadge } from './CongestionBadge'
  * 추천 카드 기본 높이. 로딩 자리표시도 같은 값을 써서 데이터가 와도 시트 크기가 그대로임
  * 글이 길어도 높이가 변하지 않게 카드 안 글은 모두 한 줄로 자름. 글자 크기를 키우면 그만큼 커짐
  */
-export const RECOMMEND_CARD_HEIGHT = 136
+export const RECOMMEND_CARD_HEIGHT = 140
 
 type RecommendCardProps = {
   recommendation: Recommendation
@@ -49,17 +49,17 @@ export function RecommendCard({ recommendation, onPress, onRoutePress }: Recomme
         <Text numberOfLines={1} className="min-w-0 flex-1 font-bold text-base text-text-primary">
           {station.name}
         </Text>
-        <CongestionBadge congestion={congestion} className="h-8" />
+        <CongestionBadge congestion={congestion} size="large" className="h-9" />
         {/* RN은 Pressable 안에 Pressable을 둘 수 있어서 웹처럼 카드 위에 겹쳐 띄우지 않고 첫 줄에 바로 넣음 */}
         {onRoutePress && (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${station.name} 길찾기`}
             onPress={onRoutePress}
-            // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함 (웹 w-14)
-            className="h-8 w-14 items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
+            // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함 (웹 w-16)
+            className="h-9 w-16 items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
           >
-            <Text className="font-bold text-xs text-text-on-brand">길찾기</Text>
+            <Text className="font-bold text-[13px] text-text-on-brand">길찾기</Text>
           </Pressable>
         )}
       </View>
