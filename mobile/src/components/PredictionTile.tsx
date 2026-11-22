@@ -16,7 +16,12 @@ type PredictionTileProps = {
 export function PredictionTile({ prediction, isSelected, onSelect, caption }: PredictionTileProps) {
   // 지금 출발은 사용 가능 대수, 그 외는 예상 대기시간. 둘 다 없으면 null
   const waitText =
-    caption ?? formatWaitTime(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes)
+    caption ??
+    formatWaitTime(
+      prediction.waitTimeP50Minutes,
+      prediction.waitTimeP90Minutes,
+      prediction.congestion,
+    )
   // 15 · 30분 후처럼 앞으로의 시점이면 AI 예측 값
   const isForecast = prediction.horizonMinutes !== 0
 

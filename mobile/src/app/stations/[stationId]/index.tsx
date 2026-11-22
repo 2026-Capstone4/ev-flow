@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
-import { formatWaitRange } from '@ev-flow/core/lib/congestion'
+import { formatWaitRange, getWaitNote, isWaitUncertain } from '@ev-flow/core/lib/congestion'
 import { findPrediction, getHorizonWhen, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 import { BackButton } from '../../../components/BackButton'
@@ -40,9 +40,15 @@ export default function StationDetailScreen() {
       params: { stationId, horizon: String(horizon) },
     })
 
-  const waitRange = selectedPrediction
-    ? formatWaitRange(selectedPrediction.waitTimeP50Minutes, selectedPrediction.waitTimeP90Minutes)
+  const waitArgs = selectedPrediction
+    ? ([
+        selectedPrediction.waitTimeP50Minutes,
+        selectedPrediction.waitTimeP90Minutes,
+        selectedPrediction.congestion,
+      ] as const)
     : null
+  const waitRange = waitArgs ? formatWaitRange(...waitArgs) : null
+  const waitNote = waitArgs ? getWaitNote(...waitArgs) : null
 
   // 충전기가 모두 확인 불가면 빈 충전기가 없는 게 아니라 상태를 모르는 것
   const isAllUnknown =
@@ -133,9 +139,19 @@ export default function StationDetailScreen() {
                 <Text className="font-bold text-base text-text-primary">
                   {getHorizonWhen(horizon)} 예상 대기
                 </Text>
-                <Text className="font-bold text-[28px] text-text-primary">{waitRange}</Text>
+                <View className="gap-1">
+                  <Text className="font-bold text-[28px] text-text-primary">{waitRange}</Text>
+                  {waitNote && (
+                    <Text className="font-sans text-[13px] text-text-secondary">{waitNote}</Text>
+                  )}
+                </View>
+                {/* 대기 예측을 믿기 어려우면 0분 막대도 숨김 */}
                 {selectedPrediction?.waitTimeP50Minutes != null &&
-                  selectedPrediction.waitTimeP90Minutes != null && (
+                  selectedPrediction.waitTimeP90Minutes != null &&
+                  !isWaitUncertain(
+                    selectedPrediction.waitTimeP90Minutes,
+                    selectedPrediction.congestion,
+                  ) && (
                     <WaitRangeBar
                       p50={selectedPrediction.waitTimeP50Minutes}
                       p90={selectedPrediction.waitTimeP90Minutes}

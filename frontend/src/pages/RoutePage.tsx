@@ -56,7 +56,11 @@ export function RoutePage() {
     : null
   const kakaoMapUrl = destination ? getKakaoCarRouteUrl(destination, platform) : null
   const waitRange = prediction
-    ? formatWaitRange(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes)
+    ? formatWaitRange(
+        prediction.waitTimeP50Minutes,
+        prediction.waitTimeP90Minutes,
+        prediction.congestion,
+      )
     : null
   // 다른 추천 충전소 보기 (05 → 02): 지도 홈 추천 시트를 펼친 채로 돌아감
   const showOtherRecommendations = () => navigate('/', { state: { expandSheet: true } })

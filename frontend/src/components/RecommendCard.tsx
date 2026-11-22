@@ -30,7 +30,11 @@ export function RecommendCard({
   const summary = [
     // 길찾기 실패로 직선거리 추정이면 근사값임을 표시
     `이동 ${travelTimeSource === 'estimate' ? '약 ' : ''}${travelTimeMinutes}분`,
-    formatWaitTime(recommendation.waitTimeP50Minutes, recommendation.waitTimeP90Minutes),
+    formatWaitTime(
+      recommendation.waitTimeP50Minutes,
+      recommendation.waitTimeP90Minutes,
+      recommendation.congestion,
+    ),
     `사용 가능 ${station.availableChargers}/${station.totalChargers}대`,
   ]
     .filter(Boolean)
