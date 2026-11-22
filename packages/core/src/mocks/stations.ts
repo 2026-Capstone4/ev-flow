@@ -18,6 +18,8 @@ type MockStation = Omit<
 > & {
   /** 예측 시점별 혼잡도. null이면 그 시점 예측 · 기준선 없음. 지금(0분)은 현재 혼잡도로 만듦 */
   forecast: Record<Exclude<HorizonMinutes, 0>, PredictedCongestion | null>
+  /** 시점별 대기 구간(P50, P90 분). 없으면 혼잡도별 WAIT_TIME_RANGE를 씀 */
+  waitRange?: Partial<Record<Exclude<HorizonMinutes, 0>, [number, number]>>
 }
 
 function charger(
@@ -68,6 +70,8 @@ const MOCK_STATIONS: MockStation[] = [
     // 가장 가까운 충전소지만 둘 다 충전 중 → 지금 혼잡, 이후에도 혼잡 예측
     chargers: [charger('01', 'charging'), charger('02', 'charging')],
     forecast: { 15: 'high', 30: 'high' },
+    // 혼잡일 때 대기가 긴 화면 확인용 (20분 넘음 · 40분 넘음)
+    waitRange: { 15: [5, 35], 30: [25, 65] },
   },
   {
     stationId: 'MOCK0003',
@@ -196,6 +200,7 @@ const MOCK_STATIONS: MockStation[] = [
       charger('05', 'unknown'),
     ],
     forecast: { 15: 'medium', 30: 'high' },
+    waitRange: { 30: [15, 33] },
   },
 ]
 
@@ -224,11 +229,12 @@ function toPrediction(
   horizonMinutes: HorizonMinutes,
   congestion: PredictedCongestion | null,
   dataQuality: DataQuality,
+  waitRange?: [number, number],
 ): Prediction {
   const source = congestion ? (dataQuality === 'baseline' ? 'baseline' : 'model') : null
   // 대기 구간은 모델 예측에만 있음. 기준선 · 예측 없음은 서버처럼 null
   const [waitTimeP50Minutes, waitTimeP90Minutes] =
-    congestion && source === 'model' ? WAIT_TIME_RANGE[congestion] : [null, null]
+    congestion && source === 'model' ? (waitRange ?? WAIT_TIME_RANGE[congestion]) : [null, null]
   const modelVersion = source === 'model' ? MOCK_MODEL_VERSION : null
   return {
     horizonMinutes,
@@ -240,7 +246,7 @@ function toPrediction(
   }
 }
 
-function toStation({ forecast, ...station }: MockStation): Station {
+function toStation({ forecast, waitRange, ...station }: MockStation): Station {
   const congestion = getCurrentCongestion(station.chargers)
   return {
     ...station,
@@ -251,7 +257,7 @@ function toStation({ forecast, ...station }: MockStation): Station {
     predictions: HORIZONS.map((horizon) =>
       horizon === 0
         ? toCurrentPrediction(congestion)
-        : toPrediction(horizon, forecast[horizon], station.dataQuality),
+        : toPrediction(horizon, forecast[horizon], station.dataQuality, waitRange?.[horizon]),
     ),
     // 목업 충전소는 모두 마포라 예측 대상
     predictionAvailable: true,
