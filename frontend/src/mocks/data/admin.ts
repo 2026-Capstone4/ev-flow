@@ -43,7 +43,7 @@ function seeded(n: number) {
 
 /** 운영자 충전기 목록. 도심은 Mock 충전소, 휴게소는 Mock 휴게소 충전기에서 만듦 */
 export function buildAdminChargers(region: AdminRegion, now: Date): AdminCharger[] {
-  const city: Omit<AdminCharger, 'stat' | 'todayOccupancyRate' | 'statUpdatedAt'>[] =
+  const city: Omit<AdminCharger, 'stat' | 'unstable' | 'todayOccupancyRate' | 'statUpdatedAt'>[] =
     STATIONS.flatMap((station) =>
       station.chargers.map((c) => ({
         region: 'city' as const,
@@ -67,9 +67,13 @@ export function buildAdminChargers(region: AdminRegion, now: Date): AdminCharger
     .filter((c) => region === 'all' || c.region === region)
     .map((c, index) => {
       const isUnknown = c.status === 'unknown'
+      // Mock 충전소에는 실제 불안정 충전기 ID가 없어서, 확인 불가 충전기 3대 중 1대를 불안정으로 둠 (상태 이상 화면 확인용)
+      // 실제 불안정 충전기는 2↔9를 오가므로 원본 코드도 9로 맞춤
+      const isUnstable = isUnknown && index % 3 === 0
       return {
         ...c,
-        stat: toStat(c.status, index),
+        stat: isUnstable ? '9' : toStat(c.status, index),
+        unstable: isUnstable,
         // 확인 불가 충전기는 오늘 관측이 없는 것으로, 나머지는 0~85% 사이 고정값
         todayOccupancyRate: isUnknown ? null : Math.round(seeded(index + 1) * 85) / 100,
         // 확인 불가 충전기는 20분 넘게 갱신이 없던 것으로 보여 줌 (표의 빨간 수신 시각 확인용)

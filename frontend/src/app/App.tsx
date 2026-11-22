@@ -17,6 +17,11 @@ import { StationDetailPage } from '@/pages/StationDetailPage'
 const AdminStatusPage = lazy(() =>
   import('@/pages/AdminStatusPage').then((module) => ({ default: module.AdminStatusPage })),
 )
+const AdminChargerIssuesPage = lazy(() =>
+  import('@/pages/AdminChargerIssuesPage').then((module) => ({
+    default: module.AdminChargerIssuesPage,
+  })),
+)
 const AdminCollectionPage = lazy(() =>
   import('@/pages/AdminCollectionPage').then((module) => ({ default: module.AdminCollectionPage })),
 )
@@ -38,6 +43,7 @@ export function App() {
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminStatusPage />} />
+              <Route path="charger-issues" element={<AdminChargerIssuesPage />} />
               <Route path="collection" element={<AdminCollectionPage />} />
             </Route>
           </Routes>
