@@ -3,8 +3,8 @@ import { useStationsQuery } from './useStationsQuery'
 import {
   countIssuesByDistrict,
   DEFAULT_DISTRICT,
+  filterStationsByDistrict,
   findNearestDistrict,
-  getDistrict,
   groupChargerIssues,
 } from '../lib/chargerIssues'
 import { isInSeoul } from '../lib/coverage'
@@ -12,7 +12,7 @@ import type { LatLng } from '../types/geo'
 
 /**
  * 상태 이상 충전기 화면 데이터. 지도 홈과 같은 충전소 목록 쿼리를 함께 써서 따로 요청하지 않음
- * 서울 전체는 확인 불가 충전기가 수백 기라 구 하나씩 보여 줌
+ * 서울 전체는 확인 불가 충전기가 수백 기라 기본은 구 하나씩 보여 주고, '전체'를 고르면 서울 전체
  * 보여 줄 구: 사용자가 고른 구 → 기기 위치에서 가장 가까운 충전소의 구(서울 안일 때) → 마포구
  */
 export function useChargerIssuesData(pickedDistrict: string | null, location: LatLng | null) {
@@ -27,17 +27,13 @@ export function useChargerIssuesData(pickedDistrict: string | null, location: La
   )
   const district = pickedDistrict ?? locatedDistrict ?? DEFAULT_DISTRICT
 
-  // 구 선택 목록 (구마다 확인 불가 대수). 폴링 응답이 같으면 data가 그대로라 다시 세지 않음
+  // 구 선택 목록 (맨 위 '전체' + 구마다 확인 불가 대수). 폴링 응답이 같으면 data가 그대로라 다시 세지 않음
   const districts = useMemo(() => (data ? countIssuesByDistrict(data.stations) : undefined), [data])
 
-  // 보여 줄 구의 충전소만 묶음
+  // 보여 줄 구의 충전소만 묶음. '전체'면 서울 전체
   const issues = useMemo(
     () =>
-      data
-        ? groupChargerIssues(
-            data.stations.filter((station) => getDistrict(station.address) === district),
-          )
-        : undefined,
+      data ? groupChargerIssues(filterStationsByDistrict(data.stations, district)) : undefined,
     [data, district],
   )
 

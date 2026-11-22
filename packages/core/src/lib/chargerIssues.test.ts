@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ALL_DISTRICTS,
   countIssuesByDistrict,
+  filterStationsByDistrict,
   findNearestDistrict,
   getDistrict,
   groupChargerIssues,
@@ -83,13 +85,14 @@ describe('groupChargerIssues', () => {
 })
 
 describe('countIssuesByDistrict', () => {
-  it('구마다 확인 불가 대수를 세고, 0인 구도 이름순으로 넣음', () => {
+  it('맨 위에 전체를 두고, 구마다 확인 불가 대수를 세서 0인 구도 이름순으로 넣음', () => {
     const result = countIssuesByDistrict([
       station('A', '가', [charger('01', 'unknown')], { address: '서울특별시 송파구 올림픽로 1' }),
       station('B', '나', [charger('01', 'unknown'), charger('02', 'unknown')]),
       station('C', '다', [charger('01', 'available')], { address: '서울특별시 강남구 테헤란로 1' }),
     ])
     expect(result).toEqual([
+      { district: ALL_DISTRICTS, count: 3 },
       { district: '강남구', count: 0 },
       { district: '마포구', count: 2 },
       { district: '송파구', count: 1 },
@@ -105,5 +108,17 @@ describe('findNearestDistrict', () => {
     ]
     expect(findNearestDistrict(stations, { lat: 37.5, lng: 127.09 })).toBe('송파구')
     expect(findNearestDistrict([], { lat: 37.5, lng: 127.09 })).toBeNull()
+  })
+})
+
+describe('filterStationsByDistrict', () => {
+  const stations = [
+    station('A', '가', []),
+    station('B', '나', [], { address: '서울특별시 송파구 올림픽로 1' }),
+  ]
+
+  it('고른 구의 충전소만 남기고, 전체면 모두 남김', () => {
+    expect(filterStationsByDistrict(stations, '송파구').map((s) => s.stationId)).toEqual(['B'])
+    expect(filterStationsByDistrict(stations, ALL_DISTRICTS)).toHaveLength(2)
   })
 })
