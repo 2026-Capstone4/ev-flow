@@ -43,6 +43,19 @@ describe('WaitRangeBar 칸', () => {
     expect(readBlocks(25, 65).at(-1)).toBe('full')
   })
 
+  it('P50과 P90이 같으면 0분부터 진한 칸으로 이어 채움', () => {
+    expect(readBlocks(10, 10)).toEqual([
+      'full',
+      'full',
+      'empty',
+      'empty',
+      'empty',
+      'empty',
+      'empty',
+      'empty',
+    ])
+  })
+
   it('0분이면 모두 빈 칸', () => {
     expect(readBlocks(0, 0).every((block) => block === 'empty')).toBe(true)
   })
@@ -71,6 +84,10 @@ describe('WaitRangeBar 눈금 · 대기시간 글자', () => {
       { text: '15분', left: '37.5%' },
       { text: '33분', left: '87.5%' },
     ])
+  })
+
+  it('P50과 P90이 같으면 분 글자를 한 번만 보여 줌', () => {
+    expect(readLabels(10, 10).map((l) => l.text)).toEqual(['0분', '20분', '40분+', '10분'])
   })
 
   it('시작과 끝이 같은 칸이면 시작 글자는 빼고 끝만 보여 줌', () => {

@@ -200,7 +200,8 @@ const MOCK_STATIONS: MockStation[] = [
       charger('05', 'unknown'),
     ],
     forecast: { 15: 'medium', 30: 'high' },
-    waitRange: { 30: [15, 33] },
+    // P50 · P90이 같은 화면 확인용 (15분 후)
+    waitRange: { 15: [10, 10], 30: [15, 33] },
   },
 ]
 

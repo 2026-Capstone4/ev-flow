@@ -67,8 +67,10 @@ export function WaitRangeBar({ p50, p90 }: WaitRangeBarProps) {
   const filledCount = Math.min(Math.ceil(p90 / BLOCK_MINUTES), BLOCK_COUNT)
   const end = (filledCount / BLOCK_COUNT) * 100
   const lastIndex = Math.max(filledCount - 1, 0)
+  // 연한 칸이 끝나는 분. P50과 P90이 같으면 구간이 없어 0분부터 진하게 이어 채움
+  const lightUntil = p50 < p90 ? p50 : 0
   // 보통(P50)까지 연한 칸 수. 연한 칸이 끝나는 곳에 대기 시작 글자를 둠
-  const lightCount = Math.min(Math.ceil(Math.min(p50, p90) / BLOCK_MINUTES), BLOCK_COUNT)
+  const lightCount = Math.min(Math.ceil(lightUntil / BLOCK_MINUTES), BLOCK_COUNT)
   const start = (lightCount / BLOCK_COUNT) * 100
   // 0분이면 0분 눈금과 같고, 끝 글자와 같은 자리면 겹쳐서 시작 글자는 빼고 끝만 보여 줌
   const isStartShown = lightCount > 0 && start < end
@@ -82,7 +84,7 @@ export function WaitRangeBar({ p50, p90 }: WaitRangeBarProps) {
           const t = index / (BLOCK_COUNT - 1)
           // 보통까지는 연하게, 길면까지는 진하게, 그 뒤는 빈 칸
           const background =
-            blockStart < Math.min(p50, p90)
+            blockStart < lightUntil
               ? colorAt(FILL_STOPS, t, 0.3)
               : blockStart < p90
                 ? colorAt(FILL_STOPS, t)
