@@ -22,11 +22,41 @@ CONNECTOR_TYPES = {
 }
 BUS_CHARGER_TYPE = "11"  # 버스 차고지 충전기 - 충전기 목록 · 대수 집계에서 뺌
 
+# 원천 데이터 문제로 30분마다 2↔9(사용 가능 ↔ 상태미확인)를 반복하는 충전기 (docs/database.md 데이터 사용 시 주의)
+# 2026-10-22 확인, 2026-11-07 ME19A265-21 · ME19A601-21 · 22 추가. 그 사이에도 충전 세션이 있어 고장으로 보지 않음
+# "충전 중"에 고착된 충전기 등 다른 이상은 넣지 않음. 응답 unstable은 화면 표시용 - 혼잡도 · 추천 계산은 status 그대로
+UNSTABLE_CHARGERS = frozenset(
+    {
+        "ME19A245-21",
+        "ME19A245-22",
+        "ME19A246-21",
+        "ME19A246-22",
+        "ME19A265-21",
+        "ME19A265-22",
+        "ME19A601-21",
+        "ME19A601-22",
+        "ME19A601-23",
+        "ME19A601-24",
+        "ME19A601-25",
+        "ME19A601-26",
+        "ME21B180-01",
+        "ME21B412-01",
+        "ME21B412-02",
+        "ME21B412-03",
+        "ME21B412-04",
+    }
+)
+
 DELAYED_AFTER = timedelta(minutes=10)
 STALE_AFTER = timedelta(
     minutes=20
 )  # 이후로는 충전기 상태를 모두 unknown으로 보고 예측은 기준선으로 대체
 MIN_CONFIRMED_RATIO = 0.8  # 상태 확인 비율이 이보다 낮으면 현재 혼잡도 unknown · 예측 기준선
+
+
+def is_unstable(station_id: str, charger_id: str) -> bool:
+    """불안정 충전기 목록에 있는지 - 목록 키는 '충전소ID-충전기ID'"""
+    return f"{station_id}-{charger_id}" in UNSTABLE_CHARGERS
 
 
 def is_stale(updated_at: datetime, now: datetime) -> bool:

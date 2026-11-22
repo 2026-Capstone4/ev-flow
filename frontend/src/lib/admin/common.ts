@@ -49,3 +49,18 @@ export const ADMIN_REGION_OPTIONS = (['all', 'city', 'service_area'] as const).m
   value,
   label: ADMIN_REGION_LABEL[value],
 }))
+
+/**
+ * 표 '상태 갱신(운영사)' 칸 안내. statUpdatedAt은 우리가 수집한 시각이 아니라 운영사가 보내는 statUpdDt라
+ * 수집이 잘 되고 있어도 몇 시간 · 며칠 전일 수 있음 (운영사마다 기준이 다름)
+ */
+export const STAT_UPDATED_NOTE =
+  '상태 갱신(운영사)은 운영사가 보내는 시각이라 참고용이에요. 우리가 수집한 시각과는 달라요.'
+
+/** 상태 갱신 시각 문구. 기준 시각과 날짜가 다르면 날짜를 앞에 붙임 (예: 11/20 14:05) */
+export function formatStatUpdated(at: Date, reference: Date) {
+  const clock = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+  // 같은 날이면 시각만
+  if (at.toDateString() === reference.toDateString()) return clock
+  return `${at.getMonth() + 1}/${at.getDate()} ${clock}`
+}

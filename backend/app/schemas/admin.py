@@ -41,6 +41,7 @@ class AdminCharger(CamelModel):
     charger_id: str
     status: ChargerStatus
     stat: str | None  # API 원본 상태 코드. 마지막 성공 회차에 행이 없으면 null
+    unstable: bool  # 원천 데이터 문제로 2↔9를 반복하는 충전기 (사용자 API와 같은 기준)
     today_occupancy_rate: float | None
     stat_updated_at: KstDatetime | None  # API statUpdDt - 운영사마다 갱신 방식이 달라 참고용
 

@@ -37,6 +37,7 @@
 | `status` | string | 충전기 상태 (README 참고) |
 | `connectorTypes` | string[] | 커넥터 타입 |
 | `capacityKw` | number | 충전 용량 (kW) — FLT-002 속도 필터 기준 |
+| `unstable` | boolean | 원천 데이터 문제로 30분마다 사용 가능(2) ↔ 상태미확인(9)을 반복하는 충전기인지 — 목록은 [database.md](../database.md) 데이터 사용 시 주의. "충전 중"에 고착된 충전기 등 다른 이상은 포함하지 않음. 화면 표시용이라 `status` · 혼잡도 · 추천 계산은 그대로 |
 
 **예측 `Prediction`** — `predictions`는 15 · 30분 순서로 2개 (60분은 2026-11-15에 서비스에서 뺌)
 
@@ -82,8 +83,8 @@
       "congestion": "medium",
       "dataQuality": "normal",
       "chargers": [
-        { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200 },
-        { "chargerId": "22", "status": "available", "connectorTypes": ["dc_combo"], "capacityKw": 200 }
+        { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200, "unstable": false },
+        { "chargerId": "22", "status": "available", "connectorTypes": ["dc_combo"], "capacityKw": 200, "unstable": false }
       ],
       "predictions": [
         { "horizonMinutes": 15, "congestion": "medium", "waitTimeP50Minutes": 0, "waitTimeP90Minutes": 6, "source": "model" },
@@ -125,7 +126,7 @@
     "stationId": "ME19A601",
     "...": "1번 항목과 같음",
     "chargers": [
-      { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200, "chargingStartedAt": "2026-10-30T13:42:00+09:00" }
+      { "chargerId": "21", "status": "charging", "connectorTypes": ["dc_combo"], "capacityKw": 200, "unstable": false, "chargingStartedAt": "2026-10-30T13:42:00+09:00" }
     ]
   }
 }
@@ -143,7 +144,7 @@
 
 ## 3. 충전소 추천 — `POST /recommendations`
 
-현재 위치 기준 Top-3 (UC-U06). **후보는 마포 충전소만** — 서울 다른 구에 있어도 추천 결과는 마포 충전소다(서울은 예측이 없음). 지금 출발 · 15분 후 출발 · 30분 후 출발 추천을 한 번에 내려준다.
+현재 위치 기준 Top-3 (UC-U06). **후보는 마포 충전소만** — 서울 다른 구에 있어도 추천 결과는 마포 충전소다(서울은 예측이 없음). 지금 출발 · 15분 후 도착 · 30분 후 도착 추천을 한 번에 내려준다.
 
 **요청 본문**
 
@@ -197,7 +198,7 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-19): `horizonMinutes` = **h분 후 출발**. 도착 시각이 h분 + 이동시간이므로, 후보마다 도착 시각(h + 이동시간)에 가장 가까운 예측 시점(15 · 30분, 같으면 이른 쪽)의 값을 씀 — AI 추천 모듈과 같은 규칙에 출발 시점 h를 더해 백엔드가 계산 (2026-11-21) |
+| `results` | object[] | 0 · 15 · 30분 순서로 3개. 예시는 30분만 표시. ✅ 확정 (REC-006, 2026-11-22): `horizonMinutes` = **h분 후 도착**. 모든 후보에 h분 예측을 쓰고, 이동시간이 h분을 넘는 충전소는 그 탭에서 뺌 — AI 추천 모듈의 고정 도착 탭과 같은 규칙 (2026-11-15 AI 팀 합의 Q5). 2026-11-19의 "h분 후 출발"은 AI 팀에 전달되지 않아 되돌림 |
 | `results[].horizonMinutes = 0` | | ✅ 확정 (2026-11-19): **지금 출발** — 예측 없이 실시간 상태로 추천. `congestion`은 현재 혼잡도(`unknown` · `unavailable`은 후보 제외), `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source`는 `null`. `reason`은 혼잡도로 비교 (아래 계산 규칙) |
 | `recommendations` | object[] | 최대 3개. 후보가 부족하면 짧거나 빈 배열 (UC-U06 E1) |
 | `congestion` · `waitTimeP50Minutes` · `waitTimeP90Minutes` · `source` | | 해당 시점 예측 (공통 객체 Prediction과 같음). 15 · 30분은 모델 예측이 있는 충전소만 후보라 `source`는 `model`, 지금 출발은 `null`. 🟡 대기는 대기 모델 교체(AI v3.4) · 서버 확인 전까지 `null` |
@@ -215,7 +216,7 @@
 - **후보** — 마포 충전소 중 현재 `unavailable`을 빼고, 충전기 조건(커넥터 · 용량 · 사용 가능만)을 먼저 적용한 뒤 반경 15km 안에서 직선거리 가까운 20곳 (Q3)
 - **점수** = 이동시간(분) / 30 + 점유율 (낮을수록 좋음) — AI 추천 모듈 `combined_score`와 같은 식 (Q5, `wait_weight = 0`). 같으면 이동시간이 짧은 쪽
   - 지금 출발: 점유율 = 충전 중 / (사용 가능 + 충전 중). 현재 혼잡도 `unknown`은 제외
-  - 15 · 30분 후 출발: 도착 시각에 가까운 예측 시점의 모델 점유율 (Redis `pred:v2`). 모델 예측이 없거나 충전소 `dataQuality`가 `baseline`이면 그 탭에서 제외
+  - 15 · 30분 후 도착: 그 시점(15 · 30분)의 모델 점유율 (Redis `pred:v2`). 이동시간이 탭 시간(15 · 30분)을 넘거나, 모델 예측이 없거나, 충전소 `dataQuality`가 `baseline`이면 그 탭에서 제외
   - `exclude_high`는 그 탭의 혼잡도로 판정 (필터 판정 규칙)
 - **`reason`** — 그 탭 후보 중 이동시간이 가장 짧은 곳과 비교
   - 자기 자신이면 `가장 가까운 충전소`
@@ -343,7 +344,7 @@
                    "totalChargers": 7, "availableChargers": 3 },
   "chargers": [
     { "stationId": "ST441324", "operator": "SK일렉링크", "chargerId": "01", "status": "charging",
-      "connectorTypes": ["dc_combo"], "capacityKw": 100, "chargingStartedAt": "2026-10-30T13:50:00+09:00" }
+      "connectorTypes": ["dc_combo"], "capacityKw": 100, "unstable": false, "chargingStartedAt": "2026-10-30T13:50:00+09:00" }
   ]
 }
 ```

@@ -17,6 +17,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ChargerIssuesButton } from '../../components/ChargerIssuesButton'
 import { FilterPanel } from '../../components/FilterPanel'
 import { LOCATE_BUTTON_SIZE, LocateButton } from '../../components/LocateButton'
 import { MapNotice } from '../../components/MapNotice'
@@ -318,7 +319,14 @@ export default function MapHomeScreen() {
             </View>
           )}
         </View>
-        <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
+        {/* 왼쪽 갱신 상태, 오른쪽 상태 이상 충전기 버튼 (검색창 오른쪽 아래) */}
+        <View
+          pointerEvents="box-none"
+          className="w-full flex-row items-start justify-between gap-2"
+        >
+          <UpdateStatus updatedAt={updatedAt} isError={isStationsError} />
+          <ChargerIssuesButton onPress={() => router.push('/charger-issues')} />
+        </View>
         {notice && <MapNotice key={notice.id} message={notice.message} />}
       </View>
       {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}

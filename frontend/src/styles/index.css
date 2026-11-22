@@ -50,6 +50,20 @@
       transform: translateY(-8px);
     }
   }
+
+  /* 상태 이상 화면 구 선택: 회색 배경은 제자리에서 흐려지고, 흰 목록만 아래에서 올라옴 */
+  --animate-fade-in: fade-in 200ms ease-out;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  --animate-sheet-up: sheet-up 250ms ease-out;
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
 }
 
 html,

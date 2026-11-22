@@ -10,6 +10,7 @@ from app.services.status import (
     BUS_CHARGER_TYPE,
     CONNECTOR_TYPES,
     is_stale,
+    is_unstable,
     to_capacity_kw,
     to_charger_status,
 )
@@ -28,6 +29,8 @@ class ChargerState:
     # 운영자 충전기 목록(ADM-002)용 원본 값 - 마지막 성공 회차에 행이 없으면 둘 다 None
     stat: str | None = None
     stat_upd_dt: datetime | None = None
+    # 원천 데이터 문제로 상태가 계속 바뀌는 충전기인지 (status.UNSTABLE_CHARGERS) - 화면 표시용
+    unstable: bool = False
 
 
 def find_latest_success_run(db: Session, target: str) -> CollectionRun | None:
@@ -105,6 +108,7 @@ def load_charger_states(
                 charging_started_at=row.current_charge_start_dt if status == "charging" else None,
                 stat=row.stat,
                 stat_upd_dt=row.stat_upd_dt,
+                unstable=is_unstable(row.station_id, row.charger_id),
             )
         )
     return states

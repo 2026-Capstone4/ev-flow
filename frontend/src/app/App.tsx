@@ -5,6 +5,7 @@ import { AdminLayout } from '@/app/AdminLayout'
 import { MapViewProvider } from '@ev-flow/core/app/MapViewProvider'
 import { queryClient } from '@/app/queryClient'
 import { AdminLoginPage } from '@/pages/AdminLoginPage'
+import { ChargerIssuesPage } from '@/pages/ChargerIssuesPage'
 import { MapHomePage } from '@/pages/MapHomePage'
 import { ServiceAreaDetailPage } from '@/pages/ServiceAreaDetailPage'
 import { ServiceAreaListPage } from '@/pages/ServiceAreaListPage'
@@ -15,6 +16,11 @@ import { StationDetailPage } from '@/pages/StationDetailPage'
 // 운영자 화면은 차트 라이브러리(Recharts)가 커서 운영자가 들어올 때만 따로 받음 — 사용자 화면 첫 로딩에 포함하지 않음
 const AdminStatusPage = lazy(() =>
   import('@/pages/AdminStatusPage').then((module) => ({ default: module.AdminStatusPage })),
+)
+const AdminChargerIssuesPage = lazy(() =>
+  import('@/pages/AdminChargerIssuesPage').then((module) => ({
+    default: module.AdminChargerIssuesPage,
+  })),
 )
 const AdminCollectionPage = lazy(() =>
   import('@/pages/AdminCollectionPage').then((module) => ({ default: module.AdminCollectionPage })),
@@ -28,6 +34,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<MapHomePage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/charger-issues" element={<ChargerIssuesPage />} />
             <Route path="/stations/:stationId" element={<StationDetailPage />} />
             <Route path="/stations/:stationId/route" element={<RoutePage />} />
             <Route path="/service-areas" element={<ServiceAreaListPage />} />
@@ -36,6 +43,7 @@ export function App() {
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminStatusPage />} />
+              <Route path="charger-issues" element={<AdminChargerIssuesPage />} />
               <Route path="collection" element={<AdminCollectionPage />} />
             </Route>
           </Routes>

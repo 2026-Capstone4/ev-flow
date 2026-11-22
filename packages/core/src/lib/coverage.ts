@@ -2,6 +2,7 @@
 import coverageBoundary from '../assets/coverage-boundary.json'
 import type { LatLng } from '../types/geo'
 
+const seoulRing = coverageBoundary.features[0].geometry.coordinates[0]
 const mapoRing = coverageBoundary.features[1].geometry.coordinates[0]
 
 /**
@@ -27,4 +28,9 @@ export function isPointInRing(point: LatLng, ring: number[][]) {
 /** 예측 · 추천을 제공하는 마포구 안인지 */
 export function isInMapo(point: LatLng) {
   return isPointInRing(point, mapoRing)
+}
+
+/** 충전소 정보를 보여 주는 서울 안인지 */
+export function isInSeoul(point: LatLng) {
+  return isPointInRing(point, seoulRing)
 }

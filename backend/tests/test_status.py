@@ -3,8 +3,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.services.status import (
+    UNSTABLE_CHARGERS,
     current_congestion,
     elapsed_quality,
+    is_unstable,
     station_quality,
     to_capacity_kw,
     to_charger_status,
@@ -87,3 +89,11 @@ def test_station_quality(statuses, minutes, expected):
 )
 def test_current_congestion(statuses, expected):
     assert current_congestion(statuses) == expected
+
+
+def test_unstable_chargers_match_by_station_and_charger_id():
+    # docs/database.md 데이터 사용 시 주의의 17기
+    assert len(UNSTABLE_CHARGERS) == 17
+    assert is_unstable("ME19A601", "21")
+    # 같은 충전소라도 목록에 없는 충전기는 아님
+    assert not is_unstable("ME19A601", "01")

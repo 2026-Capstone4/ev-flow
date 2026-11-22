@@ -69,7 +69,7 @@ export type AdminStation = {
   faultCount: number
   /** 확인 불가(통신 이상 · 상태 미확인 등) 대수 */
   unknownCount: number
-  /** 충전기들 중 가장 최근 수신 시각. 하나도 없으면 null */
+  /** 충전기들 중 가장 최근 상태 갱신 시각(운영사 statUpdDt, 참고용). 하나도 없으면 null */
   statUpdatedAt: string | null
 }
 

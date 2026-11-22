@@ -16,6 +16,8 @@ class Charger(CamelModel):
     status: ChargerStatus
     connector_types: list[ConnectorType]
     capacity_kw: int | float
+    # 원천 데이터 문제로 2↔9를 반복하는 충전기 - 화면 표시용, 혼잡도 · 추천 계산에는 쓰지 않음
+    unstable: bool = False
 
 
 class ChargerDetail(Charger):

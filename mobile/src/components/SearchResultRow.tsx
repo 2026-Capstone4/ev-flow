@@ -13,7 +13,12 @@ export function SearchResultRow({ result, onPress }: SearchResultRowProps) {
   const { station, distanceMeters, prediction } = result
   const summary = [
     formatDistance(distanceMeters),
-    prediction && formatWaitTime(prediction.waitTimeP50Minutes, prediction.waitTimeP90Minutes),
+    prediction &&
+      formatWaitTime(
+        prediction.waitTimeP50Minutes,
+        prediction.waitTimeP90Minutes,
+        prediction.congestion,
+      ),
     `사용 가능 ${station.availableChargers}/${station.totalChargers}대`,
   ]
     .filter(Boolean)
