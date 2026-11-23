@@ -392,7 +392,8 @@
   "serviceAreas": [
     {
       "id": "천안호두(부산)",
-      "name": "천안호두(부산)",
+      "name": "천안호두휴게소 (부산 방향)",
+      "shortName": "천안호두휴게소",
       "routeName": "경부선",
       "routeNo": "1",
       "heading": "부산",
@@ -415,7 +416,8 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `id` | string | 16번 요청의 `id` — 노선이 붙은 곳은 휴게소명, 못 붙인 곳은 statId |
-| `name` | string | 화면 이름 — 노선이 붙은 곳은 `id`와 같고, 못 붙인 곳은 충전소 이름 |
+| `name` | string | 화면 이름 — 노선이 붙은 곳은 `id`를 다듬은 이름(`음성(남이)` → `음성휴게소 (남이 방향)`, 양방향 `덕평` → `덕평휴게소`), 못 붙인 곳은 충전소 이름에서 앞뒤 사업자 표기(`워터` · `E-pit` 등)만 지운 것. 이름의 방향 도시는 휴게소 표지판 기준이라 `heading`과 다를 수 있음(`공주휴게소 (대전 방향)`의 `heading`은 `영덕`) |
+| `shortName` | string | 방향을 뺀 이름(`공주휴게소`) — 노선 화면처럼 방향 탭이 있는 곳용. 노선 미확인은 `name`과 같음 |
 | `routeName` · `routeNo` | string \| null | 노선명 · 번호. 번호 하나에 노선이 여럿이라(12 · 20 · 65번) 묶을 때는 `routeName` |
 | `heading` | string \| null | 방향 버튼 — 노선 끝 도시. 노선마다 두 개. 양방향 휴게소 · 순환 노선은 `null` |
 | `towards` | string \| null | 이름의 목적지 도시 (`heading`과 다를 수 있음 — 당진영덕선 `공주(대전)`은 `heading` `영덕`) |
@@ -425,6 +427,8 @@
 | `lat` · `lng` | number | 노선이 붙은 곳은 표준데이터 휴게소 좌표(충전기 좌표가 틀린 곳이 있음), 못 붙인 곳은 대표 statId 좌표 |
 
 노선 화면은 `routeName`이 같고 `heading`이 고른 방향이거나 `bidirectional`인 휴게소를 `routeSeq`로 정렬하면 된다 (`seqOrder`가 `desc`면 큰 순서부터).
+
+**이름 표시** — 노선 화면(방향 탭 안)은 `shortName`, 지도 · 가까운 휴게소 · 검색은 `name`. 표지판 방향(`towards`)이 고른 탭(`heading`)과 다른 12곳(당진영덕선 공주 · 예산 · 청송 등, 남해선 진영 · 함안 등)은 노선 화면에서 `shortName` 옆에 `"{towards} 방향"`을 작게 덧붙인다 — 예: 영덕 방향 탭의 `공주휴게소` `대전 방향`.
 
 **에러**: 503 `DATA_UNAVAILABLE`
 
@@ -442,7 +446,7 @@
 {
   "updatedAt": "2026-11-24T14:05:00+09:00",
   "dataQuality": "normal",
-  "serviceArea": { "id": "천안호두(부산)", "name": "천안호두(부산)", "routeName": "경부선", "routeNo": "1",
+  "serviceArea": { "id": "천안호두(부산)", "name": "천안호두휴게소 (부산 방향)", "shortName": "천안호두휴게소", "routeName": "경부선", "routeNo": "1",
                    "heading": "부산", "towards": "부산", "bidirectional": false, "routeSeq": 12, "seqOrder": "desc",
                    "address": "충청남도 천안시 동남구 광덕면 …", "lat": 36.7965, "lng": 127.1286,
                    "totalChargers": 6, "availableChargers": 5 },

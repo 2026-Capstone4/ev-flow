@@ -64,7 +64,7 @@ erDiagram
 | `service_area_name` | varchar(50) | (휴게소만) 휴게소명 — 사업자마다 `name`이 달라 매핑으로 통일 |
 | `route` | varchar(20) | (휴게소만) 노선 (`경부`) |
 | `direction` | varchar(10) | (휴게소만) `상행` / `하행` — 천안 대조군만 채움. 기존 휴게소 API는 이 값이 있는 행만 돌려줌 |
-| `rest_area` | varchar(50) | (휴게소만) 방향별 휴게소명 (`기흥(부산)`) — 아래 노선 컬럼은 `data/rest_area_routes.csv`(전국휴게소정보표준데이터 매핑, `scripts/build_rest_area_routes.py`)로 채움. 노선을 못 붙인 곳(민자 등 94 statId)은 모두 NULL |
+| `rest_area` | varchar(50) | (휴게소만) 방향별 휴게소명 (`기흥(부산)`) — 아래 노선 컬럼은 `data/rest_area_routes.csv`(전국휴게소정보표준데이터 매핑, `scripts/build_rest_area_routes.py`)로 채움. 노선을 못 붙인 곳(민자 등 83 statId)은 모두 NULL |
 | `route_name` | varchar(30) | (휴게소만) 노선명 (`경부선`) — 번호 하나에 노선이 여럿이라 이름으로 묶음 |
 | `route_no` | varchar(10) | (휴게소만) 노선 번호 (`1`) |
 | `towards` | varchar(20) | (휴게소만) 이름의 목적지 도시 (`부산`) |

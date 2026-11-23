@@ -1,3 +1,4 @@
+import re
 from collections import Counter
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -132,6 +133,34 @@ def area_id(s: ServiceAreaStation) -> str:
     return s.rest_area or s.station_id
 
 
+# 충전소 이름 앞뒤의 사업자 표기 - 노선을 못 붙인 곳은 이것만 지우고 나머지(상행선 · 하행선 등)는 그대로 둠
+NAME_PREFIX = re.compile(r"^\s*(?:\(고속도로\)|워터|E1|HK하이웨이|SK엔크린)\s*")
+NAME_SUFFIX = re.compile(r"\s*(?:E-pit|\(급\)|전기차충전소)\s*$")
+
+
+def display_name(s: ServiceAreaStation) -> str:
+    """화면 이름 - 노선이 붙은 곳은 표준데이터 휴게소명 '음성(남이)' → '음성휴게소 (남이 방향)', 양방향 '덕평' → '덕평휴게소'.
+    못 붙인 곳은 충전소 이름에서 앞뒤 사업자 표기만 지움 '워터 평택호휴게소 평택방향' → '평택호휴게소 평택방향'"""
+    if s.rest_area:
+        m = re.fullmatch(r"(.+?)\((.+)\)", s.rest_area)
+        return f"{m.group(1)}휴게소 ({m.group(2)} 방향)" if m else f"{s.rest_area}휴게소"
+    name = s.name or ""
+    while True:
+        trimmed = NAME_SUFFIX.sub("", NAME_PREFIX.sub("", name))
+        if trimmed == name:
+            break
+        name = trimmed
+    return name.strip() or s.station_id
+
+
+def short_name(s: ServiceAreaStation) -> str:
+    """방향을 뺀 화면 이름 - 노선 화면처럼 방향이 탭으로 정해진 곳에서 씀 '공주(대전)' → '공주휴게소'.
+    노선을 못 붙인 곳은 방향 표기가 제각각이라 display_name과 같음"""
+    if s.rest_area:
+        return re.sub(r"\(.+\)$", "", s.rest_area) + "휴게소"
+    return display_name(s)
+
+
 def nationwide_summary(
     group: list[ServiceAreaStation], states: dict[str, list[ChargerState]]
 ) -> NationwideServiceAreaSummary:
@@ -141,7 +170,8 @@ def nationwide_summary(
     has_area_coords = rep.rest_area_lat is not None and rep.rest_area_lng is not None
     return NationwideServiceAreaSummary(
         id=area_id(rep),
-        name=rep.rest_area or rep.name or rep.station_id,
+        name=display_name(rep),
+        short_name=short_name(rep),
         route_name=rep.route_name,
         route_no=rep.route_no,
         heading=rep.heading,
