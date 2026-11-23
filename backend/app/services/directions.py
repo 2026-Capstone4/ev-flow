@@ -312,11 +312,11 @@ def get_travel_times(
     """카카오 다중 목적지 길찾기 1회 - 곳마다 이동시간 · 거리. 못 찾은 곳은 None (그곳만 추정으로)
 
     dests: key(충전소 ID) → (위도, 경도). 최대 30곳 · 출발지에서 10km 안만 넣어야 함 (부른 쪽이 거름)
-    예산 소진 · 한도 초과는 DirectionsQuotaExceeded, 그 밖의 실패는 DirectionsUnavailable
+    예산 소진 · 한도 초과(429 · code -10)는 DirectionsQuotaExceeded, 그 밖의 실패는 DirectionsUnavailable
     """
-    # 다중 목적지를 못 쓰는 설정이면 부르지 않음 - 추천은 자동차 길찾기로 이어 씀
+    # 다중 목적지를 못 쓰는 설정이면 부르지 않음 - 추천은 multi_supported()를 먼저 보고 자동차 길찾기로 감
     if not multi_supported():
-        raise DirectionsQuotaExceeded()
+        raise DirectionsUnavailable()
     reserve(MULTI)
     priority = "TIME" if settings.kakao_priority == "RECOMMEND" else settings.kakao_priority
     body = {
@@ -328,11 +328,13 @@ def get_travel_times(
         "priority": priority,  # 다중 목적지는 TIME · DISTANCE만 받음
     }
     headers = {"Authorization": f"KakaoAK {settings.kakao_rest_api_key.get_secret_value()}"}
+    # 429는 하루 한도가 아니라 순간 호출 제한일 수 있어 표시를 남기지 않음 - 이 요청만 이어 쓰기로 넘어감
+    resp = _send(lambda: _client.post(KAKAO_MULTI_URL, json=body, headers=headers))
     try:
-        resp = _send(lambda: _client.post(KAKAO_MULTI_URL, json=body, headers=headers))
         _check_kakao_status(resp)
     except DirectionsQuotaExceeded:
-        # 카카오 쪽 한도를 다 쓴 날은 자정까지 다시 부르지 않음 - 우리 카운터보다 카카오 집계가 먼저 찼을 때
+        # code -10(허용된 요청 횟수 초과)은 오늘 한도를 다 쓴 것 - 자정까지 다시 부르지 않음
+        # 우리 카운터보다 카카오 집계가 먼저 찼을 때 (같은 키로 한 개발 · 테스트 호출 등)
         _mark_multi_exhausted()
         raise
     try:

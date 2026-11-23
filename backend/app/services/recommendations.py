@@ -48,9 +48,10 @@ logger = logging.getLogger(__name__)
 TOP_N = 3
 CANDIDATE_LIMIT = 20  # Directions를 부르는 후보 수 (MAP-02) - AI 채점 함수도 20곳까지만 받음
 RADIUS_KM = 15
-DIRECTIONS_WAIT_SEC = (
-    3  # 이동시간을 기다리는 전체 시간 - 이 안에 못 받은 후보는 AI가 직선거리로 추정
-)
+# 이동시간을 기다리는 전체 시간 - 이 안에 못 받은 후보는 AI가 직선거리로 추정
+DIRECTIONS_WAIT_SEC = 3
+# 자동차 길찾기로 이어 쓸 때 남아 있어야 하는 시간 - 이보다 적으면 결과를 못 기다려 예산만 쓰므로 바로 추정
+CAR_STAGE_MIN_SEC = 1
 CONGESTION_ORDER = {"low": 0, "medium": 1, "high": 2}
 CONGESTION_LABEL = {"low": "여유", "medium": "보통", "high": "혼잡"}
 # AI 채점 결과의 근거 단계 → 응답 basis
@@ -193,6 +194,10 @@ def _car_stage(origin, candidates, deadline) -> dict[str, Travel]:
     # 키가 없으면 예산을 잡지 않고 모두 추정
     if not directions.has_key():
         return {}
+    # 다중 목적지가 늦게 답해 시간이 거의 없으면 부르지 않음 - 결과를 못 기다리고 버리게 됨
+    if _remaining(deadline) < CAR_STAGE_MIN_SEC:
+        logger.info("남은 시간이 %d초 미만 - 자동차 길찾기 없이 직선거리 추정", CAR_STAGE_MIN_SEC)
+        return {}
     try:
         directions.reserve(directions.REC_CAR, len(candidates))
     except DirectionsQuotaExceeded:
@@ -227,17 +232,25 @@ def travel_times(origin, candidates) -> dict[str, Travel]:
     """후보 이동시간 - 다중 목적지 1회 → (예산 · 한도 초과면) 자동차 길찾기 → 직선거리 추정. 전체 3초"""
     deadline = time.monotonic() + DIRECTIONS_WAIT_SEC
     fetched: dict[str, Travel] = {}
-    try:
-        fetched = _multi_stage(origin, candidates, deadline)
-    except DirectionsQuotaExceeded:
-        logger.info("다중 목적지 예산 · 한도 초과 - 자동차 길찾기로 이어 씀")
+    use_car = not directions.multi_supported()
+    # 네이버 제공자 · 카카오 키 없음 - 다중 목적지 없이 자동차 길찾기 (키가 없으면 그 안에서 추정)
+    if use_car:
+        logger.info("다중 목적지를 쓸 수 없는 설정 - 자동차 길찾기로 부름")
+    else:
+        try:
+            fetched = _multi_stage(origin, candidates, deadline)
+        except DirectionsQuotaExceeded:
+            logger.info("다중 목적지 예산 · 한도 초과 - 자동차 길찾기로 이어 씀")
+            use_car = True
+        except TimeoutError:
+            logger.warning("다중 목적지 %d초 안에 응답 없음 - 직선거리 추정", DIRECTIONS_WAIT_SEC)
+        except ApiError:
+            pass  # 제공자 오류 - 이어 쓰기로 넘기지 않고 추정. 로그는 directions에서 남김
+        except Exception:
+            logger.exception("추천 이동시간 조회 오류 - 직선거리 추정으로 대체")
+    # 다중 목적지를 못 쓰거나 예산 · 한도를 넘었을 때만 자동차 길찾기
+    if use_car:
         fetched = _car_stage(origin, candidates, deadline)
-    except TimeoutError:
-        logger.warning("다중 목적지 %d초 안에 응답 없음 - 직선거리 추정", DIRECTIONS_WAIT_SEC)
-    except ApiError:
-        pass  # 키 없음 · 제공자 오류 - 이어 쓰기로 넘기지 않고 추정. 로그는 directions에서 남김
-    except Exception:
-        logger.exception("추천 이동시간 조회 오류 - 직선거리 추정으로 대체")
     result = {}
     for s, km in candidates:
         # 받은 곳은 그대로, 못 받은 곳은 직선거리 추정

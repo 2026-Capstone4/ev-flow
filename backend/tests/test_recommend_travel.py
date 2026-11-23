@@ -118,6 +118,27 @@ def test_kakao_quota_marks_multi_exhausted_for_today(kakao, fake_redis):  # noqa
     assert len(kakao.posts) == 1 and len(kakao.gets) == 2
 
 
+def test_kakao_429_falls_back_only_this_request(kakao, fake_redis):  # noqa: F811
+    # 429는 순간 호출 제한일 수 있음 - 이 요청만 자동차 길찾기로, 표시는 남기지 않음
+    kakao.multi = httpx.Response(429, text="Too Many Requests")
+    rec.travel_times(ORIGIN, cands(("A", 1.0)))
+    assert len(kakao.posts) == 1 and len(kakao.gets) == 1
+    assert f"directions:multi_exhausted:{TODAY}" not in fake_redis.values
+    # 다음 요청은 다시 다중 목적지부터
+    kakao.multi = multi_ok([("A", 0, 600, 3000)])
+    rec.travel_times(ORIGIN, cands(("A", 1.0)))
+    assert len(kakao.posts) == 2 and len(kakao.gets) == 1
+
+
+def test_no_time_left_skips_car_stage(kakao, fake_redis, monkeypatch):  # noqa: F811
+    # 남은 시간이 기준보다 적으면 이어 쓰기 몫을 잡지 않고 바로 추정
+    monkeypatch.setattr(settings, "directions_multi_daily_limit", 0)
+    monkeypatch.setattr(rec, "CAR_STAGE_MIN_SEC", rec.DIRECTIONS_WAIT_SEC + 1)
+    result = rec.travel_times(ORIGIN, cands(("A", 1.0)))
+    assert kakao.gets == [] and REC_CAR_KEY not in fake_redis.values
+    assert result["A"].source == "estimate"
+
+
 def test_car_budget_short_estimates_all_without_calls(kakao, fake_redis, monkeypatch):  # noqa: F811
     monkeypatch.setattr(settings, "directions_multi_daily_limit", 0)
     monkeypatch.setattr(settings, "directions_rec_car_daily_limit", 3)
