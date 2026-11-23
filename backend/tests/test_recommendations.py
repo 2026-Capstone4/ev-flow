@@ -433,6 +433,75 @@ def test_get_recommendations_uses_ai_result(scorer, monkeypatch):
     assert first.congestion == "low" and first.source == "model"
 
 
+@pytest.mark.parametrize("late", ["route", "forecast"])
+def test_get_recommendations_evidence_after_start_is_kept(scorer, monkeypatch, caplog, late):
+    # 실제 순서 그대로: 요청 시작(now) → 길찾기(시계가 흐름) → 예측 읽기 → AI 채점
+    # route: 길찾기 조회 시각이 now 뒤 - AI 요청 시각을 now로 넘기면 route_from_future로 세 탭이 비었음 (2026-11-23)
+    # forecast: 길찾기를 기다리는 사이 collector가 새 예측을 씀 - 생성 시각이 now 뒤
+    members = scorer.station_members()
+    a = sorted(members)[0]
+    clock = [NOW]
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock[0]
+
+    class Run:
+        id, started_at = 1, NOW - timedelta(minutes=4)
+
+    class Db:
+        def close(self):
+            pass
+
+    def slow_travel(origin, cands):
+        clock[0] = NOW + timedelta(seconds=3)
+        fetched = NOW + timedelta(seconds=2) if late == "route" else NOW
+        return {s.station_id: travel(4, fetched=fetched.isoformat()) for s, _ in cands}
+
+    raw = {"run_id": 1, "predictions": forecast_rows(scorer, a, 0.2, NOW - timedelta(minutes=5))}
+    if late == "forecast":
+        for row in raw["predictions"]:
+            row["components"]["congestion"]["generated_at"] = (
+                NOW + timedelta(seconds=2)
+            ).isoformat()
+    monkeypatch.setattr(rec, "datetime", Clock)
+    monkeypatch.setattr(rec, "latest_success_run", lambda db, target: Run)
+    monkeypatch.setattr(
+        rec, "load_charger_states", lambda *args: {a: [state(a, c) for c in members[a]]}
+    )
+    monkeypatch.setattr(rec, "area_stations", lambda *args: [station(a, lat=ORIGIN[0] + 0.001)])
+    monkeypatch.setattr(rec, "failed_after", lambda *args: False)
+    monkeypatch.setattr(rec, "travel_times", slow_travel)
+    monkeypatch.setattr(rec, "load_raw_predictions", lambda: raw)
+    with caplog.at_level("WARNING", logger=rec.logger.name):
+        resp = rec.get_recommendations(Db(), RecommendationRequest(lat=ORIGIN[0], lng=ORIGIN[1]))
+    tabs = {
+        r.horizon_minutes: [(x.station.station_id, x.basis) for x in r.recommendations]
+        for r in resp.results
+    }
+    assert tabs == {0: [(a, "forecast")], 15: [(a, "forecast")], 30: [(a, "forecast")]}
+    assert "모두 제외" not in caplog.text
+
+
+def test_log_empty_tabs_warns_with_reasons(caplog):
+    tabs = {
+        "leave_now": {
+            "candidate_evaluations": [{"eligible": False}, {"eligible": False}],
+            "exclusion_reasons": {"route_from_future": 2, "current_observation_stale": 1},
+        },
+        "arrive_15": {"candidate_evaluations": [{"eligible": True}], "exclusion_reasons": {}},
+        "arrive_30": {"candidate_evaluations": [], "exclusion_reasons": {}},
+    }
+    with caplog.at_level("WARNING", logger=rec.logger.name):
+        rec.log_empty_tabs(tabs)
+    # 후보가 있는데 모두 빠진 탭만, 많은 사유부터
+    assert len(caplog.records) == 1
+    assert "leave_now 탭 후보 2곳 모두 제외 - route_from_future 2, current_observation_stale 1" in (
+        caplog.text
+    )
+
+
 def test_ai_scoring_rejects_connector_mismatch(scorer):
     a = sorted(scorer.station_members())[0]
     rows = forecast_rows(scorer, a, 0.1, NOW - timedelta(minutes=5))

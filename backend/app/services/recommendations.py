@@ -441,6 +441,23 @@ def to_recommendations(picked: list[Picked]) -> list[Recommendation]:
     ]
 
 
+def log_empty_tabs(tabs: dict[str, dict]) -> None:
+    """후보는 있는데 AI가 모두 뺀 탭 - 제외 사유를 WARNING으로 남김 (api는 INFO 로그가 안 찍힘)"""
+    for name, evaluation in tabs.items():
+        rows = (evaluation or {}).get("candidate_evaluations", [])
+        if not rows or any(row["eligible"] for row in rows):
+            continue
+        reasons = sorted(
+            (evaluation.get("exclusion_reasons") or {}).items(), key=lambda kv: (-kv[1], kv[0])
+        )
+        logger.warning(
+            "추천 %s 탭 후보 %d곳 모두 제외 - %s",
+            name,
+            len(rows),
+            ", ".join(f"{reason} {count}" for reason, count in reasons[:5]),
+        )
+
+
 def get_recommendations(db: Session, body: RecommendationRequest) -> RecommendationsResponse:
     if not in_mapo(body.lat, body.lng):
         raise ApiError(422, "OUT_OF_SERVICE_AREA", "현재 충전소 추천 기능은 마포구만 지원해요")
@@ -468,11 +485,14 @@ def get_recommendations(db: Session, body: RecommendationRequest) -> Recommendat
         # 예측 원본이 없으면(ml 장애 · 만료) 예측 없이 채점 - AI가 최근 관측 근거만 남김
         prediction = load_raw_predictions() or {"run_id": None, "predictions": []}
         levels = forecast_levels(prediction)
+        # AI 요청 시각은 길찾기 · 예측을 다 받은 뒤 - 경로 조회 시각이나 예측 생성 시각이 요청보다 늦으면
+        # AI가 미래 근거(route_from_future 등)로 보고 후보를 뺌. now는 길찾기 전에 잡아 늘 더 이름
+        scored_at = datetime.now(UTC)
         request_id = uuid.uuid4().hex
         inputs = [
             candidate_input(
                 request_id,
-                now,
+                scored_at,
                 s,
                 km,
                 travel[s.station_id],
@@ -489,6 +509,7 @@ def get_recommendations(db: Session, body: RecommendationRequest) -> Recommendat
         except Exception:
             logger.exception("AI 추천 채점 실패 - 추천 목록을 비움")
             tabs = {}
+        log_empty_tabs(tabs)
 
     return RecommendationsResponse(
         updated_at=run.started_at,
