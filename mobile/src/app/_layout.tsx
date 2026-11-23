@@ -9,7 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { queryClient, setupQueryManagers } from '../app-setup/queryClient'
 import { ScreenActiveLayout } from '../app-setup/ScreenActiveLayout'
-import { API_BASE_URL } from '../lib/config'
+import { API_BASE_URL, DEMO_LOCATION } from '../lib/config'
 
 // 첫 요청 전에 API 주소를 앱용 절대 URL로 바꾸고, 앱 상태 · 네트워크를 쿼리에 연결함
 // (core 기본값 /api/v1은 웹의 같은 출처 주소라 앱에서는 못 씀)
@@ -23,7 +23,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <MapViewProvider>
+          <MapViewProvider initialUserLocation={DEMO_LOCATION}>
             {/* 화면마다 보이는지 여부를 쿼리 훅에 알려서 가려진 화면은 폴링을 멈춤 */}
             <Stack
               screenOptions={{ headerShown: false }}

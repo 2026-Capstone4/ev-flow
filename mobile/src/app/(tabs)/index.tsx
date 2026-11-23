@@ -2,7 +2,6 @@ import { NaverMapView, type NaverMapViewRef, type Region } from '@mj-studio/reac
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
-import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { isDotStation, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
@@ -26,7 +25,8 @@ import { RecommendSheet, type RecommendSheetHandle } from '../../components/Reco
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
-import { IS_GEOLOCATION_ENABLED } from '../../lib/config'
+import { useLocationTracking } from '../../hooks/useLocationTracking'
+import { INITIAL_MAP_CENTER, IS_GEOLOCATION_ENABLED } from '../../lib/config'
 import { appStorage } from '../../lib/storage'
 import { CoverageMask } from '../../map/CoverageMask'
 import { SEOUL_EXTENT } from '../../map/seoulExtent'
@@ -89,7 +89,7 @@ export default function MapHomeScreen() {
     recommendedIds,
     recommendState,
     recommendRetryAfterSeconds,
-  } = useMapHomeData(userLocation, horizon, filters)
+  } = useMapHomeData(horizon, filters)
 
   const [camera, setCamera] = useState<CameraState>({
     webZoomLevel: INITIAL_WEB_ZOOM,
@@ -130,6 +130,8 @@ export default function MapHomeScreen() {
   const closeOnboarding = useCallback(() => {
     markOnboardingSeen(appStorage)
     setIsOnboardingOpen(false)
+    // 더보기에서 다시 보기로 열었으면 그 값도 지워서, 탭을 오가도 다시 뜨지 않게 함
+    router.setParams({ showOnboarding: undefined })
   }, [])
 
   // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
@@ -142,10 +144,12 @@ export default function MapHomeScreen() {
   }, [notice])
 
   const { locate, isLocating } = useCurrentLocation()
+  // 위치 권한이 이미 있으면 앱이 켜져 있는 동안 위치를 따라감. 추천은 500m · 2분 · 5분 규칙으로만 다시 부름
+  const { recheck: recheckTracking } = useLocationTracking(IS_GEOLOCATION_ENABLED)
   /** 줌은 그대로 두고 지도 가운데만 옮김 */
   const panTo = (target: LatLng) =>
     mapRef.current?.animateCameraTo({ latitude: target.lat, longitude: target.lng })
-  // 웹 MapHomePage handleLocate와 같은 흐름
+  // 웹 MapHomePage handleLocate와 같은 흐름. 지도만 옮기고 추천은 바로 부르지 않음 (2026-11-22 결정)
   const handleLocate = async () => {
     // 기능이 꺼져 있으면 GPS 없이 지금 기준 위치(시연 위치)로 지도만 옮김
     if (!IS_GEOLOCATION_ENABLED) {
@@ -153,7 +157,9 @@ export default function MapHomeScreen() {
       return
     }
     const result = await locate()
-    // 찾았으면 그 위치로, 마포구 밖이면 지금 추천 기준 위치로 지도를 옮김
+    // 이 버튼으로 처음 권한을 허용했으면 그때부터 위치를 따라감
+    recheckTracking()
+    // 찾았으면 그 위치로, 마포구 밖이면 마지막 사용자 위치로 지도를 옮김
     if (result.ok || result.reason === 'out-of-area') {
       panTo(result.ok ? result.location : userLocation)
     }
@@ -199,7 +205,10 @@ export default function MapHomeScreen() {
 
   // 길찾기 화면의 "AI 추천 충전소 보기"로 돌아오면(?expandSheet=1) 추천 시트를 펼침 (웹 state.expandSheet)
   const sheetRef = useRef<RecommendSheetHandle>(null)
-  const { expandSheet } = useLocalSearchParams<{ expandSheet?: string }>()
+  const { expandSheet, showOnboarding } = useLocalSearchParams<{
+    expandSheet?: string
+    showOnboarding?: string
+  }>()
   useEffect(() => {
     // 펼쳐 달라는 값이 없으면 그대로 둠
     if (expandSheet !== '1') return
@@ -223,8 +232,8 @@ export default function MapHomeScreen() {
         ref={mapRef}
         style={{ flex: 1 }}
         initialCamera={{
-          latitude: MAPO_CENTER.lat,
-          longitude: MAPO_CENTER.lng,
+          latitude: INITIAL_MAP_CENTER.lat,
+          longitude: INITIAL_MAP_CENTER.lng,
           zoom: toAppZoom(INITIAL_WEB_ZOOM),
         }}
         isShowLocationButton={false}
@@ -329,7 +338,10 @@ export default function MapHomeScreen() {
         </View>
         {notice && <MapNotice key={notice.id} message={notice.message} />}
       </View>
-      {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
+      {/* 처음 들어왔거나, 더보기의 "첫 방문 안내 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
+      {(isOnboardingOpen || showOnboarding === '1') && (
+        <OnboardingDialog onClose={closeOnboarding} />
+      )}
     </View>
   )
 }

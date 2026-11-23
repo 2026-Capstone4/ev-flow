@@ -72,7 +72,8 @@ export async function readDeviceLocation(): Promise<LatLng | null> {
 }
 
 /**
- * 현재 위치를 한 번 재서, 마포구 안이면 추천 · 검색 · 길찾기 기준 위치로 바꿈 (웹 useCurrentLocation과 같은 흐름)
+ * 현재 위치를 한 번 재서, 마포구 안이면 사용자 위치(검색 거리 · 길찾기 출발지)로 바꿈 (웹 useCurrentLocation과 같은 흐름)
+ * 추천은 바로 부르지 않고 기준점 규칙(500m · 2분 · 5분, core useRecommendationOrigin)대로 부름
  * 버튼을 누를 때만 재므로 앱을 열자마자 권한 창이 뜨지 않음
  */
 export function useCurrentLocation() {

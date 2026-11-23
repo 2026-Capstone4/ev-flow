@@ -32,6 +32,8 @@ export function formatWaitRange(
   if (isWaitUncertain(p90, congestion)) return '대기 예측 어려움'
   // P90이 0이어도 실제로 대기가 있던 경우가 있어 단정하지 않음
   if (p90 === 0) return '대기 거의 없음'
+  // P50과 P90이 같으면 "5~5분"이 되므로 한 번만 씀
+  if (p50 === p90) return `${p90}분`
   return `${p50}~${p90}분`
 }
 

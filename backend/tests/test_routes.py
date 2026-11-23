@@ -37,7 +37,7 @@ class FakePipeline:
 
 
 class FakeRedis:
-    """캐시 · 카운터 · 호출 제한에 쓰는 명령만 흉내 냄 - TTL은 줄어들지 않고 설정값 그대로 남음"""
+    """하루 예산 카운터 · 소진 표시 · 호출 제한에 쓰는 명령만 흉내 냄 - TTL은 줄어들지 않고 설정값 그대로 남음"""
 
     def __init__(self):
         self.values = {}
@@ -55,8 +55,14 @@ class FakeRedis:
         return True
 
     def incr(self, key):
-        self.values[key] = self.values.get(key, 0) + 1
+        return self.incrby(key, 1)
+
+    def incrby(self, key, n):
+        self.values[key] = self.values.get(key, 0) + n
         return self.values[key]
+
+    def decrby(self, key, n):
+        return self.incrby(key, -n)
 
     def expire(self, key, seconds, nx=False):
         if nx and key in self.ttls:
@@ -88,6 +94,13 @@ class FakeClient:
 
     def get(self, url, params=None, headers=None):
         self.calls.append({"url": url, "params": params, "headers": headers})
+        return self._answer()
+
+    def post(self, url, json=None, headers=None):
+        self.calls.append({"url": url, "json": json, "headers": headers})
+        return self._answer()
+
+    def _answer(self):
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
@@ -176,7 +189,7 @@ def test_returns_route_with_lat_lng_path(client, naver, db):
     }
     # 네이버에는 경도,위도 순서 · 소수 4자리로 반올림한 출발 좌표를 보냄
     params = naver.calls[0]["params"]
-    assert params == {"start": "126.922,37.5563", "goal": "126.8978,37.555", "option": "trafast"}
+    assert params == {"start": "126.92204,37.55631", "goal": "126.8978,37.555", "option": "trafast"}
     assert naver.calls[0]["headers"]["x-ncp-apigw-api-key"] == "test-secret"
     assert db.closed  # Directions 호출 전에 DB 연결을 돌려줌
 
@@ -192,13 +205,12 @@ def test_short_route_is_at_least_one_minute(client, naver):
     assert post(client).json()["travelTimeMinutes"] == 1
 
 
-def test_same_rounded_origin_uses_cache(client, naver, fake_redis):
-    post(client, origin={"lat": 37.55631, "lng": 126.92204})
-    res = post(client, origin={"lat": 37.55634, "lng": 126.92196})  # 반올림하면 같은 좌표
-    assert res.status_code == 200
-    assert len(naver.calls) == 1
-    key = f"route:v2:naver:37.5563:126.9220:{MAPO_ID}"
-    assert fake_redis.ttls[key] == directions.CACHE_TTL_SEC
+def test_every_request_calls_provider_without_cache(client, naver, fake_redis):
+    # 경로 캐시 없음 (2026-11-22) - 같은 출발지 · 충전소라도 매번 부르고 경로를 저장하지 않음
+    post(client)
+    assert post(client).status_code == 200
+    assert len(naver.calls) == 2
+    assert not [k for k in fake_redis.values if k.startswith("route:")]
 
 
 def test_already_at_station_returns_zero_minutes(client, naver):
@@ -206,7 +218,7 @@ def test_already_at_station_returns_zero_minutes(client, naver):
     body = post(client).json()
     assert body["travelTimeMinutes"] == 0
     assert body["distanceMeters"] == 0
-    assert body["path"] == [[37.5563, 126.922], [37.555, 126.8978]]
+    assert body["path"] == [[37.55631, 126.92204], [37.555, 126.8978]]
 
 
 @pytest.mark.parametrize("code", [2, 3, 5])
@@ -252,17 +264,17 @@ def test_missing_key_is_502_without_calling(client, naver, monkeypatch):
     assert naver.calls == []
 
 
-def test_daily_budget_counts_only_real_calls(client, naver, fake_redis, monkeypatch):
-    monkeypatch.setattr(settings, "directions_daily_limit", 2)
-    key = f"directions:count:{datetime.now(KST):%Y%m%d}"
+def test_daily_route_budget(client, naver, fake_redis, monkeypatch):
+    monkeypatch.setattr(settings, "directions_route_daily_limit", 2)
+    key = f"directions:count:route:{datetime.now(KST):%Y%m%d}"
     post(client)
-    post(client)  # 캐시 적중 - 세지 않음
-    assert fake_redis.values[key] == 1
     post(client, station_id=SEOUL_ID)
-    res = post(client, origin={"lat": 37.50, "lng": 126.90})  # 세 번째 실호출 - 예산 초과
+    assert fake_redis.values[key] == 2
+    res = post(client)  # 세 번째 - 예산 초과, 부르지 않고 카운터도 그대로
     assert res.status_code == 503
     assert res.json()["error"]["code"] == "ROUTE_QUOTA_EXCEEDED"
     assert len(naver.calls) == 2
+    assert fake_redis.values[key] == 2
 
 
 def test_unknown_station_is_404(client, naver):
@@ -296,5 +308,5 @@ def test_redis_down_still_returns_route(client, naver, monkeypatch):
     monkeypatch.setattr(directions, "_redis", broken)
     monkeypatch.setattr(rate_limit, "_redis", broken)
     assert post(client).status_code == 200
-    assert post(client).status_code == 200  # 캐시가 없어 다시 부름
+    assert post(client).status_code == 200
     assert len(naver.calls) == 2

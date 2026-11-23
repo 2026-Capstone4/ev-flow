@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # 컨테이너는 compose가 ml/package를 /package로 마운트. 호스트에서 직접 실행하면 .env에 ../ml/package
     ai_package_dir: str = "/package"
 
-    # 길찾기 제공자 - 추천 · 경로 API에서 사용. kakao(기본) · naver. 바꾸면 재시작만 하면 됨 (캐시 키가 제공자별로 따로)
+    # 길찾기 제공자 - 추천 · 경로 API에서 사용. kakao(기본) · naver. 바꾸면 재시작만 하면 됨 (경로 캐시 없음)
     directions_provider: Literal["kakao", "naver"] = "kakao"
     # 카카오모빌리티 자동차 길찾기 - 카카오디벨로퍼스 앱 > 앱 키 > REST API 키
     # 기본값 빈 값: 키가 없어도 api · collector가 뜨게 함 (길찾기만 502, 추천은 직선거리 추정)
@@ -39,9 +39,15 @@ class Settings(BaseSettings):
     # 네이버 Directions 5 - DIRECTIONS_PROVIDER=naver일 때만 씀. 지도 SDK Client ID와 같은 값
     naver_client_id: str = ""
     naver_client_secret: SecretStr = SecretStr("")
-    # 길찾기 · 추천 호출 제한 (SER-003, MAP-02) - 시연 날 강의실처럼 한 공인 IP를 여럿이 쓰면 .env에서 올림
+    # 길찾기 · 추천 IP당 분당 호출 제한 (SER-003, MAP-02) - 시연 날 강의실처럼 한 공인 IP를 여럿이 쓰면 .env에서 올림
     route_rate_limit_per_min: int = 10
-    directions_daily_limit: int = 2000  # 서버 전체 Directions 실제 호출 수 / 하루(KST)
+    recommend_rate_limit_per_min: int = 5  # 앱은 5분마다 또는 500m 이동 + 2분마다 부름 (2026-11-22)
+    # 서버 전체 실제 호출 수 / 하루(KST) - 카카오 무료 한도: 다중 목적지 1,000 · 자동차 길찾기 10,000
+    # 자동차 길찾기 두 몫 합 9,000, 남는 약 10%는 같은 키로 하는 개발 · 테스트 몫
+    # 네이버로 되돌리면 ROUTE + REC_CAR 합을 2,000 안으로 낮춤 (네이버는 다중 목적지 없음 → 추천은 바로 REC_CAR)
+    directions_multi_daily_limit: int = 900  # 추천 다중 목적지 - 넘으면 자동차 길찾기로 이어 씀
+    directions_route_daily_limit: int = 2000  # 길찾기 화면 - 넘으면 503. 추천이 쓰지 않음
+    directions_rec_car_daily_limit: int = 7000  # 추천 이어 쓰기 - 넘으면 직선거리 추정
 
     # 운영자 로그인 (SER-001) - 토큰은 JWT(HS256)를 HttpOnly 쿠키로 내려줌
     # 비어 있으면 로그인만 500으로 막고 api · collector는 그대로 뜸 - 값은 .env.example 안내대로 생성

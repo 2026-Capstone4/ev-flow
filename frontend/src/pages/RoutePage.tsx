@@ -1,5 +1,5 @@
 import { LoaderCircle, TriangleAlert, X } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { BackButton } from '@/components/BackButton'
 import { Button } from '@/components/Button'
@@ -27,6 +27,8 @@ const ROUTE_PROVIDER_LABEL = { kakao: '카카오모빌리티', naver: '네이버
 export function RoutePage() {
   const navigate = useNavigate()
   const { userLocation } = useMapView()
+  // 출발지는 들어올 때 위치로 고정. 위치 추적으로 바뀌어도 경로를 다시 부르지 않음 (2026-11-22 결정)
+  const [origin] = useState(userLocation)
   const { stationId = '' } = useParams()
   const [searchParams] = useSearchParams()
   const horizon = parseHorizon(searchParams.get('horizon'))
@@ -41,12 +43,12 @@ export function RoutePage() {
     isRouteRateLimited,
     routeRetryAfterSeconds,
     retryRoute,
-  } = useRouteData(userLocation, stationId, horizon)
+  } = useRouteData(origin, stationId, horizon)
 
   const stations = useMemo(() => (station ? [station] : undefined), [station])
   useStationMarkers(map, stations)
-  useMyLocationMarker(map, userLocation)
-  useRouteOverlay(map, route?.path, station ? [userLocation, station] : [], ROUTE_SHEET_HEIGHT)
+  useMyLocationMarker(map, origin)
+  useRouteOverlay(map, route?.path, station ? [origin, station] : [], ROUTE_SHEET_HEIGHT)
 
   const platform = detectPlatform(navigator.userAgent)
   // 충전소 정보를 받은 뒤에만 목적지를 알 수 있어 그 전엔 null
