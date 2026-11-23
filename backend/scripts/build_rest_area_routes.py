@@ -20,6 +20,21 @@ OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "rest_area_routes.c
 NEAR_M = 1500  # 충전기 좌표와 휴게소 좌표가 이 안이면 후보
 # 괄호 안이지만 방향이 아닌 말 - '천안호두휴게소(부산방향)(급)' · '(고속도로)통도사휴게소 부산방향'
 NOT_DIRECTION = {"급", "고속도로", "국도부", "5번국도", "외측"}
+# 같은 방향을 충전 사업자와 표준데이터(도로공사)가 다른 도시로 부름 - 충전기 이름 도시 → 표준데이터 도시.
+# 도로공사는 노선 끝(중부선은 남이분기점), 사업자는 최종 목적지(통영)를 씀. 이름의 도시가 그대로 맞지 않을 때만 씀 -
+# 하남 · 울산 · 논산 · 통영 · 전주는 다른 노선의 끝 도시이기도 해서 먼저 그대로 맞춰 봄
+DIRECTION_ALIASES = {
+    "통영": "남이",  # 중부선 오창 · 음성
+    "울산": "부산",  # 외동
+    "논산": "천안",  # 호남선 곡성
+    "하남": "대전",  # 대전통영선 덕유산
+    "전주": "완주",  # 순천완주선 황전
+    "동해": "삼척",  # 동해선 구정
+    "시흥": "서울",  # 서해안선 서산 · 고창고인돌
+}
+# 이름에 방향이 없는데 후보가 여럿이면 가장 가까운 곳이 이 거리 안이고 다음 후보가 이 배수 넘게 멀 때만 붙임 (벌곡 34m · 843m)
+NEAREST_M = 200
+NEAREST_RATIO = 3
 
 # 방향 버튼(노선 끝 도시)이 노선의 어느 쪽인지 정하는 데만 씀 - 대략 좌표면 충분
 CITY_COORDS = {
@@ -150,9 +165,22 @@ def match_station(s, standard: list[dict]) -> tuple[dict | None, str]:
         same_city = [r for r in candidates if city and city_in_name(r["rest_area"]) == city]
         if same_city:
             return same_city[0], "coord_name"
+        # 같은 방향을 다른 도시로 부른 곳 - 오창(통영방향) → 오창(남이)
+        alias = DIRECTION_ALIASES.get(word)
+        same_alias = [r for r in candidates if alias and city_in_name(r["rest_area"]) == alias]
+        if same_alias:
+            return same_alias[0], "coord_alias"
         # 이름에 방향이 없을 때만 - '화서(상주)'처럼 방향이 있는데 안 맞으면 반대편 휴게소일 수 있음
-        if word is None and len({r["rest_area"] for r in candidates}) == 1:
-            return candidates[0], "coord_single"
+        if word is None:
+            if len({r["rest_area"] for r in candidates}) == 1:
+                return candidates[0], "coord_single"
+            # 후보가 여럿이어도 한 곳이 확실히 가까우면 - 벌곡 34m · 843m
+            by_distance = sorted(
+                candidates, key=lambda r: distance_m(s.lat, s.lng, r["lat"], r["lng"])
+            )
+            first, second = (distance_m(s.lat, s.lng, r["lat"], r["lng"]) for r in by_distance[:2])
+            if first <= NEAREST_M and second > first * NEAREST_RATIO:
+                return by_distance[0], "coord_nearest"
         return None, ""
     # 충전기 좌표가 틀린 곳(강천산 EC450027 · 28은 주소는 순창인데 위도가 37) - 이름 + 목적지 도시가 모두 같을 때만
     same_name = [
@@ -267,7 +295,14 @@ def build(standard_path: Path, out_path: Path):
 
     matched = sum(1 for r in rows if r["area"])
     print(f"{len(rows)}곳 중 {matched}곳 노선 확정 ({matched / len(rows):.1%}) - {out_path}")
-    for how in ("coord_name", "bidirectional", "coord_single", "name"):
+    for how in (
+        "coord_name",
+        "bidirectional",
+        "coord_alias",
+        "coord_single",
+        "coord_nearest",
+        "name",
+    ):
         print(f"  {how}: {sum(1 for r in rows if r['match'] == how)}")
     # 이름으로만 붙은 곳은 충전기 좌표가 틀렸을 수 있음 - 가까운 휴게소 · 지도에서 엉뚱한 곳에 보임
     for r in rows:
