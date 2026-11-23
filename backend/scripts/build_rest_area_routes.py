@@ -239,6 +239,8 @@ def build(standard_path: Path, out_path: Path):
                 "bidirectional",
                 "route_seq",
                 "seq_order",
+                "rest_area_lat",
+                "rest_area_lng",
                 "match",
             ]
         )
@@ -256,6 +258,9 @@ def build(standard_path: Path, out_path: Path):
                     ("Y" if a["bidirectional"] else "N") if a else "",
                     r.get("route_seq", ""),
                     r.get("seq_order", ""),
+                    # 표준데이터 휴게소 좌표 - 충전기 좌표가 틀린 곳(강천산)도 가까운 휴게소 · 지도가 맞게
+                    a["lat"] if a else "",
+                    a["lng"] if a else "",
                     r["match"],
                 ]
             )

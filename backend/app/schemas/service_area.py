@@ -49,3 +49,50 @@ class ServiceAreaChargersResponse(CamelModel):
     data_quality: ResponseDataQuality
     service_area: ServiceAreaSummary
     chargers: list[ServiceAreaChargerDetail]
+
+
+# --- 전국 휴게소 (2026-11-24, 노선별 화면용) ---
+# 위 휴게소 API(천안 대조군, 옛 앱)와 따로 둠 - 옛 앱은 direction(up · down)을 서울 · 부산 방향으로 고정해서 보여 줌
+SeqOrder = Literal["asc", "desc"]
+
+
+class NationwideServiceAreaSummary(CamelModel):
+    # 노선이 붙은 곳은 표준데이터 휴게소명(예: 기흥(부산)), 못 붙인 곳은 statId - 충전기 현황 요청의 id
+    id: str
+    # 화면 이름 - 노선이 붙은 곳은 id와 같고, 못 붙인 곳은 충전소 이름
+    name: str
+    # 노선을 못 붙인 곳(민자 노선 등)은 아래 노선 필드가 모두 null - 화면에서 실시간 상태만 보여 줌
+    route_name: str | None
+    route_no: str | None
+    # 방향 버튼(노선 끝 도시). 양방향 휴게소 · 순환 노선은 null
+    heading: str | None
+    # 이름의 목적지 도시
+    towards: str | None
+    bidirectional: bool
+    # 노선 안 순서 - heading 쪽으로 갈 때 seq_order가 asc면 커지고 desc면 작아짐
+    route_seq: int | None
+    seq_order: SeqOrder | None
+    address: str | None
+    # 노선이 붙은 곳은 표준데이터 휴게소 좌표, 못 붙인 곳은 충전소 좌표
+    lat: float
+    lng: float
+    total_chargers: int
+    available_chargers: int
+
+
+class NationwideServiceArea(NationwideServiceAreaSummary):
+    status_counts: StatusCounts
+    data_quality: DataQuality
+
+
+class NationwideServiceAreasResponse(CamelModel):
+    updated_at: KstDatetime
+    data_quality: ResponseDataQuality
+    service_areas: list[NationwideServiceArea]
+
+
+class NationwideServiceAreaChargersResponse(CamelModel):
+    updated_at: KstDatetime
+    data_quality: ResponseDataQuality
+    service_area: NationwideServiceAreaSummary
+    chargers: list[ServiceAreaChargerDetail]

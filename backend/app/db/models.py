@@ -160,6 +160,9 @@ class ServiceAreaStation(StationColumns, Base):
     bidirectional = Column(Boolean)  # 양방향 휴게소 - 두 방향 모두에 보여 줌
     route_seq = Column(Integer)  # 노선 안 순서 (남북 · 동서 중 긴 축 기준)
     seq_order = Column(String(4))  # heading 쪽으로 갈 때 route_seq가 커지면 asc, 작아지면 desc
+    # 표준데이터 휴게소 좌표 - 충전기 좌표가 틀린 곳(강천산 222km 등)이 있어 전국 휴게소 API는 이 값을 씀
+    rest_area_lat = Column(Float)
+    rest_area_lng = Column(Float)
 
     chargers = relationship("ServiceAreaCharger", back_populates="station")
 

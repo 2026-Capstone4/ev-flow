@@ -234,6 +234,8 @@
 | 12 | `GET /admin/collection-status?region=` | 운영자 | ADM-003 | `get_collection_status` | ⏳ `collection_runs` |
 | 13 | `GET /admin/missing-stats?region=&period=` | 운영자 | ADM-004 | `get_missing_stats` | ⏳ `collection_runs` |
 | 14 | `GET /admin/imputed-count?period=` | 운영자 | ADM-006 | `get_imputed_count` | ⏳ `prediction_log` |
+| 15 | `GET /service-areas/nationwide` | — | UC-U08 | `get_nationwide_service_areas` | 전국 고속도로 휴게소 (2026-11-24). 5번은 천안 대조군만(옛 앱) |
+| 16 | `GET /service-areas/nationwide/chargers?id=` | — | UC-U08 | `get_nationwide_service_area_chargers` | |
 
 운영자 API의 `region`은 `all` · `city` · `service_area`, `period`는 `day` · `week` (ADM-005).
 

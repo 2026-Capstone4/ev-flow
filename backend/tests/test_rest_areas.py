@@ -1,5 +1,6 @@
 import csv
 import os
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,13 @@ import pytest
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
 os.environ.setdefault("EV_SERVICE_KEY", "test")
 
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.schemas.service_area import NationwideServiceAreasResponse  # noqa: E402
+from app.services import service_areas  # noqa: E402
+from app.services.snapshot import ChargerState  # noqa: E402
 from scripts.build_rest_area_routes import match_station, same_rest_area  # noqa: E402
 from scripts.import_rest_areas import ROUTES_PATH, is_target, route_fields  # noqa: E402
 
@@ -62,6 +70,8 @@ ROW = {
     "bidirectional": "N",
     "route_seq": "12",
     "seq_order": "desc",
+    "rest_area_lat": "36.7965",
+    "rest_area_lng": "127.1286",
 }
 
 
@@ -75,6 +85,8 @@ def test_route_fields_matched():
         "bidirectional": False,
         "route_seq": 12,
         "seq_order": "desc",
+        "rest_area_lat": 36.7965,
+        "rest_area_lng": 127.1286,
     }
 
 
@@ -150,3 +162,90 @@ def test_renamed_rest_area_matches_by_destination_city():
     standard = [std("익산미륵사지(순천)", 37.0007), std("익산미륵사지(천안)", 37.0018)]
     area, how = match_station(station("여산(순천) 휴게소", 37.0), standard)
     assert (area["rest_area"], how) == ("익산미륵사지(순천)", "coord_name")
+
+
+# --- 전국 휴게소 API (11/24) ---
+
+NOW = datetime(2026, 11, 24, 5, 0, tzinfo=UTC)
+
+
+def db_station(station_id, rest_area=None, route_seq=None, route_name="경부선", **kw):
+    matched = rest_area is not None
+    base = {
+        "station_id": station_id,
+        "name": f"{station_id} 충전소",
+        "addr": "충청남도 천안시",
+        "lat": 37.3,  # 충전기 좌표 - 틀린 곳이 있음
+        "lng": 127.1,
+        "rest_area": rest_area,
+        "route_name": route_name if matched else None,
+        "route_no": "1" if matched else None,
+        "heading": "부산" if matched else None,
+        "towards": "부산" if matched else None,
+        "bidirectional": False if matched else None,
+        "route_seq": route_seq,
+        "seq_order": "desc" if matched else None,
+        "rest_area_lat": 36.7965 if matched else None,
+        "rest_area_lng": 127.1286 if matched else None,
+    }
+    return SimpleNamespace(**(base | kw))
+
+
+def charger_state(station_id, charger_id, status):
+    return ChargerState(station_id, charger_id, status, ["dc_combo"], 100, None)
+
+
+def test_nationwide_groups_station_ids_by_rest_area():
+    stations = [
+        db_station("A", "천안호두(부산)", 12),
+        db_station("B", "천안호두(부산)", 12),
+        db_station("C", "기흥(부산)", 3),
+        db_station("X"),  # 노선 미확인
+        db_station("Y", "망향(부산)", 10),  # 상태가 없는 충전소 - 빠짐
+    ]
+    states = {
+        "A": [charger_state("A", "01", "available"), charger_state("A", "02", "charging")],
+        "B": [charger_state("B", "01", "available")],
+        "C": [charger_state("C", "01", "maintenance")],
+        "X": [charger_state("X", "01", "available")],
+    }
+    areas = service_areas.nationwide_areas(stations, states, NOW, NOW)
+    # 노선 안 순서대로, 노선 미확인은 맨 뒤
+    assert [a.id for a in areas] == ["기흥(부산)", "천안호두(부산)", "X"]
+    hodu = areas[1]
+    assert (hodu.total_chargers, hodu.available_chargers) == (3, 2)
+    assert hodu.status_counts.charging == 1
+    # 표준데이터 휴게소 좌표를 씀
+    assert (hodu.lat, hodu.lng) == (36.7965, 127.1286)
+    unknown = areas[2]
+    assert (unknown.name, unknown.route_name, unknown.heading) == ("X 충전소", None, None)
+    assert (unknown.lat, unknown.lng) == (37.3, 127.1)  # 노선 미확인은 충전기 좌표
+    assert unknown.bidirectional is False
+
+
+def test_nationwide_endpoint_uses_camel_case(monkeypatch):
+    stations = [db_station("A", "천안호두(부산)", 12)]
+    states = {"A": [charger_state("A", "01", "available")]}
+    response = NationwideServiceAreasResponse(
+        updated_at=NOW,
+        data_quality="normal",
+        service_areas=service_areas.nationwide_areas(stations, states, NOW, NOW),
+    )
+    monkeypatch.setattr(service_areas, "get_nationwide_service_areas", lambda db: response)
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        body = TestClient(app).get("/api/v1/service-areas/nationwide").json()
+    finally:
+        app.dependency_overrides.clear()
+    area = body["serviceAreas"][0]
+    assert area["routeName"] == "경부선" and area["seqOrder"] == "desc"
+    assert area["routeSeq"] == 12 and area["statusCounts"]["available"] == 1
+
+
+def test_nationwide_chargers_requires_id():
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        res = TestClient(app).get("/api/v1/service-areas/nationwide/chargers")
+    finally:
+        app.dependency_overrides.clear()
+    assert res.status_code == 422
