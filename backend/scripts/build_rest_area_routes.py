@@ -101,6 +101,12 @@ def base_name(name: str) -> str:
     return m.group(1) if m else re.split(r"[\s(_]", name)[0]
 
 
+def same_rest_area(name: str, rest_area: str) -> bool:
+    """이름이 같은 휴게소인지 - 한쪽이 다른 쪽을 포함하면 같음 ('경기안산복합' ⊃ '안산' · '마장프리미엄' ⊃ '마장')"""
+    a, b = base_name(name), base_name(rest_area)
+    return bool(a and b) and (a in b or b in a)
+
+
 def read_standard(path: Path) -> list[dict]:
     # 포털 CSV는 EUC-KR(CP949)로 받아지는 경우가 있음
     for encoding in ("utf-8-sig", "cp949"):
@@ -131,15 +137,22 @@ def match_station(s, standard: list[dict]) -> tuple[dict | None, str]:
     city = word if word in CITY_COORDS else None
     near = [r for r in standard if distance_m(s.lat, s.lng, r["lat"], r["lng"]) <= NEAR_M]
     if near:
-        both = [r for r in near if r["bidirectional"]]
+        # 이름이 겹치는 휴게소가 있으면 그중에서만 고름 - 이천(남이)가 74m 거리의 이천(남이) 대신
+        # 367m 떨어진 양방향 마장으로 붙던 것을 막음
+        named = [r for r in near if same_rest_area(s.name or "", r["rest_area"])]
+        candidates = named or near
+        # 양방향 휴게소는 이름이 겹칠 때만 - 좌표가 틀린 이인(주소는 공주) · 다른 곳인 서하남이
+        # 근처 양방향 마장 · 하남드림으로 붙던 것을 막음
+        both = [r for r in named if r["bidirectional"]]
         if both:
             return both[0], "bidirectional"
-        same_city = [r for r in near if city and city_in_name(r["rest_area"]) == city]
+        # 이름이 달라도 목적지 도시가 같으면 같은 휴게소 - 여산(순천) → 이름이 바뀐 익산미륵사지(순천)
+        same_city = [r for r in candidates if city and city_in_name(r["rest_area"]) == city]
         if same_city:
             return same_city[0], "coord_name"
         # 이름에 방향이 없을 때만 - '화서(상주)'처럼 방향이 있는데 안 맞으면 반대편 휴게소일 수 있음
-        if word is None and len({r["rest_area"] for r in near}) == 1:
-            return near[0], "coord_single"
+        if word is None and len({r["rest_area"] for r in candidates}) == 1:
+            return candidates[0], "coord_single"
         return None, ""
     # 충전기 좌표가 틀린 곳(강천산 EC450027 · 28은 주소는 순창인데 위도가 37) - 이름 + 목적지 도시가 모두 같을 때만
     same_name = [
