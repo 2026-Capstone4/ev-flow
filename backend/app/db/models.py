@@ -163,6 +163,9 @@ class ServiceAreaStation(StationColumns, Base):
     # 표준데이터 휴게소 좌표 - 충전기 좌표가 틀린 곳(강천산 222km 등)이 있어 전국 휴게소 API는 이 값을 씀
     rest_area_lat = Column(Float)
     rest_area_lng = Column(Float)
+    # 충전기 API 지역 코드 - 지역별 휴게소 화면용. 주소의 시도 표기는 사업자마다 달라(충북 · 충청북도) 코드를 씀
+    zcode = Column(String(2))  # 시도 (예: 43)
+    zscode = Column(String(5))  # 시군구 (예: 43750)
 
     chargers = relationship("ServiceAreaCharger", back_populates="station")
 

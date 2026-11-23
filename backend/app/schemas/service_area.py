@@ -59,8 +59,10 @@ SeqOrder = Literal["asc", "desc"]
 class NationwideServiceAreaSummary(CamelModel):
     # 노선이 붙은 곳은 표준데이터 휴게소명(예: 기흥(부산)), 못 붙인 곳은 statId - 충전기 현황 요청의 id
     id: str
-    # 화면 이름 - 노선이 붙은 곳은 id와 같고, 못 붙인 곳은 충전소 이름
+    # 화면 이름 - 노선이 붙은 곳은 '음성휴게소 (남이 방향)'(표지판 방향), 못 붙인 곳은 충전소 이름에서 앞뒤 사업자 표기만 지운 것
     name: str
+    # 방향을 뺀 이름 '음성휴게소' - 노선 화면(방향 탭)용. 못 붙인 곳은 name과 같음
+    short_name: str
     # 노선을 못 붙인 곳(민자 노선 등)은 아래 노선 필드가 모두 null - 화면에서 실시간 상태만 보여 줌
     route_name: str | None
     route_no: str | None
@@ -73,6 +75,9 @@ class NationwideServiceAreaSummary(CamelModel):
     route_seq: int | None
     seq_order: SeqOrder | None
     address: str | None
+    # 시도 - 지역별 화면용. 충전기 API 시도 코드와 이름 (표에 없는 코드면 이름은 null)
+    region_code: str | None
+    region_name: str | None
     # 노선이 붙은 곳은 표준데이터 휴게소 좌표, 못 붙인 곳은 충전소 좌표
     lat: float
     lng: float

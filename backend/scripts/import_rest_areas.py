@@ -107,6 +107,8 @@ def import_rest_areas():
                 station.lat = float(item["lat"]) if item.get("lat") else None
                 station.lng = float(item["lng"]) if item.get("lng") else None
                 station.operator = item.get("busiNm")
+                station.zcode = item.get("zcode") or None
+                station.zscode = item.get("zscode") or None
                 # 대조군만 채움 - 나머지 휴게소의 이름 · 노선 · 방향은 노선 매핑 단계에서 따로 채우므로 덮어쓰지 않음
                 if station_id in mapping:
                     station.service_area_name = mapping[station_id]["rest_area"]

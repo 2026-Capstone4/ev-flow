@@ -157,6 +157,38 @@ def test_bidirectional_needs_same_name(name):
     assert match_station(station(name, 37.0), standard) == (None, "")
 
 
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("오창휴게소 (통영방향) (급)", "오창(남이)"),  # 사업자는 최종 목적지, 도로공사는 노선 끝
+        ("서산휴게소 (시흥)", "서산(서울)"),  # 표준데이터 도시 목록에 없는 시흥
+    ],
+)
+def test_direction_alias(name, expected):
+    rest = expected.split("(")[0]
+    other = {"오창": "오창(하남)", "서산": "서산(목포)"}[rest]
+    standard = [std(expected, 37.0007), std(other, 37.0025)]
+    area, how = match_station(station(name, 37.0), standard)
+    assert (area["rest_area"], how) == (expected, "coord_alias")
+
+
+def test_direct_city_wins_over_alias():
+    # 하남은 대전통영선 덕유산에서는 대전의 별칭이지만, 중부선에서는 그대로 끝 도시
+    standard = [std("이천쌀(하남)", 37.0007), std("이천쌀(대전)", 37.0025)]
+    area, how = match_station(station("이천쌀휴게소(하남방향)", 37.0), standard)
+    assert (area["rest_area"], how) == ("이천쌀(하남)", "coord_name")
+
+
+def test_nearest_without_direction_only_when_clearly_closer():
+    # 벌곡 - 이름에 방향이 없고 후보가 34m · 843m
+    standard = [std("벌곡(논산)", 37.0003), std("벌곡(대전)", 37.0076)]
+    area, how = match_station(station("벌곡휴게소", 37.0), standard)
+    assert (area["rest_area"], how) == ("벌곡(논산)", "coord_nearest")
+    # 두 후보가 비슷하게 가까우면 붙이지 않음
+    close = [std("벌곡(논산)", 37.0003), std("벌곡(대전)", 37.0006)]
+    assert match_station(station("벌곡휴게소", 37.0), close) == (None, "")
+
+
 def test_renamed_rest_area_matches_by_destination_city():
     # 여산(순천) → 이름이 바뀐 익산미륵사지(순천), 80m
     standard = [std("익산미륵사지(순천)", 37.0007), std("익산미륵사지(천안)", 37.0018)]
@@ -187,6 +219,8 @@ def db_station(station_id, rest_area=None, route_seq=None, route_name="경부선
         "seq_order": "desc" if matched else None,
         "rest_area_lat": 36.7965 if matched else None,
         "rest_area_lng": 127.1286 if matched else None,
+        "zcode": "44",
+        "zscode": "44130",
     }
     return SimpleNamespace(**(base | kw))
 
@@ -213,6 +247,7 @@ def test_nationwide_groups_station_ids_by_rest_area():
     # 노선 안 순서대로, 노선 미확인은 맨 뒤
     assert [a.id for a in areas] == ["기흥(부산)", "천안호두(부산)", "X"]
     hodu = areas[1]
+    assert (hodu.name, hodu.short_name) == ("천안호두휴게소 (부산 방향)", "천안호두휴게소")
     assert (hodu.total_chargers, hodu.available_chargers) == (3, 2)
     assert hodu.status_counts.charging == 1
     # 표준데이터 휴게소 좌표를 씀
@@ -221,6 +256,24 @@ def test_nationwide_groups_station_ids_by_rest_area():
     assert (unknown.name, unknown.route_name, unknown.heading) == ("X 충전소", None, None)
     assert (unknown.lat, unknown.lng) == (37.3, 127.1)  # 노선 미확인은 충전기 좌표
     assert unknown.bidirectional is False
+    # 지역은 노선 미확인도 있음
+    assert (unknown.region_code, unknown.region_name) == ("44", "충청남도")
+
+
+@pytest.mark.parametrize(
+    "zcode, name",
+    [
+        ("12", "전남광주통합특별시"),  # 2026-11 새 코드 - 전남 · 광주 하나
+        ("51", "강원특별자치도"),
+        ("99", None),  # 표에 없는 코드
+        (None, None),
+    ],
+)
+def test_region_name(zcode, name):
+    stations = [db_station("A", "기흥(부산)", 3, zcode=zcode)]
+    states = {"A": [charger_state("A", "01", "available")]}
+    area = service_areas.nationwide_areas(stations, states, NOW, NOW)[0]
+    assert (area.region_code, area.region_name) == (zcode, name)
 
 
 def test_nationwide_endpoint_uses_camel_case(monkeypatch):
@@ -240,6 +293,7 @@ def test_nationwide_endpoint_uses_camel_case(monkeypatch):
     area = body["serviceAreas"][0]
     assert area["routeName"] == "경부선" and area["seqOrder"] == "desc"
     assert area["routeSeq"] == 12 and area["statusCounts"]["available"] == 1
+    assert (area["regionCode"], area["regionName"]) == ("44", "충청남도")
 
 
 def test_nationwide_chargers_requires_id():
@@ -249,3 +303,36 @@ def test_nationwide_chargers_requires_id():
     finally:
         app.dependency_overrides.clear()
     assert res.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "rest_area, name, expected",
+    [
+        ("음성(남이)", "음성휴게소 (통영방향) E-pit", "음성휴게소 (남이 방향)"),
+        ("덕평", "덕평자연휴게소(강릉방향)", "덕평휴게소"),  # 양방향
+        (None, "워터 평택호휴게소 평택방향", "평택호휴게소 평택방향"),  # 노선 미확인 - 앞뒤만
+        (None, "가평휴게소(서울방향) E-pit", "가평휴게소(서울방향)"),
+        (None, "경기광주휴게소 상행선", "경기광주휴게소 상행선"),  # 상행선 · 하행선은 남김
+        (None, "", "X"),  # 이름이 없으면 statId
+    ],
+)
+def test_display_name(rest_area, name, expected):
+    station = SimpleNamespace(rest_area=rest_area, name=name, station_id="X")
+    assert service_areas.display_name(station) == expected
+
+
+@pytest.mark.parametrize(
+    "rest_area, name, expected",
+    [
+        (
+            "공주(대전)",
+            "공주휴게소",
+            "공주휴게소",
+        ),  # 노선 화면 '영덕 방향' 탭 - 표지판 방향(대전)은 뺌
+        ("덕평", "덕평자연휴게소(강릉방향)", "덕평휴게소"),
+        (None, "워터 평택호휴게소 평택방향", "평택호휴게소 평택방향"),  # 노선 미확인은 name과 같음
+    ],
+)
+def test_short_name(rest_area, name, expected):
+    station = SimpleNamespace(rest_area=rest_area, name=name, station_id="X")
+    assert service_areas.short_name(station) == expected
