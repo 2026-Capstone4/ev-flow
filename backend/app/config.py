@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # AI 패키지 폴더 - 추천 순위를 패키지의 채점 함수(run_recommendation.score_snapshot)로 계산함 (docs/prediction.md)
     # 컨테이너는 compose가 ml/package를 /package로 마운트. 호스트에서 직접 실행하면 .env에 ../ml/package
     ai_package_dir: str = "/package"
+    # 운영 알림 (INF-09) - collector가 수집 3회 연속 실패 · 15분 성공 없음을 Discord로 알림. 비어 있으면 알림 없음
+    # 주소 자체가 비밀값(누구나 그 채널에 글을 쓸 수 있음)이라 SecretStr
+    discord_webhook_url: SecretStr = SecretStr("")
 
     # 길찾기 제공자 - 추천 · 경로 API에서 사용. kakao(기본) · naver. 바꾸면 재시작만 하면 됨 (경로 캐시 없음)
     directions_provider: Literal["kakao", "naver"] = "kakao"
