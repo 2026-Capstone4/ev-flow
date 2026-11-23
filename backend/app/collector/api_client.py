@@ -1,5 +1,7 @@
 import logging
+import threading
 import time
+from collections import Counter
 
 import httpx
 
@@ -22,6 +24,33 @@ REQUEST_TIMEOUT_SEC = 30
 MAX_RETRIES = 1
 
 logger = logging.getLogger(__name__)
+
+# 하루 요약 알림용 재시도 횟수 (INF-09) - (조회 지역 zscode · zcode, "retried" · "recovered") → 횟수.
+# 조회 지역 코드는 collection_runs.zscode와 같은 값이라 요약이 회차 기록과 이 코드로 맞춤.
+# 지금 수집 잡 셋(11440 · 44130 · 11)은 코드가 모두 달라 섞이지 않음 - 같은 코드로 잡을 하나 더 만들면 키에 target을 넣어야 함
+# retried: 다시 부른 횟수, recovered: 다시 불러 성공한 호출 수. 프로세스 메모리라 collector 재시작 때 0부터.
+# 수집 잡이 스레드마다 돌아서 잠금을 씀
+_retry_stats: Counter = Counter()
+_retry_lock = threading.Lock()
+
+
+def _count_retry(area: str, kind: str) -> None:
+    with _retry_lock:
+        _retry_stats[(area, kind)] += 1
+
+
+def take_retry_stats() -> Counter:
+    """지금까지 센 재시도 횟수를 돌려주고 0으로 되돌림 - 하루 요약이 부름"""
+    global _retry_stats
+    with _retry_lock:
+        stats, _retry_stats = _retry_stats, Counter()
+    return stats
+
+
+def put_back_retry_stats(stats: Counter) -> None:
+    """하루 요약을 못 보냈을 때 가져간 횟수를 되돌려 다음 요약에 합침"""
+    with _retry_lock:
+        _retry_stats.update(stats)
 
 
 def _is_retryable(e: httpx.HTTPError) -> bool:
@@ -48,6 +77,7 @@ def _fetch_items(
     # httpx 예외 메시지에는 serviceKey가 든 요청 URL이 평문으로 들어감 - 호출부의 logger.exception으로
     # 로그에 남지 않도록 원래 예외를 버리고(from None) 엔드포인트 이름 · 상태 코드만 남김
     name = url.rsplit("/", 1)[-1]
+    area = str(params.get("zscode") or params.get("zcode") or "")
     for attempt in range(1 + max_retries):
         timeout = REQUEST_TIMEOUT_SEC
         # deadline(time.monotonic 기준)이 있으면 요청 타임아웃을 남은 시간으로 줄임 - 상한 직전에 시작한 요청이 30초를 넘기지 않게
@@ -59,11 +89,14 @@ def _fetch_items(
         try:
             resp = httpx.get(url, params=params, timeout=timeout)
             resp.raise_for_status()
+            if attempt > 0:
+                _count_retry(area, "recovered")
             break
         except httpx.HTTPError as e:
             reason = _describe(e)
             if attempt < max_retries and _is_retryable(e):
                 logger.warning("%s %s - 재시도 (%d/%d)", name, reason, attempt + 1, max_retries)
+                _count_retry(area, "retried")
                 continue
             raise RuntimeError(f"{name} {reason}") from None
 
