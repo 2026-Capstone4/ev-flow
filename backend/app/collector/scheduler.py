@@ -6,12 +6,12 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.blocking import BlockingScheduler
 from sqlalchemy import text, update
 
-from app.collector.alerts import check_collection_health
+from app.collector import alerts
+from app.collector.alerts import check_collection_health, notify_failed_run, send_daily_summary
 from app.collector.api_client import MAX_RETRIES, get_charger_info, get_charger_status
 from app.collector.baseline import ensure_baseline, refresh_baseline
 from app.collector.checkpoint import publish_checkpoint
 from app.collector.prediction import refresh_predictions
-from app.config import settings
 from app.db.models import (
     CityCharger,
     CityStatusLog,
@@ -214,6 +214,7 @@ class RegionCollector:
                     self.label,
                     run.id,
                 )
+                notify_failed_run(run, status_error)
                 return
 
             info_changed = 0
@@ -276,6 +277,8 @@ class RegionCollector:
                 try:
                     self.finish_run(run, "FAILED", error=f"{type(e).__name__}: {e}"[:1000])
                     db.commit()
+                    # 알림에는 예외 종류만 - DB 오류 메시지에는 접속 정보가 섞일 수 있음
+                    notify_failed_run(run, f"{type(e).__name__} (자세한 내용은 collector 로그)")
                 except Exception:
                     db.rollback()
                     # run.id를 읽으면 DB를 다시 조회하므로 로그에 넣지 않음 - DB 장애 중이면 여기서 또 실패함
@@ -352,14 +355,17 @@ def main():
         refresh_baseline, "cron", hour=4, minute=0, timezone=KST, next_run_time=datetime.now()
     )
     # 운영 알림 (INF-09) - 수집과 따로 5분마다 회차 기록을 봄. 수집 잡이 멈춰도 검사는 돎.
-    # 첫 검사는 시작 6분 뒤 - 배포 · 재시작으로 비었던 구간에 첫 회차가 쌓일 틈을 줌
-    if settings.discord_webhook_url.get_secret_value():
+    # 첫 검사는 시작 6분 뒤 - 배포 · 재시작으로 비었던 구간에 첫 회차가 쌓일 틈을 줌.
+    # 실패 회차 알림은 collect 안에서 바로 보냄
+    if alerts.is_enabled():
         scheduler.add_job(
             check_collection_health,
             "interval",
             minutes=CYCLE_MIN,
             next_run_time=datetime.now() + timedelta(minutes=CYCLE_MIN + 1),
         )
+        # 하루 요약 - 아침에 지난 24시간을 한 번에 봄
+        scheduler.add_job(send_daily_summary, "cron", hour=9, minute=0, timezone=KST)
     else:
         logger.info("운영 알림 꺼짐 - .env DISCORD_WEBHOOK_URL 없음")
     scheduler.start()

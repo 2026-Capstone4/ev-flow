@@ -28,10 +28,18 @@ const config: ExpoConfig = {
   ios: {
     // NCP 콘솔에 등록한 값과 글자 하나까지 같아야 지도 인증이 됨 (계획 문서 9번)
     bundleIdentifier: 'app.evflowkr.evflow',
+    // App Store Connect 빌드 번호 (CFBundleVersion). 같은 버전 안에서 올릴 때마다 1씩 올려야 업로드됨
+    buildNumber: '2',
+    config: {
+      // HTTPS 같은 기본 암호화만 써서 수출 규정 면제 대상. 적어 두면 빌드마다 암호화 질문을 안 받음
+      usesNonExemptEncryption: false,
+    },
     // 실기기 빌드 서명에 쓰는 Apple 개발자 팀 ID (mobile/.env.local). 비어 있으면 시뮬레이터 빌드만 됨
     appleTeamId: process.env.APPLE_TEAM_ID || undefined,
     supportsTablet: false,
     infoPlist: {
+      // 설치했을 때 홈 화면 아이콘 아래 이름. name(EV-flow)은 ios 폴더 · 프로젝트 이름(EVflow)에 쓰여서 그대로 두고 표시 이름만 바꿈
+      CFBundleDisplayName: 'EV Flow',
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
       LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
     },
@@ -49,6 +57,8 @@ const config: ExpoConfig = {
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,
         motionUsagePermission: false,
+        // 정확한 위치 임시 허용(requestTemporaryFullAccuracy)은 쓰지 않아서 영어 기본 설명을 넣지 않음
+        locationFullAccuracyPermission: false,
       },
     ],
     // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)

@@ -1,4 +1,5 @@
 import os
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
@@ -329,3 +330,104 @@ def test_check_does_nothing_without_webhook(monkeypatch):
     monkeypatch.setattr(alerts, "SessionLocal", fail)
     monkeypatch.setattr(alerts.httpx, "post", fail)
     alerts.check_collection_health()
+
+
+def test_retry_stats_count_retries_and_recoveries(fake_get):
+    api_client.take_retry_stats()
+    timeout = httpx.ReadTimeout("t")
+    fake_get([timeout, ok_response()])
+    api_client.get_charger_status(zscode="11440")
+    fake_get([timeout, timeout])
+    with pytest.raises(RuntimeError):
+        api_client.get_charger_status(zscode="11440")
+    fake_get([timeout, timeout, ok_response()])
+    api_client.get_charger_info(zcode="11", max_retries=2)
+    stats = api_client.take_retry_stats()
+    # 다시 부른 횟수 · 다시 불러 성공한 호출 수 - 조회 지역 코드별
+    assert stats == {
+        ("11440", "retried"): 2,
+        ("11440", "recovered"): 1,
+        ("11", "retried"): 2,
+        ("11", "recovered"): 1,
+    }
+    assert api_client.take_retry_stats() == {}  # 가져가면 0부터
+
+
+def test_notify_failed_run_sends_short_reason(alert_env):
+    run = SimpleNamespace(id=42, target="city", started_at=ALERT_NOW)
+    alerts.notify_failed_run(
+        run, "get_charger_status [11440] RuntimeError: getChargerStatus HTTP 504"
+    )
+    alerts.notify_failed_run(run, "x" * 500)
+    assert alert_env.sent[0] == (
+        "⚠️ [EV-flow] 마포 도심 수집 실패 (run 42, 15:00) - "
+        "get_charger_status [11440] RuntimeError: getChargerStatus HTTP 504"
+    )
+    assert alert_env.sent[1].endswith("x" * alerts.REASON_MAX)
+    assert len(alert_env.sent[1]) < 300
+
+
+def test_notify_failed_run_never_raises(alert_env):
+    class Broken:
+        @property
+        def target(self):
+            raise RuntimeError("detached")
+
+    alerts.notify_failed_run(Broken(), "x")
+    assert alert_env.sent == []
+
+
+def test_format_summary_lists_regions_in_order_with_retries():
+    counts = {
+        ("live", "11"): Counter(SUCCESS=280, PARTIAL=5, FAILED=3),
+        ("city", "11440"): Counter(SUCCESS=287, FAILED=1),
+    }
+    retries = Counter({("11440", "retried"): 15, ("11440", "recovered"): 14, ("11", "retried"): 4})
+    since = ALERT_NOW - timedelta(hours=24)
+    text = alerts.format_summary(counts, retries, since, ALERT_NOW, since - timedelta(hours=1))
+    assert text.splitlines() == [
+        "📊 [EV-flow] 수집 하루 요약 (11/22 15:00 ~ 11/23 15:00)",
+        "- 마포 도심: 회차 288 · 성공 287 · 일부 0 · 실패 1 | 재시도 15 · 재시도로 성공 14",
+        "- 서울 실시간: 회차 288 · 성공 280 · 일부 5 · 실패 3 | 재시도 4 · 재시도로 성공 0",
+    ]
+    # 요약 기간 중에 재시작했으면 재시도 수가 그 뒤 것뿐이라고 적음
+    restarted = alerts.format_summary(
+        counts, retries, since, ALERT_NOW, ALERT_NOW - timedelta(hours=2)
+    )
+    assert restarted.splitlines()[-1] == "(재시도 수는 collector 재시작 11/23 13:00 이후분)"
+
+
+def test_daily_summary_puts_back_retries_when_send_fails(alert_env):
+    alert_env.monkeypatch.setattr(alerts, "load_run_counts", lambda db, since: {})
+    set_runs(alert_env, {}, {})
+    api_client.take_retry_stats()
+    api_client._count_retry("11440", "retried")
+    alert_env.responses.append(httpx.Response(500))
+    alerts.send_daily_summary()
+    # 못 보냈으면 재시도 수를 되돌려 다음 요약에 합침
+    assert api_client.take_retry_stats() == {("11440", "retried"): 1}
+    assert "끝난 회차 없음" in alert_env.sent[0]
+
+
+def test_load_run_counts_groups_finished_runs_by_region():
+    since = ALERT_NOW - timedelta(hours=24)
+    sql = str(alerts.run_counts_query(since).compile(dialect=postgresql.dialect()))
+    # 지난 24시간 · 끝난 회차만, 지역 · 조회 지역 코드 · 상태별로 셈
+    assert "collection_runs.started_at >= %(started_at_1)s" in sql
+    assert "collection_runs.status != %(status_1)s" in sql
+    assert "GROUP BY collection_runs.target, collection_runs.zscode, collection_runs.status" in sql
+
+    class Db:
+        def execute(self, stmt):
+            return SimpleNamespace(
+                all=lambda: [
+                    ("city", "11440", "SUCCESS", 287),
+                    ("city", "11440", "FAILED", 1),
+                    ("live", "11", "PARTIAL", 5),
+                ]
+            )
+
+    assert alerts.load_run_counts(Db(), since) == {
+        ("city", "11440"): Counter(SUCCESS=287, FAILED=1),
+        ("live", "11"): Counter(PARTIAL=5),
+    }
