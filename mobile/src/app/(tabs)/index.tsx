@@ -60,10 +60,11 @@ const isDotMarker = (webZoomLevel: number, station: Station, isRecommended: bool
 const TOP_GAP = 16
 
 /**
- * 겹친 점 마커를 SDK가 숨기게 할지. 서울 전역 색 점이 덜 빽빽해짐 (3단계 확인)
+ * 겹친 점 마커를 SDK가 숨기게 할지. 숨기면 지도에서 찾을 수 없는 충전소가 생기고,
+ * 지도를 끄는 동안 SDK가 마커 1,600여 개의 겹침을 계속 다시 계산해 느려져서 끔
  * 숫자 마커는 StationMarker가 늘 빼서 겹쳐도 숨기지 않음
  */
-const IS_HIDE_COLLIDED = true
+const IS_HIDE_COLLIDED = false
 
 /** 안내 문구를 띄워 두는 시간 */
 const NOTICE_DURATION_MS = 3000
