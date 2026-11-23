@@ -73,6 +73,7 @@ erDiagram
 | `route_seq` | int | (휴게소만) 노선 안 순서 — 남북 · 동서 중 긴 축 기준 |
 | `seq_order` | varchar(4) | (휴게소만) `heading` 쪽으로 갈 때 `route_seq`가 커지면 `asc`, 작아지면 `desc` |
 | `rest_area_lat` · `rest_area_lng` | double | (휴게소만) 표준데이터 휴게소 좌표 — 충전기 좌표가 틀린 곳(강천산 222km 등)이 있어 전국 휴게소 API는 이 값을 씀 |
+| `zcode` · `zscode` | varchar(2) · varchar(5) | (휴게소만) 충전기 API 시도 · 시군구 코드 — 지역별 휴게소 화면용. 주소의 시도 표기는 사업자마다 달라(`충북` · `충청북도`) 코드를 씀 |
 
 ### `*_chargers` — 충전기 (도심 190행 · 휴게소 2,214행)
 

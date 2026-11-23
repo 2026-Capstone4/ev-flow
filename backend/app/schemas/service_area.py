@@ -75,6 +75,9 @@ class NationwideServiceAreaSummary(CamelModel):
     route_seq: int | None
     seq_order: SeqOrder | None
     address: str | None
+    # 시도 - 지역별 화면용. 충전기 API 시도 코드와 이름 (표에 없는 코드면 이름은 null)
+    region_code: str | None
+    region_name: str | None
     # 노선이 붙은 곳은 표준데이터 휴게소 좌표, 못 붙인 곳은 충전소 좌표
     lat: float
     lng: float

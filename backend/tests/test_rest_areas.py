@@ -219,6 +219,8 @@ def db_station(station_id, rest_area=None, route_seq=None, route_name="경부선
         "seq_order": "desc" if matched else None,
         "rest_area_lat": 36.7965 if matched else None,
         "rest_area_lng": 127.1286 if matched else None,
+        "zcode": "44",
+        "zscode": "44130",
     }
     return SimpleNamespace(**(base | kw))
 
@@ -254,6 +256,24 @@ def test_nationwide_groups_station_ids_by_rest_area():
     assert (unknown.name, unknown.route_name, unknown.heading) == ("X 충전소", None, None)
     assert (unknown.lat, unknown.lng) == (37.3, 127.1)  # 노선 미확인은 충전기 좌표
     assert unknown.bidirectional is False
+    # 지역은 노선 미확인도 있음
+    assert (unknown.region_code, unknown.region_name) == ("44", "충청남도")
+
+
+@pytest.mark.parametrize(
+    "zcode, name",
+    [
+        ("12", "전남광주통합특별시"),  # 2026-11 새 코드 - 전남 · 광주 하나
+        ("51", "강원특별자치도"),
+        ("99", None),  # 표에 없는 코드
+        (None, None),
+    ],
+)
+def test_region_name(zcode, name):
+    stations = [db_station("A", "기흥(부산)", 3, zcode=zcode)]
+    states = {"A": [charger_state("A", "01", "available")]}
+    area = service_areas.nationwide_areas(stations, states, NOW, NOW)[0]
+    assert (area.region_code, area.region_name) == (zcode, name)
 
 
 def test_nationwide_endpoint_uses_camel_case(monkeypatch):
@@ -273,6 +293,7 @@ def test_nationwide_endpoint_uses_camel_case(monkeypatch):
     area = body["serviceAreas"][0]
     assert area["routeName"] == "경부선" and area["seqOrder"] == "desc"
     assert area["routeSeq"] == 12 and area["statusCounts"]["available"] == 1
+    assert (area["regionCode"], area["regionName"]) == ("44", "충청남도")
 
 
 def test_nationwide_chargers_requires_id():

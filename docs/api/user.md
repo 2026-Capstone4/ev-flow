@@ -380,6 +380,7 @@
 - 노선이 붙은 곳은 표준데이터 휴게소(방향별, 예: `기흥(부산)`)로 statId를 묶는다 — 매핑은 `backend/data/rest_area_routes.csv` ([database.md](../database.md) `service_area_stations`)
 - 노선을 못 붙인 곳(민자 노선 등)은 statId 하나씩 보내고 노선 필드는 모두 `null` — 화면에서 실시간 상태만 보여 준다
 - 순서: 노선 이름 → `routeSeq`, 노선 미확인은 맨 뒤
+- 지역별 화면은 같은 응답을 `regionName`으로 묶으면 된다 — 노선 미확인 휴게소도 지역은 있음
 
 **요청**: 파라미터 없음
 
@@ -402,6 +403,8 @@
       "routeSeq": 12,
       "seqOrder": "desc",
       "address": "충청남도 천안시 동남구 광덕면 …",
+      "regionCode": "44",
+      "regionName": "충청남도",
       "lat": 36.7965,
       "lng": 127.1286,
       "totalChargers": 6,
@@ -424,6 +427,7 @@
 | `bidirectional` | boolean | 양방향 휴게소 — 노선 화면의 두 방향 모두에 넣는다 |
 | `routeSeq` · `seqOrder` | number · string \| null | 노선 안 순서. 방향 버튼 쪽으로 갈 때 `seqOrder`가 `asc`면 `routeSeq`가 커지고 `desc`면 작아진다 |
 | `address` | string \| null | 대표 statId 주소 (5번과 같은 규칙) |
+| `regionCode` · `regionName` | string \| null | 시도 — 지역별 화면용. 충전기 API 시도 코드(`zcode`)와 이름. 주소의 시도 표기는 사업자마다 달라(`충북` · `충청북도`) 코드 기준. 2026-11 새 코드라 전남 · 광주는 `12` 전남광주통합특별시 하나, 강원 `51` · 전북 `52`. 표에 없는 코드면 `regionName`은 `null`. 노선 미확인 휴게소도 있음 |
 | `lat` · `lng` | number | 노선이 붙은 곳은 표준데이터 휴게소 좌표(충전기 좌표가 틀린 곳이 있음), 못 붙인 곳은 대표 statId 좌표 |
 
 노선 화면은 `routeName`이 같고 `heading`이 고른 방향이거나 `bidirectional`인 휴게소를 `routeSeq`로 정렬하면 된다 (`seqOrder`가 `desc`면 큰 순서부터).
@@ -448,7 +452,7 @@
   "dataQuality": "normal",
   "serviceArea": { "id": "천안호두(부산)", "name": "천안호두휴게소 (부산 방향)", "shortName": "천안호두휴게소", "routeName": "경부선", "routeNo": "1",
                    "heading": "부산", "towards": "부산", "bidirectional": false, "routeSeq": 12, "seqOrder": "desc",
-                   "address": "충청남도 천안시 동남구 광덕면 …", "lat": 36.7965, "lng": 127.1286,
+                   "address": "충청남도 천안시 동남구 광덕면 …", "regionCode": "44", "regionName": "충청남도", "lat": 36.7965, "lng": 127.1286,
                    "totalChargers": 6, "availableChargers": 5 },
   "chargers": [
     { "stationId": "ME21A209", "operator": "기후에너지환경부", "chargerId": "01", "status": "available",
