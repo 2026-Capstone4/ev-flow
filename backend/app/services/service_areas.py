@@ -36,8 +36,13 @@ def get_service_areas(db: Session) -> ServiceAreasResponse:
     updated_at = run.started_at
     now = datetime.now(UTC)
     states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
+    # direction이 있는 휴게소(천안 대조군)만 - 이미 배포한 앱은 up · down을 서울 · 부산 방향으로만 보여 주고
+    # 화면 문구도 '천안 구간'이라, 전국 휴게소를 섞으면 안 됨. direction이 빈 행은 아래 DIRECTIONS 변환도 실패함
     stations = db.scalars(
-        select(ServiceAreaStation).where(ServiceAreaStation.station_id.in_(list(states)))
+        select(ServiceAreaStation).where(
+            ServiceAreaStation.station_id.in_(list(states)),
+            ServiceAreaStation.direction.is_not(None),
+        )
     )
 
     # 사업자마다 statId가 달라 휴게소 · 방향 단위로 묶음
@@ -88,7 +93,7 @@ def get_service_area_chargers(
     run = latest_success_run(db, "service_area")
     updated_at = run.started_at
     now = datetime.now(UTC)
-    # 휴게소 전체가 27기라 지역 전체를 읽고 해당 statId만 고름
+    # 휴게소 전체(약 2,200기)를 읽고 해당 statId만 고름 - 한 번에 읽는 편이 statId마다 따로 읽는 것보다 단순함
     states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
     chargers = [
         ServiceAreaChargerDetail(**asdict(c), operator=s.operator)

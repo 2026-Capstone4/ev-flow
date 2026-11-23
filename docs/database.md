@@ -20,7 +20,7 @@
 | 구분 | 테이블 | 범위 | 용도 |
 |---|---|---|---|
 | 도심 | `city_stations` · `city_chargers` · `city_status_log` | 서울 마포구 급속 69개소 · 190기 (버스 전용 14기는 2026-11-16부터 수집 안 함 → 66개소 · 176기) | 예측 · 추천 대상 (버스 전용 제외 — [주의](#데이터-사용-시-주의)) |
-| 휴게소 | `service_area_stations` · `service_area_chargers` · `service_area_status_log` | 천안 경부선 휴게소 4곳 · 9 statId · 27기 | 대조군 — **학습 · 추천 대상 아님** |
+| 휴게소 | `service_area_stations` · `service_area_chargers` · `service_area_status_log` | 전국 고속도로 휴게소 594 statId · 2,214기 (2026-11-23 실측). 그중 천안 경부선 4곳 · 9 statId · 27기가 대조군 | 화면 표시용 + 대조군 — **학습 · 추천 대상 아님** |
 | 서울 | `live_stations` · `live_chargers` · `live_status_log` | 서울(마포 제외) 급속 약 1,561곳 · 3,562기 (버스형 제외) | 지도 실시간 표시만 — **예측 · 학습 대상 아님** ([아래](#서울-live_--실시간-표시용)) |
 | 공통 | `collection_runs` | 도심 · 휴게소 · 서울 수집 회차마다 1행 | 수집 성공 · 실패 · 결측 기록 (운영자 대시보드, 사용자 응답 `updatedAt`) |
 | 운영자 | `admin_users` | 운영자 계정 (스크립트로만 생성) | 운영자 화면 로그인 — 다른 테이블과 관계 없음 |
@@ -49,7 +49,7 @@ erDiagram
 
 ## 테이블
 
-### `*_stations` — 충전소 (도심 69행 · 휴게소 9행)
+### `*_stations` — 충전소 (도심 69행 · 휴게소 594행)
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
@@ -63,9 +63,9 @@ erDiagram
 | `mid_charger_count` | int | 같은 충전소의 중속(11~50kW) 개수 — 화면 표시용, 수집 대상 아님 |
 | `service_area_name` | varchar(50) | (휴게소만) 휴게소명 — 사업자마다 `name`이 달라 매핑으로 통일 |
 | `route` | varchar(20) | (휴게소만) 노선 (`경부`) |
-| `direction` | varchar(10) | (휴게소만) `상행` / `하행` |
+| `direction` | varchar(10) | (휴게소만) `상행` / `하행` — 천안 대조군만 채움. 기존 휴게소 API는 이 값이 있는 행만 돌려줌 |
 
-### `*_chargers` — 충전기 (도심 190행 · 휴게소 27행)
+### `*_chargers` — 충전기 (도심 190행 · 휴게소 2,214행)
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
@@ -97,7 +97,7 @@ erDiagram
 |---|---|---|
 | `id` | int PK | 일련번호 |
 | `target` | varchar(20) | `city` · `service_area` · `live` — 상태 로그 테이블 접두어 |
-| `zscode` | varchar(50) | 조회 지역 코드 (`11440` · `44130`, 서울은 시도 코드 `zcode` `11`) |
+| `zscode` | varchar(50) | 조회 지역 코드 (`11440`, 서울은 시도 코드 `zcode` `11`, 휴게소는 충전소 구분 `kind` `C0`. 2026-11-23 이전 휴게소 회차는 천안 `44130`) |
 | `started_at` | timestamptz | 수집 시작 시각. 소급 행은 그 회차의 `collected_at` |
 | `finished_at` | timestamptz | 수집 종료 시각 — 실행 중이거나 소급 행, 시작 때 정리한 중단 회차(아래 `FAILED`)면 NULL |
 | `status` | varchar(10) | `RUNNING` · `SUCCESS` · `PARTIAL` · `FAILED` (아래 표) |
@@ -264,8 +264,8 @@ AI 추천 모듈의 대기 예측이 과거 이력을 매번 읽지 않도록, �
 
 ## 수집 방식
 
-- **대상 선정**: `getChargerInfo`를 지역코드(`zscode`)로 조회 → 출력 50kW 이상 · 삭제 제외 · 이용제한 제외. 도심은 마포구(`11440`), 휴게소는 천안(`44130`) 중 `backend/data/rest_area_mapping.csv`에 매핑한 statId만.
-- **주기**: 5분마다 대상 충전기 전체를 한 회차로 저장 (도심 190행 + 휴게소 27행).
+- **대상 선정**: `getChargerInfo` 조회 → 출력 50kW 이상 · 삭제 제외 · 이용제한 제외. 도심은 마포구(`zscode` `11440`). 휴게소는 `kind=C0`(휴게시설) 중 고속도로 휴게소(`kindDetail` `C001`)이면서 이름에 '휴게'가 있는 것 — TG 주차장 · 임시주차장 제외. `scripts/import_rest_areas.py`로 채움. 대조군은 `backend/data/rest_area_mapping.csv`의 천안 9 statId로, 휴게소명 · 노선 · 방향을 이 CSV로 채운다.
+- **주기**: 5분마다 대상 충전기 전체를 한 회차로 저장 (도심 190행 + 휴게소 약 2,200행). 휴게소는 `kind=C0`로 Status · Info를 1,000건씩 받음 (9,999건 한 번에 받으면 504).
 - **실패 처리**: 회차마다 `collection_runs`에 1행. `getChargerStatus` 호출이 실패하면 `FAILED`로 남기고 그 회차 상태 로그는 쓰지 않는다 — 다음 회차 `period=10`이 빠진 구간의 변화를 받아옴 (UC-S01 E1 · ECR-004). 성공한 회차에서 응답에 없는 충전기는 "변화 없음"이라 직전 상태를 이어 쓴다.
 - **API**: 2026-10-03 19:16:03 KST부터 `getChargerStatus`(5분, 최근 변화분) + `getChargerInfo`(30분, 보정). 이전은 `getChargerInfo`만 사용 — [decisions.md](decisions.md) 참고.
 - **시작**: 2026-09-23 15:09 KST.
@@ -278,7 +278,7 @@ AI 추천 모듈의 대기 예측이 과거 이력을 매번 읽지 않도록, �
 - **`stat_upd_dt`**: 운영사에 따라 상태가 그대로여도 계속 갱신되는 값이라 상태 변경 시각으로 쓸 수 없다. 충전 구간은 `last_charge_start_dt` · `last_charge_end_dt` · `current_charge_start_dt` 기준.
 - **충전 시각 이상값**: 일부 운영사(ST 등)는 `last_charge_start_dt`가 갱신되지 않아 시작~종료가 수십~수백 시간으로 나온다. 세션 길이를 계산할 때는 상한을 두거나 `stat` 변화로 구간을 잡는다.
 - **2026-09-23 ~ 2026-10-03 19:16 구간 `stat`**: 복원값 — [decisions.md](decisions.md) 2026-10-22 항목 참고.
-- **휴게소 테이블은 대조군**이므로 학습 · 추천에 섞지 않는다.
+- **휴게소 테이블은 학습 · 추천에 섞지 않는다.** AI 팀 추출본(`scripts/export_dataset.py`)의 휴게소는 천안 대조군 9 statId만 내보낸다.
 - **상태가 불안정한 충전기**: 기후에너지환경부 6개소 17기(`ME19A245-21·22`, `ME19A246-21·22`, `ME19A265-21·22`, `ME19A601-21~26`, `ME21B180-01`, `ME21B412-01~04`)는 원천 데이터 문제로 30분마다 `2`↔`9`를 반복한다. 그 사이에도 충전 세션이 있어 고장으로 보지 않는다. `ME19A265-21` · `ME19A601-21·22`는 2026-11-07 추가 — 2026-10-08 ~ 11-07 `2`↔`9` 전환 481 · 289 · 289회 (기존 14기 669 ~ 1,346회, 나머지 충전기 최대 67회). 목록은 `backend/app/services/status.py`의 `UNSTABLE_CHARGERS` 한 곳에서 관리 — API 응답 `unstable`과 추출본 `data_flag`가 같이 씀
 - **버스 전용 충전기**: `charger_type = '11'`인 도심 14기(`PK000186` 12기, `JA110208-01`, `JA110211-01`)는 버스 차고지 충전기라 **예측 · 추천 · 학습 대상에서 제외**한다. 2026-10-25 ~ 11-16에는 수집은 계속했고, **2026-11-16 collector부터는 수집도 하지 않는다** — 그 뒤로 이 14기의 로그가 없다 ([decisions.md](decisions.md) 2026-11-16 항목). 충전기 행 · 지난 로그는 남겨 둠. 대상 충전기는 `city_chargers` 중 `charger_type <> '11'`인 66개소 · 176기.
 - **결측 회차 (`collection_runs` 도입 이후)**: Status 호출이 실패한 회차는 상태 로그가 없어 5분 격자에 빈칸이 생긴다. 빈칸이 결측인지는 `collection_runs.status = 'FAILED'`로 확인한다. 도입 시점은 `is_backfilled = false`인 첫 행의 `started_at`.

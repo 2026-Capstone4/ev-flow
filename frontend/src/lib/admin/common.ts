@@ -17,7 +17,7 @@ export const DISTRICT_OPTIONS: Record<
   ],
   service_area: [
     { value: 'all', label: '전체' },
-    { value: '44130', label: '천안' },
+    { value: 'C0', label: '전국 고속도로' },
   ],
 }
 

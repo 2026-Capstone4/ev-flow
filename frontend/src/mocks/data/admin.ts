@@ -169,7 +169,7 @@ export function buildCollectionTargets(region: AdminRegion, now: Date): Collecti
     {
       // 휴게소는 마지막 실행이 일부만 저장된 상태로 둠 (일부 실패 표시 확인용)
       target: 'service_area',
-      zscode: '44130',
+      zscode: 'C0',
       lastRunAt: minutesAgo(1),
       lastStatus: 'partial',
       lastSuccessAt: minutesAgo(6),

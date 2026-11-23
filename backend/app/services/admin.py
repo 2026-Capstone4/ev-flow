@@ -45,7 +45,7 @@ TARGETS = {
     "service_area": (ServiceAreaStation, ServiceAreaCharger, ServiceAreaStatusLog),
 }
 # 수집 기록이 하나도 없을 때만 씀 - collector JOBS와 같음
-DEFAULT_ZSCODES = {"city": "11440", "service_area": "44130"}
+DEFAULT_ZSCODES = {"city": "11440", "service_area": "C0"}
 
 SAVED_RUN_STATUSES = ("SUCCESS", "PARTIAL")  # 상태 로그를 저장한 회차
 CHARGING_STATS = tuple(s for s, v in STAT_TO_STATUS.items() if v == "charging")  # 3 · 6
