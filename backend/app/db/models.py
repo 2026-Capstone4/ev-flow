@@ -145,7 +145,21 @@ class ServiceAreaStation(StationColumns, Base):
         String(50)
     )  # 휴게소명 - 사업자마다 statNm이 달라 매핑 CSV 기준으로 통일
     route = Column(String(20))  # 노선 (예: 경부)
-    direction = Column(String(10))  # 상행 / 하행
+    direction = Column(
+        String(10)
+    )  # 상행 / 하행 - 천안 대조군만. 옛 앱 휴게소 API가 이 값이 있는 행만 씀
+
+    # 노선별 휴게소 화면용 - data/rest_area_routes.csv(전국휴게소정보표준데이터 매핑). 노선을 못 붙인 곳은 모두 NULL
+    rest_area = Column(String(50))  # 방향별 휴게소명 (예: 기흥(부산))
+    route_name = Column(
+        String(30)
+    )  # 노선명 (예: 경부선) - 번호 하나에 노선이 여럿이라 이름으로 묶음
+    route_no = Column(String(10))  # 노선 번호 (예: 1)
+    towards = Column(String(20))  # 이름의 목적지 도시 (예: 부산)
+    heading = Column(String(20))  # 방향 버튼 - 노선 끝 도시. 양방향 휴게소는 NULL
+    bidirectional = Column(Boolean)  # 양방향 휴게소 - 두 방향 모두에 보여 줌
+    route_seq = Column(Integer)  # 노선 안 순서 (남북 · 동서 중 긴 축 기준)
+    seq_order = Column(String(4))  # heading 쪽으로 갈 때 route_seq가 커지면 asc, 작아지면 desc
 
     chargers = relationship("ServiceAreaCharger", back_populates="station")
 
