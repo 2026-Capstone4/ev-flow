@@ -32,6 +32,8 @@ const config: ExpoConfig = {
     appleTeamId: process.env.APPLE_TEAM_ID || undefined,
     supportsTablet: false,
     infoPlist: {
+      // 설치했을 때 홈 화면 아이콘 아래 이름. name(EV-flow)은 ios 폴더 · 프로젝트 이름(EVflow)에 쓰여서 그대로 두고 표시 이름만 바꿈
+      CFBundleDisplayName: 'EV Flow',
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
       LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
     },
