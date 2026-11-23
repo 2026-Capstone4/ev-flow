@@ -10,3 +10,4 @@ __pycache__/
 data/*.csv
 !data/mapo_fast_chargers.csv
 !data/rest_area_mapping.csv
+!data/rest_area_routes.csv

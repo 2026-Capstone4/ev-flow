@@ -11,6 +11,18 @@ from app.db.session import SessionLocal
 # 천안 대조군 9 statId - 휴게소명 · 노선 · 방향(상행/하행)을 이 CSV로 채움.
 # 옛 앱 · 기존 휴게소 API는 direction이 있는 행만 보여 주므로 여기 있는 휴게소만 보임
 MAPPING_PATH = Path(__file__).resolve().parent.parent / "data" / "rest_area_mapping.csv"
+# 전국 휴게소 노선 · 방향 · 길 순서 - scripts/build_rest_area_routes.py 결과
+ROUTES_PATH = Path(__file__).resolve().parent.parent / "data" / "rest_area_routes.csv"
+ROUTE_COLUMNS = (
+    "rest_area",
+    "route_name",
+    "route_no",
+    "towards",
+    "heading",
+    "bidirectional",
+    "route_seq",
+    "seq_order",
+)
 KIND = "C0"  # 휴게시설 전체 (C001 고속도로 휴게소 · C002 지방도로 휴게소 · C003 쉼터)
 KIND_DETAIL = "C001"  # 고속도로 휴게소
 PAGE_SIZE = 1000  # kind=C0 약 2,700건 - 9,999건 한 번에 받으면 504 (11/23 실측)
@@ -47,10 +59,28 @@ def is_target(item: dict, control_ids: set[str]) -> bool:
     return item.get("kindDetail") == KIND_DETAIL and "휴게" in (item.get("statNm") or "")
 
 
+def route_fields(row: dict | None) -> dict:
+    """rest_area_routes.csv 한 줄 → 노선 컬럼 값 - 노선을 못 붙인 곳(민자 등)은 모두 None"""
+    if not row or not row["route_name"]:
+        return dict.fromkeys(ROUTE_COLUMNS)
+    return {
+        "rest_area": row["rest_area"],
+        "route_name": row["route_name"],
+        "route_no": row["route_no"] or None,
+        "towards": row["towards"] or None,
+        "heading": row["heading"] or None,
+        "bidirectional": row["bidirectional"] == "Y",
+        "route_seq": int(row["route_seq"]),
+        "seq_order": row["seq_order"] or None,
+    }
+
+
 def import_rest_areas():
     with open(MAPPING_PATH, encoding="utf-8-sig") as f:
         mapping = {row["statId"]: row for row in csv.DictReader(f)}
     control_ids = set(mapping)
+    with open(ROUTES_PATH, encoding="utf-8") as f:
+        routes = {row["station_id"]: row for row in csv.DictReader(f)}
 
     targets = [i for i in fetch() if is_target(i, control_ids)]
 
@@ -78,6 +108,9 @@ def import_rest_areas():
                     station.service_area_name = mapping[station_id]["rest_area"]
                     station.route = mapping[station_id]["route"]
                     station.direction = mapping[station_id]["direction"]
+                # CSV에 없는 statId(매핑 뒤 새로 생긴 충전소)는 노선 없음 - 화면에서 실시간 상태만
+                for column, value in route_fields(routes.get(station_id)).items():
+                    setattr(station, column, value)
                 db.add(station)
 
             charger_id = item["chgerId"]
@@ -91,6 +124,8 @@ def import_rest_areas():
 
         db.commit()
         print(f"휴게소 {len(seen_stations)}개 statId, 충전기 {len(targets)}기 저장 완료")
+        with_route = sum(1 for sid in seen_stations if route_fields(routes.get(sid))["route_name"])
+        print(f"노선 붙은 statId {with_route}개 - 나머지는 노선 미확인")
 
         missing = control_ids - seen_stations
         if missing:
