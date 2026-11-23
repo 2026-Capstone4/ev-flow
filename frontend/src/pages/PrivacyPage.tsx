@@ -5,9 +5,6 @@ import { OPERATOR_NAME, SERVICE_NAME, SUPPORT_EMAIL, SUPPORT_PATH } from '@/lib/
 /** 시행일. 내용을 바꿔 다시 배포하면 이 날짜도 바꿈 */
 const EFFECTIVE_DATE = '2026년 11월 23일'
 
-/** 지도 SDK가 네이버 서버에 무엇을 보내는지는 우리가 정하지 않으므로 네이버 방침으로 안내함 */
-const NAVER_PRIVACY_URL = 'https://policy.naver.com/policy/privacy.html'
-
 const LIST_CLASS = 'flex list-disc flex-col gap-1.5 pl-5'
 
 /**
@@ -108,20 +105,11 @@ export function PrivacyPage() {
             계산해요.
           </li>
           <li>
-            <b>네이버(지도 표시)</b>: 앱 · 웹의 지도는 네이버 지도를 불러와 그려요.
+            <b>네이버클라우드(지도 표시)</b>: 앱 · 웹의 지도는 네이버클라우드 지도 서비스로 그려요.
             <br />
-            이때 기기가 네이버 서버에 접속하지만, 저희가 위치를 네이버에 보내지는 않아요.
+            지도를 불러올 때 기기가 네이버클라우드 서버에 접속해요.
             <br />
-            지도 서비스가 처리하는 정보는{' '}
-            <a
-              href={NAVER_PRIVACY_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand-primary underline"
-            >
-              네이버 개인정보처리방침
-            </a>
-            을 확인해 주세요.
+            저희가 위치를 네이버클라우드에 보내지는 않아요.
           </li>
           <li>
             <b>Amazon Web Services(서울 리전)</b>: 서비스 서버와 접속 기록을 보관하는 서버
