@@ -19,8 +19,9 @@ const TAB_ICON: Partial<Record<string, LucideIcon>> = {
 /** 웹 BottomTab과 같은 글자 하단 탭 + 오른쪽 끝 더보기 아이콘. 아래 여백은 홈 표시줄 높이만큼 둠 */
 export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
   return (
+    // 왼쪽에도 아이콘 탭 폭(w-16)만큼 여백을 둬서, 글자 탭 두 개가 화면 가운데를 기준으로 좌우 대칭이 되게 함
     <View
-      className="flex-row border-t border-border-default bg-bg-page"
+      className="flex-row border-t border-border-default bg-bg-page pl-16"
       style={{ height: 48 + insets.bottom, paddingBottom: insets.bottom }}
     >
       {state.routes.map((route, index) => {
