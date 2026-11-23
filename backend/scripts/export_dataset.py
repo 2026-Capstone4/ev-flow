@@ -1,4 +1,5 @@
 import argparse
+import csv
 import gzip
 import sys
 from pathlib import Path
@@ -9,7 +10,8 @@ from app.services.status import UNSTABLE_CHARGERS
 from scripts.restore_pre_switch import SWITCH_AT, get_engine
 
 # AI 팀 전달용 데이터 추출 - 테이블별 CSV(상태 기록은 gzip)로 저장함 (AI-05)
-# 도심은 예측·추천 대상만(버스 전용 chgerType 11 제외), 휴게소는 대조군이라 그대로 내보냄.
+# 도심은 예측·추천 대상만(버스 전용 chgerType 11 제외), 휴게소는 대조군(천안 9 statId)만 내보냄 -
+# 휴게소 수집을 전국으로 넓혀도(11/23) 전달하는 데이터셋 범위는 그대로 둠.
 # 원래 컬럼에 is_restored·is_failed_cycle(상태 기록)·data_flag(충전기)만 추가 - 컬럼 설명은 docs/database.md
 # 시각은 모두 UTC(+00) - 피처 생성 시 KST로 변환 (BE-09)
 BUS_ONLY_TYPE = "11"
@@ -18,11 +20,20 @@ ALWAYS_DOWN_RATIO = (
 )
 DOWN_STATS = ("1", "4", "5", "9")
 PREFIXES = ["city", "service_area"]
+CONTROL_MAPPING_PATH = Path(__file__).resolve().parent.parent / "data" / "rest_area_mapping.csv"
+
+
+def control_station_ids() -> list[str]:
+    """휴게소 대조군 statId - import_rest_areas.py가 휴게소명 · 방향을 채우는 목록과 같음"""
+    with open(CONTROL_MAPPING_PATH, encoding="utf-8-sig") as f:
+        return sorted({row["statId"] for row in csv.DictReader(f)})
 
 
 def target_filter(prefix: str) -> str:
-    # 도심만 버스 전용 제외 - 휴게소엔 해당 타입이 없음
-    return f"c.charger_type <> '{BUS_ONLY_TYPE}'" if prefix == "city" else "true"
+    # 도심은 버스 전용 제외(휴게소엔 해당 타입이 없음), 휴게소는 대조군만
+    if prefix == "city":
+        return f"c.charger_type <> '{BUS_ONLY_TYPE}'"
+    return "c.station_id = any(%(control_ids)s)"
 
 
 def queries(prefix: str) -> dict[str, str]:
@@ -71,6 +82,7 @@ def export(db_name: str | None, out_dir: str):
         "down_ratio": ALWAYS_DOWN_RATIO,
         "down_stats": list(DOWN_STATS),
         "switch_at": SWITCH_AT,
+        "control_ids": control_station_ids(),
     }
     raw = get_engine(db_name).raw_connection()  # COPY로 대량 행을 바로 파일에 씀
     try:

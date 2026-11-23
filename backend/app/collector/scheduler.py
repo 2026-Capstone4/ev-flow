@@ -31,20 +31,27 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # 5분마다 getChargerStatus(최근 변화분)로 상태를 갱신하고, 30분마다 getChargerInfo(전체 스냅샷)로 놓친 변화를 보정함.
 # getChargerInfo 상태값은 원천이 약 30분 배치라 그것만 5분마다 부르면 같은 값이 6번 반복 저장됨 (2026-10-02 실측)
-PAGE_SIZE = 9999  # 천안 Info 7,362건 - 2000이면 잘림
+PAGE_SIZE = 9999  # 기본 페이지 크기 - 잡마다 page_size로 바꿀 수 있음
 CYCLE_MIN = 5
 STATUS_PERIOD_MIN = (
     10  # 수집 주기의 2배 - 한 회차가 실패해도 다음 회차가 그 구간을 덮음 (API 최대 10)
 )
 INFO_EVERY_CYCLES = 6  # 5분 × 6 = 30분. 원천이 30분 배치라 더 자주 불러도 새 값이 없음
 
-# (조회 지역, 충전기 모델, 로그 모델, 옵션) - 마포구는 예측·추천 대상, 천안 휴게소는 대조군, 서울은 화면 표시용이라 테이블이 분리돼 있음.
+# (조회 지역, 충전기 모델, 로그 모델, 옵션) - 마포구는 예측·추천 대상, 휴게소는 화면 표시용(천안 9 statId는 대조군), 서울은 화면 표시용이라 테이블이 분리돼 있음.
 # 지역마다 잡 하나 - Status 호출이 실패하면 그 잡의 회차 전체를 결측으로 기록함
-# 하루 호출 수 = 마포 · 천안 672건 + 서울 Status 288 · Info 약 8콜×48 ≈ 672건 - 운영계정 한도는 기능별 100,000건.
+# 하루 호출 수 = 마포 336건 + 휴게소 Status 288 · Info 3콜×48 = 432건 + 서울 Status 288 · Info 약 8콜×48 ≈ 672건 - 운영계정 한도는 기능별 100,000건.
 # 마포는 서울 Status(zcode=11)로 함께 받을 수 있지만 따로 부름 - 회차 기록 · 학습 데이터 형식을 흔들지 않기 위함
 JOBS = [
     ({"zscode": "11440"}, CityCharger, CityStatusLog, {}),  # 마포구 급속 (버스전용 제외)
-    ({"zscode": "44130"}, ServiceAreaCharger, ServiceAreaStatusLog, {}),  # 천안 휴게소
+    # 전국 고속도로 휴게소 - 지역 코드 대신 kind=C0(휴게시설 전체)로 받아 service_area_chargers에 있는 대상만 반영.
+    # Info를 9,999건 한 번에 받으면 504가 나서(11/23 실측) 1,000건씩 약 3페이지 · 페이지당 재시도 2회 · 3분 상한
+    (
+        {"kind": "C0"},
+        ServiceAreaCharger,
+        ServiceAreaStatusLog,
+        {"page_size": 1000, "info_retries": 2, "info_deadline_sec": 180},
+    ),
     # 서울(마포 · 버스형 제외) - 서울 전체를 받아 live_chargers에 있는 대상만 반영. 화면 표시용, 예측 안 함.
     # Info가 약 8페이지라 페이지당 재시도 2회(콜당 타임아웃 약 16%, 11/15 실측) · 전체 3분 상한 - Status와 합쳐 5분 안에 끝남
     ({"zcode": "11"}, LiveCharger, LiveStatusLog, {"info_retries": 2, "info_deadline_sec": 180}),
@@ -70,13 +77,13 @@ def collection_targets(chargers) -> set[tuple[str, str]]:
     }
 
 
-def fetch_all(fetch, area: dict, **params) -> list[dict]:
+def fetch_all(fetch, area: dict, page_size: int = PAGE_SIZE, **params) -> list[dict]:
     all_items = []
     page_no = 1
     while True:
-        items = fetch(page_no=page_no, num_of_rows=PAGE_SIZE, **area, **params)
+        items = fetch(page_no=page_no, num_of_rows=page_size, **area, **params)
         all_items.extend(items)
-        if len(items) < PAGE_SIZE:
+        if len(items) < page_size:
             return all_items
         page_no += 1
 
@@ -86,19 +93,22 @@ class RegionCollector:
 
     def __init__(
         self,
-        area: dict,  # {"zscode": "11440"} 또는 {"zcode": "11"}
+        area: dict,  # {"zscode": "11440"} · {"zcode": "11"} · {"kind": "C0"}
         charger_model,
         log_model,
         info_retries: int = MAX_RETRIES,
         info_deadline_sec: float
         | None = None,  # Info 전체 상한 - 없으면 페이지마다 30초 × 재시도만
+        page_size: int = PAGE_SIZE,
     ):
         self.area = area
         self.charger_model = charger_model
         self.log_model = log_model
         self.info_retries = info_retries
         self.info_deadline_sec = info_deadline_sec
-        self.label = next(iter(area.values()))  # collection_runs.zscode에 남김 (서울은 zcode "11")
+        self.page_size = page_size
+        # collection_runs.zscode에 남김 (서울은 zcode "11", 휴게소는 kind "C0")
+        self.label = next(iter(area.values()))
         self.target = log_model.__tablename__.removesuffix(
             "_status_log"
         )  # city / service_area / live
@@ -156,7 +166,7 @@ class RegionCollector:
     def fetch_and_apply(self, fetch, targets: set, **params) -> tuple[int, str | None]:
         """(stat이 바뀐 충전기 수, 실패 내용 - 성공하면 None)"""
         try:
-            items = fetch_all(fetch, self.area, **params)
+            items = fetch_all(fetch, self.area, self.page_size, **params)
         except Exception as e:
             logger.exception("%s 조회 실패 [%s] - 이번 사이클 건너뜀", fetch.__name__, self.label)
             return 0, f"{fetch.__name__} [{self.label}] {type(e).__name__}: {e}"

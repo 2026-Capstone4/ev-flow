@@ -2,12 +2,16 @@ from collections import Counter
 from dataclasses import asdict
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
 from app.db.models import ServiceAreaCharger, ServiceAreaStation, ServiceAreaStatusLog
 from app.schemas.service_area import (
+    NationwideServiceArea,
+    NationwideServiceAreaChargersResponse,
+    NationwideServiceAreasResponse,
+    NationwideServiceAreaSummary,
     ServiceArea,
     ServiceAreaChargerDetail,
     ServiceAreaChargersResponse,
@@ -36,8 +40,13 @@ def get_service_areas(db: Session) -> ServiceAreasResponse:
     updated_at = run.started_at
     now = datetime.now(UTC)
     states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
+    # direction이 있는 휴게소(천안 대조군)만 - 이미 배포한 앱은 up · down을 서울 · 부산 방향으로만 보여 주고
+    # 화면 문구도 '천안 구간'이라, 전국 휴게소를 섞으면 안 됨. direction이 빈 행은 아래 DIRECTIONS 변환도 실패함
     stations = db.scalars(
-        select(ServiceAreaStation).where(ServiceAreaStation.station_id.in_(list(states)))
+        select(ServiceAreaStation).where(
+            ServiceAreaStation.station_id.in_(list(states)),
+            ServiceAreaStation.direction.is_not(None),
+        )
     )
 
     # 사업자마다 statId가 달라 휴게소 · 방향 단위로 묶음
@@ -88,7 +97,7 @@ def get_service_area_chargers(
     run = latest_success_run(db, "service_area")
     updated_at = run.started_at
     now = datetime.now(UTC)
-    # 휴게소 전체가 27기라 지역 전체를 읽고 해당 statId만 고름
+    # 휴게소 전체(약 2,200기)를 읽고 해당 statId만 고름 - 한 번에 읽는 편이 statId마다 따로 읽는 것보다 단순함
     states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
     chargers = [
         ServiceAreaChargerDetail(**asdict(c), operator=s.operator)
@@ -111,5 +120,115 @@ def get_service_area_chargers(
             total_chargers=len(chargers),
             available_chargers=sum(c.status == "available" for c in chargers),
         ),
+        chargers=chargers,
+    )
+
+
+# --- 전국 휴게소 (2026-11-24, 노선별 화면용) ---
+
+
+def area_id(s: ServiceAreaStation) -> str:
+    """전국 휴게소 묶음 - 노선이 붙은 곳은 표준데이터 휴게소명(사업자마다 다른 statId를 묶음), 못 붙인 곳은 statId 하나씩"""
+    return s.rest_area or s.station_id
+
+
+def nationwide_summary(
+    group: list[ServiceAreaStation], states: dict[str, list[ChargerState]]
+) -> NationwideServiceAreaSummary:
+    rep = representative(group, states)
+    chargers = [c for s in group for c in states.get(s.station_id, [])]
+    # 표준데이터 휴게소 좌표 우선 - 충전기 좌표가 틀린 곳이 있음(강천산 222km)
+    has_area_coords = rep.rest_area_lat is not None and rep.rest_area_lng is not None
+    return NationwideServiceAreaSummary(
+        id=area_id(rep),
+        name=rep.rest_area or rep.name or rep.station_id,
+        route_name=rep.route_name,
+        route_no=rep.route_no,
+        heading=rep.heading,
+        towards=rep.towards,
+        bidirectional=bool(rep.bidirectional),
+        route_seq=rep.route_seq,
+        seq_order=rep.seq_order,
+        address=rep.addr or None,
+        lat=rep.rest_area_lat if has_area_coords else rep.lat,
+        lng=rep.rest_area_lng if has_area_coords else rep.lng,
+        total_chargers=len(chargers),
+        available_chargers=sum(c.status == "available" for c in chargers),
+    )
+
+
+def nationwide_areas(
+    stations: list[ServiceAreaStation],
+    states: dict[str, list[ChargerState]],
+    updated_at: datetime,
+    now: datetime,
+) -> list[NationwideServiceArea]:
+    """충전소를 휴게소로 묶음 - 노선 이름 · 노선 안 순서대로, 노선을 못 붙인 곳은 맨 뒤"""
+    groups: dict[str, list[ServiceAreaStation]] = {}
+    for s in stations:
+        if states.get(s.station_id):
+            groups.setdefault(area_id(s), []).append(s)
+
+    areas = []
+    for group in groups.values():
+        statuses = [c.status for s in group for c in states[s.station_id]]
+        counts = Counter(statuses)
+        areas.append(
+            NationwideServiceArea(
+                **nationwide_summary(group, states).model_dump(),
+                status_counts=StatusCounts(
+                    **{status: counts[status] for status in StatusCounts.model_fields}
+                ),
+                data_quality=station_quality(statuses, updated_at, now),
+            )
+        )
+    return sorted(
+        areas, key=lambda a: (a.route_name is None, a.route_name or "", a.route_seq or 0, a.name)
+    )
+
+
+def get_nationwide_service_areas(db: Session) -> NationwideServiceAreasResponse:
+    run = latest_success_run(db, "service_area")
+    now = datetime.now(UTC)
+    states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
+    stations = db.scalars(
+        select(ServiceAreaStation).where(ServiceAreaStation.station_id.in_(list(states)))
+    ).all()
+    return NationwideServiceAreasResponse(
+        updated_at=run.started_at,
+        data_quality=elapsed_quality(run.started_at, now),
+        service_areas=nationwide_areas(stations, states, run.started_at, now),
+    )
+
+
+def get_nationwide_service_area_chargers(
+    db: Session, id: str
+) -> NationwideServiceAreaChargersResponse:
+    # 노선이 붙은 곳은 휴게소명, 못 붙인 곳은 statId - area_id와 같은 규칙
+    stations = db.scalars(
+        select(ServiceAreaStation)
+        .where(
+            or_(
+                ServiceAreaStation.rest_area == id,
+                (ServiceAreaStation.rest_area.is_(None)) & (ServiceAreaStation.station_id == id),
+            )
+        )
+        .order_by(ServiceAreaStation.station_id)
+    ).all()
+    run = latest_success_run(db, "service_area")
+    now = datetime.now(UTC)
+    states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
+    stations = [s for s in stations if states.get(s.station_id)]
+    if not stations:
+        raise ApiError(404, "SERVICE_AREA_NOT_FOUND", "휴게소를 찾을 수 없습니다.")
+    chargers = [
+        ServiceAreaChargerDetail(**asdict(c), operator=s.operator)
+        for s in stations
+        for c in states[s.station_id]
+    ]
+    return NationwideServiceAreaChargersResponse(
+        updated_at=run.started_at,
+        data_quality=elapsed_quality(run.started_at, now),
+        service_area=nationwide_summary(stations, states),
         chargers=chargers,
     )

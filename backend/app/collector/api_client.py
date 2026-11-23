@@ -19,15 +19,15 @@ REQUEST_TIMEOUT_SEC = 30
 # 타임아웃 · 504만 1회 재시도함 - 11/1~11/9 실패가 이 둘뿐이고(Status 실패율 16.5%) 둘 다 응답 30초 언저리의
 # 같은 현상(게이트웨이 한도와 타임아웃의 경합)이라 바로 다시 부르면 통하는 경우가 있음.
 # 그 외 4xx · 5xx · 연결 오류는 다시 불러도 같은 결과라 재시도하지 않음.
-# 하루 한도는 운영계정(2026-11-15 승인) 기준 기능별 100,000건 - 정상 호출은 마포 · 천안 672건 + 서울 672건이라 여유가 큼.
-# 재시도 횟수는 호출부가 정함: 마포 · 천안은 1회(아래 기본값, 11/10 결정 그대로), 서울 Info는 페이지당 2회
+# 하루 한도는 운영계정(2026-11-15 승인) 기준 기능별 100,000건 - 정상 호출은 마포 336건 + 휴게소 432건 + 서울 672건이라 여유가 큼.
+# 재시도 횟수는 호출부가 정함: 마포는 1회(아래 기본값, 11/10 결정 그대로), 서울 · 휴게소 Info는 페이지당 2회
 MAX_RETRIES = 1
 
 logger = logging.getLogger(__name__)
 
-# 하루 요약 알림용 재시도 횟수 (INF-09) - (조회 지역 zscode · zcode, "retried" · "recovered") → 횟수.
+# 하루 요약 알림용 재시도 횟수 (INF-09) - (조회 지역 zscode · zcode · kind, "retried" · "recovered") → 횟수.
 # 조회 지역 코드는 collection_runs.zscode와 같은 값이라 요약이 회차 기록과 이 코드로 맞춤.
-# 지금 수집 잡 셋(11440 · 44130 · 11)은 코드가 모두 달라 섞이지 않음 - 같은 코드로 잡을 하나 더 만들면 키에 target을 넣어야 함
+# 지금 수집 잡 셋(11440 · C0 · 11)은 코드가 모두 달라 섞이지 않음 - 같은 코드로 잡을 하나 더 만들면 키에 target을 넣어야 함
 # retried: 다시 부른 횟수, recovered: 다시 불러 성공한 호출 수. 프로세스 메모리라 collector 재시작 때 0부터.
 # 수집 잡이 스레드마다 돌아서 잠금을 씀
 _retry_stats: Counter = Counter()
@@ -77,7 +77,8 @@ def _fetch_items(
     # httpx 예외 메시지에는 serviceKey가 든 요청 URL이 평문으로 들어감 - 호출부의 logger.exception으로
     # 로그에 남지 않도록 원래 예외를 버리고(from None) 엔드포인트 이름 · 상태 코드만 남김
     name = url.rsplit("/", 1)[-1]
-    area = str(params.get("zscode") or params.get("zcode") or "")
+    # 휴게소는 지역 대신 충전소 구분(kind=C0 휴게시설)으로 받음 - 그 값을 조회 지역 코드로 씀
+    area = str(params.get("zscode") or params.get("zcode") or params.get("kind") or "")
     for attempt in range(1 + max_retries):
         timeout = REQUEST_TIMEOUT_SEC
         # deadline(time.monotonic 기준)이 있으면 요청 타임아웃을 남은 시간으로 줄임 - 상한 직전에 시작한 요청이 30초를 넘기지 않게
@@ -118,6 +119,7 @@ def get_charger_info(
     num_of_rows: int = 100,
     zcode: str | None = None,
     zscode: str | None = None,
+    kind: str | None = None,
     max_retries: int = MAX_RETRIES,
     deadline: float | None = None,
 ) -> list[dict]:
@@ -126,6 +128,8 @@ def get_charger_info(
         params["zcode"] = zcode
     if zscode:
         params["zscode"] = zscode
+    if kind:
+        params["kind"] = kind
     return _fetch_items(INFO_URL, params, max_retries, deadline)
 
 
@@ -135,6 +139,7 @@ def get_charger_status(
     num_of_rows: int = 100,
     zcode: str | None = None,
     zscode: str | None = None,
+    kind: str | None = None,
     max_retries: int = MAX_RETRIES,
     deadline: float | None = None,
 ) -> list[dict]:
@@ -145,4 +150,6 @@ def get_charger_status(
         params["zcode"] = zcode
     if zscode:
         params["zscode"] = zscode
+    if kind:
+        params["kind"] = kind
     return _fetch_items(STATUS_URL, params, max_retries, deadline)

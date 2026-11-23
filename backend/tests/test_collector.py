@@ -23,7 +23,14 @@ from app.collector.scheduler import (  # noqa: E402
     collection_targets,
     fetch_all,
 )
-from app.db.models import CityCharger, CityStatusLog, LiveCharger, LiveStatusLog  # noqa: E402
+from app.db.models import (  # noqa: E402
+    CityCharger,
+    CityStatusLog,
+    LiveCharger,
+    LiveStatusLog,
+    ServiceAreaCharger,
+    ServiceAreaStatusLog,
+)
 
 
 def charger(sid, cid, ctype):
@@ -62,6 +69,30 @@ def test_jobs_seoul_uses_zcode_and_longer_info_retries():
     assert (c.target, c.label) == ("live", "11")
     mapo = RegionCollector({"zscode": "11440"}, CityCharger, CityStatusLog)
     assert (mapo.target, mapo.label, mapo.info_retries) == ("city", "11440", api_client.MAX_RETRIES)
+
+
+def test_fetch_all_uses_given_page_size():
+    calls = []
+
+    def fetch(**kwargs):
+        calls.append(kwargs)
+        return [{}] * (1000 if kwargs["page_no"] < 3 else 732)
+
+    items = fetch_all(fetch, {"kind": "C0"}, 1000, period=10)
+    assert len(items) == 2732
+    assert [(c["page_no"], c["num_of_rows"], c["kind"]) for c in calls] == [
+        (1, 1000, "C0"),
+        (2, 1000, "C0"),
+        (3, 1000, "C0"),
+    ]
+
+
+def test_jobs_service_area_uses_kind_c0_with_small_pages():
+    # 전국 휴게소 (11/23) - 9,999건 한 번에 받으면 504라 1,000건씩
+    job = next(j for j in JOBS if j[1] is ServiceAreaCharger)
+    assert job[0] == {"kind": "C0"} and job[2] is ServiceAreaStatusLog
+    c = RegionCollector(*job[:3], **job[3])
+    assert (c.target, c.label, c.page_size, c.info_retries) == ("service_area", "C0", 1000, 2)
 
 
 def test_fetch_and_apply_failure_keeps_error_format():
@@ -342,6 +373,8 @@ def test_retry_stats_count_retries_and_recoveries(fake_get):
         api_client.get_charger_status(zscode="11440")
     fake_get([timeout, timeout, ok_response()])
     api_client.get_charger_info(zcode="11", max_retries=2)
+    fake_get([timeout, ok_response()])
+    api_client.get_charger_status(kind="C0")
     stats = api_client.take_retry_stats()
     # 다시 부른 횟수 · 다시 불러 성공한 호출 수 - 조회 지역 코드별
     assert stats == {
@@ -349,6 +382,9 @@ def test_retry_stats_count_retries_and_recoveries(fake_get):
         ("11440", "recovered"): 1,
         ("11", "retried"): 2,
         ("11", "recovered"): 1,
+        # 휴게소는 지역 코드 대신 kind - collection_runs.zscode와 같은 값
+        ("C0", "retried"): 1,
+        ("C0", "recovered"): 1,
     }
     assert api_client.take_retry_stats() == {}  # 가져가면 0부터
 
