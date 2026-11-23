@@ -117,7 +117,7 @@
 
 ### PR 검사 (CI) — ✅
 
-`CI-01` 이관 (FE 2026-11-07 · BE 2026-11-08). 설정 파일: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — 레포 전체 워크플로 하나에 파트별 job을 둠
+`CI-01` 이관 (FE 2026-11-07 · BE 2026-11-08, ruleset 필수 체크 `ci-result` 적용 2026-11-23). 설정 파일: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — 레포 전체 워크플로 하나에 파트별 job을 둠
 
 | 결정 | 이유 |
 |---|---|
@@ -153,11 +153,15 @@
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 | 장승민 |
 | Docker Compose 서비스 구성 | ✅ `nginx`, `postgres`, `redis`, `api`, `collector`, `ml` 6개 — collector는 API와 같은 이미지를 쓰되 별도 컨테이너로 분리해 API 재배포 중에도 수집이 끊기지 않게 함. ml은 예측 서빙 전용 컨테이너로 분리(collector만 호출, Redis 쓰기도 collector만). 외부 공개는 nginx만, 나머지는 Compose 내부 네트워크로만 접근. 6개 컨테이너 + 모델 상주가 2GB에 들어가는지는 `AI-04`에서 확인. `docker-compose.yml`은 prod 기준(공개 포트 없음)으로 두고 로컬 개발 포트(5433 · 6379 · 8000 · 8001)는 `docker-compose.override.yml`로 분리 — Compose의 `ports`는 리스트가 병합되어 override로 제거가 불가능하므로 반대로 뒤집음. EC2는 `-f docker-compose.yml`로 override를 배제해 실행 | 장승민 |
 | EC2 인스턴스 · 스토리지 (`INF-02`) | ✅ t3.small (2GB RAM), EBS 30GiB gp3 — 수집 데이터는 12주에 약 1.7GB(행당 330B × 62,496행/일 × 84일)로 여유. 2026-11-16 서울 실시간 수집 추가로 하루 약 340MB씩 늘어남(여유 약 18GB 기준 약 50일) — 보존 기간은 디스크를 보며 정함. 실제 소비처는 OS 2.5GB + 이미지 3GB + 백업이며, 프리티어 EBS 무료 한도가 30GB라 축소할 이유 없음 | 장승민 |
+| 비용 · 결제 (`INF-03`) | ✅ 개인 부담(장승민 결제) — 시연까지 서버 유지. t3.small은 프리티어 대상이 아니라 프리티어 기한과 상관없음 (2026-11-23) | 장승민 |
 | 서버 OS | ✅ Ubuntu 24.04 LTS — 당초 22.04였으나 EC2 빠른 시작 AMI 목록에서 제외되어 24.04로 변경(2026-09-17). 일반 22.04는 커뮤니티 AMI에만 남아 있어 비공식 이미지를 고를 위험이 있고, 애플리케이션이 전부 컨테이너 안에서 돌아 호스트 OS 버전 영향이 없음. 24.04는 2029년까지 지원 | 장승민 |
 | DB 백업 | ✅ EC2 내 cron으로 `pg_dump -Fc`(커스텀 압축 포맷) 매일 1회 실행, 로컬 디스크에 최근 7일치 보관 — 평문 포맷은 덤프 1개가 DB 크기와 비슷해 7일치가 수 GB로 불어남 | 장승민 |
 | 배포 도구 · 방식 (`CI-02`) | ✅ **PR 검사는 자동, 배포는 수동** — PR 시 GitHub Actions가 검사만 수행(`CI-01`)하고, 배포는 운영자가 EC2에서 `infra/deploy.sh`로 실행(git pull → 서버에서 이미지 빌드 → `api` · `ml` 교체, collector는 `--with-collector` 옵션일 때만 교체 — `CI-04`). DB 마이그레이션은 스크립트에 넣지 않고 백업 후 수동 적용. **배포 브랜치는 `main`** — 서버는 `main`을 checkout하고, `develop` → `main` 병합 후 배포([git.md](conventions/git.md#브랜치) 규칙과 일치). 수동으로 둔 이유: 수집 데이터는 재수집이 불가능해 배포 과정을 사람이 지켜봐야 하고, 마이그레이션 · collector 교체는 어차피 수동이며, 자동 배포는 보안그룹(SSH 운영자 IP `/32` 제한)을 넓히거나 SSM을 추가 구성해야 함. **GHCR 이미지 배포로 전환하는 조건**: 서버 빌드 중 메모리 부족, 하루 여러 번 배포, 운영자 외 배포 필요. 롤백 절차는 `CI-05` | 장승민 |
+| 롤백 · 배포 후 확인 (`CI-05`) | ✅ 기본은 main 병합 PR을 GitHub **Revert**로 되돌린 뒤 `deploy.sh`, 급하면 서버만 직전 main 커밋으로 checkout 후 재빌드. 배포 후 확인은 컨테이너 상태 · api `/health` · 외부 `/api/v1/stations` · 오류 로그 · 예측 저장 로그 · 추천 화면 — 절차는 [setup/operations.md](setup/operations.md) (2026-11-23) | 장승민 |
 | 도메인 · HTTPS (`CI-06`) | ✅ **`evflowkr.app` + Let's Encrypt** — 도메인은 Name.com(GitHub 학생 팩 1년 무료, 2027-11-14 만료), A 레코드로 탄력적 IP 연결. 인증서는 **서버에 설치한 certbot(apt)이 발급 · 갱신**하고 nginx는 `/etc/letsencrypt` · `/var/www/certbot`을 읽기 전용으로 마운트 — certbot 컨테이너를 따로 두지 않아 갱신 타이머(`certbot.timer`)를 OS가 관리. 갱신 확인은 webroot 방식(80번 `/.well-known/acme-challenge/`)이라 갱신 중 중단이 없고, 갱신 후 deploy hook으로 `nginx -s reload`. 최초 발급만 standalone(nginx 약 30초 정지 — 조회 API만 멈추고 수집은 무관). 80번은 확인 경로 외 전부 `https://evflowkr.app`으로 301 — IP 접속도 도메인으로 보냄. `.app`은 브라우저가 HTTPS로만 접속하는 TLD(HSTS preload)라 HSTS 헤더는 따로 두지 않음. 로컬은 인증서가 없어 override에서 nginx를 `profiles: ["server"]`로 제외 | 장승민 |
 | 컨테이너 로그 (`INF-10`) | ✅ Compose `x-logging` 앵커로 전 서비스에 json-file 드라이버 적용, `max-size: 10m` × `max-file: 3` = 서비스당 30MB 상한 | 장승민 |
+| 운영 알림 (`INF-09`) | ✅ Discord Webhook — 수집 3회 연속 실패 또는 갱신 15분 지연 때 알림 (2026-11-23). ⏳ 구현은 Webhook 주소를 받은 뒤 collector에 추가 | 장승민 |
+| 키 유출 대응 (`SEC-05`) | ✅ 재발급(옛 키 폐기) → 서버 `.env` 교체 → 컨테이너 재생성(`--force-recreate`) → 동작 확인 → 노출 위치 정리. 키별 재발급처 · 쓰는 컨테이너는 [setup/operations.md](setup/operations.md) (2026-11-23) | 장승민, 김무겸 |
 | 수집 로그 보안 | ✅ `httpx` 로거를 WARNING으로 낮춤 — INFO에서 요청 URL 전체를 찍어 공공데이터포털 `serviceKey`가 컨테이너 로그에 평문으로 남았음. 수집 성공 · 실패 로그는 자체 로거로 INFO 유지. API 오류 시 httpx 예외 메시지에도 URL(키 포함)이 들어가 `logger.exception`으로 남던 경로를 차단 — 엔드포인트 이름 · 상태 코드만 남김 | 장승민 |
 | 공공데이터포털 일일 호출 한도 | ✅ 운영계정(2026-11-15 승인) 기능별 100,000건 (`getChargerStatus` · `getChargerInfo` 각각). 그 전 개발계정은 1,000건 | 장승민 |
 | 실시간 상태 수집 API | ✅ **`getChargerStatus`(5분) + `getChargerInfo`(30분 보정)** — `getChargerInfo`의 상태값은 원천이 약 30분 배치로 갱신돼(2026-10-02 실측: 상태 변화의 98%가 수집 시각 :09 · :39에 몰림, 지역 전체 최신 `statUpdDt`가 30분 단위로 멈춤) 5분 수집이 실제로는 30분 해상도였음. `getChargerStatus`는 공식 문서상 "최근 변경 상태 조회" API로 최근 `period`분 안에 바뀐 충전기만 반환함 — 2026-09-13 "실시간 데이터가 있는 충전소가 극소수라 실사용 불가" 판단은 이 증분 동작을 오해한 것. 65분 비교 시뮬레이션에서 같은 변화를 평균 8~11분(최대 30분) 먼저 잡음. `statUpdDt`는 운영사에 따라 상태가 그대로여도 갱신되는 하트비트라 상태 변경 시각으로 쓰지 말 것 — 충전 구간은 `lastTsdt` · `lastTedt` · `nowTsdt` 기준 | 장승민 |
@@ -219,3 +223,4 @@
 | 2026-11-22 | 추천 시점 기준(REC-006)을 **h분 후 도착**으로 되돌림 — 2026-11-19의 "h분 후 출발" 변경이 AI 팀에 전달되지 않아, AI 추천 모듈 · Hit 평가는 2026-11-15 합의(Q5)대로 도착 기준이었음. 15 · 30분 탭은 모든 후보에 h분 예측을 쓰고 이동시간이 h분을 넘는 충전소는 제외. 지금 출발(0분)은 실시간 상태만 쓰는 2026-11-19 결정 그대로 | 장승민 |
 | 2026-11-22 | 추천 규칙을 **AI 추천 모듈과 똑같이** — api가 AI 패키지의 공식 연동 함수(`run_recommendation.score_snapshot`)를 직접 호출해 후보 제외 · 순위를 정함. collector는 ml 응답 원본을 `pred:raw:v1`에 같이 저장, api는 `ml/package`를 `/package`로 마운트. 바뀐 것: 지금 출발도 모델 예측 먼저(없으면 최근 15분 관측 근거를 참고 안내로 뒤에, 응답 `basis`) — 같은 날 앞 줄의 "지금 출발은 실시간만"을 바꿈 · 관측 신선도 15분 · 예측 유효시각 확인 · 커넥터 · 용량은 범위 충전기 모두 만족. **혼잡 제외(`exclude_high`)는 AI에 같은 규칙이 없어 우리 규칙(그 탭 혼잡도) 유지**. 참고 안내 화면 표시는 프론트 후속 | 장승민 |
 | 2026-11-22 | **경로 캐시 제거 · 추천 호출 기준** (`MAP-02` 확정) — 카카오 데브톡 151653 캐시 금지 답변에 맞춰 서버 Redis 경로 캐시 · 앱 경로 캐시 삭제. 추천 이동시간은 다중 목적지 1회 → 자동차 길찾기 20곳 → 직선거리 추정(전체 3초, 10km 밖 후보는 추정). 하루 예산 900 · 2,000 · 7,000, 추천 IP 제한 분당 5회. 앱 · 웹은 추천을 60초 폴링에서 빼고 5분 주기 · 500m + 2분 · 5분 안 같은 조건 재사용, 현재 위치 버튼은 지도만, 길찾기 화면 출발지는 들어올 때 고정. AI 추천 모듈 경로 유효시간 30분 변경 요청은 철회(AI 코드 수정 없음) | 김무겸 · 장승민 |
+| 2026-11-23 | 운영 항목 확정 — `CI-01` ruleset에 `ci-result` 필수 체크 적용, `INF-03` 비용은 개인 부담, `INF-09` Discord Webhook 알림(구현 전), `SEC-05` 키 유출 대응 · `CI-05` 롤백 절차는 [setup/operations.md](setup/operations.md)로. 저장소 병합 기본 제목을 PR 제목으로 바꿈 ([setup/repository.md](setup/repository.md)) | 장승민 |

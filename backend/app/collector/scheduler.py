@@ -1,15 +1,17 @@
 import logging
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from sqlalchemy import text, update
 
+from app.collector.alerts import check_collection_health
 from app.collector.api_client import MAX_RETRIES, get_charger_info, get_charger_status
 from app.collector.baseline import ensure_baseline, refresh_baseline
 from app.collector.checkpoint import publish_checkpoint
 from app.collector.prediction import refresh_predictions
+from app.config import settings
 from app.db.models import (
     CityCharger,
     CityStatusLog,
@@ -349,6 +351,17 @@ def main():
     scheduler.add_job(
         refresh_baseline, "cron", hour=4, minute=0, timezone=KST, next_run_time=datetime.now()
     )
+    # 운영 알림 (INF-09) - 수집과 따로 5분마다 회차 기록을 봄. 수집 잡이 멈춰도 검사는 돎.
+    # 첫 검사는 시작 6분 뒤 - 배포 · 재시작으로 비었던 구간에 첫 회차가 쌓일 틈을 줌
+    if settings.discord_webhook_url.get_secret_value():
+        scheduler.add_job(
+            check_collection_health,
+            "interval",
+            minutes=CYCLE_MIN,
+            next_run_time=datetime.now() + timedelta(minutes=CYCLE_MIN + 1),
+        )
+    else:
+        logger.info("운영 알림 꺼짐 - .env DISCORD_WEBHOOK_URL 없음")
     scheduler.start()
 
 

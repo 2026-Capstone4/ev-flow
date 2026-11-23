@@ -1,16 +1,17 @@
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from sqlalchemy.dialects import postgresql
 
 # app.config가 import 시점에 필수 설정을 읽음 - .env가 없는 환경(CI)에서도 돌도록 가짜 값을 넣음
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
 os.environ.setdefault("EV_SERVICE_KEY", "test")
 
-from app.collector import api_client  # noqa: E402
+from app.collector import alerts, api_client  # noqa: E402
 from app.collector.scheduler import (  # noqa: E402
     JOBS,
     ORPHANED_RUN_ERROR,
@@ -211,3 +212,120 @@ def test_close_orphaned_runs_does_nothing_when_no_running():
     assert close_orphaned_runs(db) == 0
     assert len(db.calls) == 2  # UPDATE · COMMIT뿐
     assert db.committed
+
+
+# 운영 알림 (INF-09) ---------------------------------------------------------
+
+ALERT_NOW = datetime(2026, 11, 23, 6, 0, tzinfo=UTC)
+FRESH = ALERT_NOW - timedelta(minutes=4)
+HEALTHY_RECENT = {t: ["SUCCESS", "SUCCESS", "SUCCESS"] for t in alerts.TARGET_NAMES}
+HEALTHY_OK = dict.fromkeys(alerts.TARGET_NAMES, FRESH)
+
+
+def test_find_problems_failed_streak_and_stale():
+    recent = {**HEALTHY_RECENT, "city": ["FAILED", "FAILED", "FAILED"]}
+    # 실패 2회 뒤 성공은 아직 괜찮음
+    recent["service_area"] = ["FAILED", "FAILED", "SUCCESS"]
+    last_ok = {**HEALTHY_OK, "city": ALERT_NOW - timedelta(minutes=16), "live": None}
+    problems = alerts.find_problems(recent, last_ok, ALERT_NOW)
+    assert problems == {
+        "city": ["3회 연속 수집 실패", "마지막 성공 16분 전 (14:44)"],
+        "live": ["성공한 수집 기록 없음"],
+    }
+
+
+def test_find_problems_healthy_and_just_under_threshold():
+    last_ok = {**HEALTHY_OK, "city": ALERT_NOW - timedelta(minutes=14, seconds=59)}
+    assert alerts.find_problems(HEALTHY_RECENT, last_ok, ALERT_NOW) == {}
+
+
+def test_plan_messages_alerts_once_then_recovers_once():
+    problem = {"city": ["3회 연속 수집 실패"]}
+    first = alerts.plan_messages(problem, set())
+    assert first == [("city", True, "🚨 [EV-flow] 마포 도심 이상 - 3회 연속 수집 실패")]
+    # 같은 문제가 이어지면 다시 보내지 않음
+    assert alerts.plan_messages(problem, {"city"}) == []
+    assert alerts.plan_messages({}, {"city"}) == [("city", False, "✅ [EV-flow] 마포 도심 복구")]
+
+
+@pytest.fixture
+def alert_env(monkeypatch):
+    monkeypatch.setattr(
+        alerts.settings, "discord_webhook_url", SecretStr("https://example.test/hook")
+    )
+    monkeypatch.setattr(alerts, "_alerted", set())
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return ALERT_NOW
+
+    monkeypatch.setattr(alerts, "datetime", Clock)
+    sent = []
+    responses = []
+
+    def fake_post(url, json=None, timeout=None):
+        sent.append(json["content"])
+        return responses.pop(0) if responses else httpx.Response(204)
+
+    monkeypatch.setattr(alerts.httpx, "post", fake_post)
+    return SimpleNamespace(monkeypatch=monkeypatch, sent=sent, responses=responses)
+
+
+def set_runs(env, recent, last_ok):
+    class Db:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    env.monkeypatch.setattr(alerts, "SessionLocal", Db)
+    env.monkeypatch.setattr(alerts, "load_runs", lambda db: (recent, last_ok))
+
+
+def test_check_retries_after_send_failure_and_recovers(alert_env):
+    set_runs(alert_env, {**HEALTHY_RECENT, "city": ["FAILED"] * 3}, HEALTHY_OK)
+    alert_env.responses.append(httpx.Response(500))
+    alerts.check_collection_health()
+    # 보내지 못했으면 다음 검사 때 다시 보냄
+    alerts.check_collection_health()
+    alerts.check_collection_health()
+    assert alert_env.sent == ["🚨 [EV-flow] 마포 도심 이상 - 3회 연속 수집 실패"] * 2
+    set_runs(alert_env, HEALTHY_RECENT, HEALTHY_OK)
+    alerts.check_collection_health()
+    alerts.check_collection_health()
+    assert alert_env.sent[2:] == ["✅ [EV-flow] 마포 도심 복구"]
+
+
+def test_check_db_error_alerts_once_and_keeps_region_alerts(alert_env):
+    set_runs(alert_env, {**HEALTHY_RECENT, "city": ["FAILED"] * 3}, HEALTHY_OK)
+    alerts.check_collection_health()
+
+    def broken(db):
+        raise RuntimeError("db down")
+
+    alert_env.monkeypatch.setattr(alerts, "load_runs", broken)
+    alerts.check_collection_health()
+    alerts.check_collection_health()
+    # DB 오류는 한 번만, 마포 도심 알림은 복구로 착각하지 않음
+    assert alert_env.sent[1:] == [
+        "🚨 [EV-flow] 수집 상태 확인 이상 - 수집 기록을 읽지 못함 (DB 오류)"
+    ]
+    set_runs(alert_env, HEALTHY_RECENT, HEALTHY_OK)
+    alerts.check_collection_health()
+    assert sorted(alert_env.sent[2:]) == [
+        "✅ [EV-flow] 마포 도심 복구",
+        "✅ [EV-flow] 수집 상태 확인 복구",
+    ]
+
+
+def test_check_does_nothing_without_webhook(monkeypatch):
+    monkeypatch.setattr(alerts.settings, "discord_webhook_url", SecretStr(""))
+
+    def fail(*args, **kwargs):
+        raise AssertionError("부르면 안 됨")
+
+    monkeypatch.setattr(alerts, "SessionLocal", fail)
+    monkeypatch.setattr(alerts.httpx, "post", fail)
+    alerts.check_collection_health()

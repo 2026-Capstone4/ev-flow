@@ -11,6 +11,7 @@
 | [database.md](database.md) | DB 테이블 · 컬럼 · 코드표 · 데이터 사용 시 주의 | 장승민 |
 | [api/README.md](api/README.md) | API 명세 — 공통 규약 · 엔드포인트 (사용자 · 운영자) | 장승민 |
 | [setup/repository.md](setup/repository.md) | 저장소 초기 세팅 순서 | 장승민 |
+| [setup/operations.md](setup/operations.md) | 서버 배포 · 배포 후 확인 · 롤백 · 키 유출 대응 절차 | 장승민 |
 | [conventions/git.md](conventions/git.md) | 브랜치 · 커밋 · PR · 이슈 규칙 | 김무겸 |
 | [conventions/code-common.md](conventions/code-common.md) | 주석 · 이름 짓기 · 에디터 · 비밀값 공통 규칙 | 김무겸 |
 | [conventions/frontend.md](conventions/frontend.md) | 프론트엔드 코드 규칙 | 김무겸 |
