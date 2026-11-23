@@ -130,6 +130,8 @@ export default function MapHomeScreen() {
   const closeOnboarding = useCallback(() => {
     markOnboardingSeen(appStorage)
     setIsOnboardingOpen(false)
+    // 더보기에서 다시 보기로 열었으면 그 값도 지워서, 탭을 오가도 다시 뜨지 않게 함
+    router.setParams({ showOnboarding: undefined })
   }, [])
 
   // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
@@ -203,7 +205,10 @@ export default function MapHomeScreen() {
 
   // 길찾기 화면의 "AI 추천 충전소 보기"로 돌아오면(?expandSheet=1) 추천 시트를 펼침 (웹 state.expandSheet)
   const sheetRef = useRef<RecommendSheetHandle>(null)
-  const { expandSheet } = useLocalSearchParams<{ expandSheet?: string }>()
+  const { expandSheet, showOnboarding } = useLocalSearchParams<{
+    expandSheet?: string
+    showOnboarding?: string
+  }>()
   useEffect(() => {
     // 펼쳐 달라는 값이 없으면 그대로 둠
     if (expandSheet !== '1') return
@@ -333,7 +338,10 @@ export default function MapHomeScreen() {
         </View>
         {notice && <MapNotice key={notice.id} message={notice.message} />}
       </View>
-      {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
+      {/* 처음 들어왔거나, 더보기의 "첫 방문 안내 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
+      {(isOnboardingOpen || showOnboarding === '1') && (
+        <OnboardingDialog onClose={closeOnboarding} />
+      )}
     </View>
   )
 }
