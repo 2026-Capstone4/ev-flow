@@ -55,6 +55,8 @@ export default function RouteScreen() {
   const insets = useSafeAreaInsets()
   const mapRef = useRef<NaverMapViewRef>(null)
   const { userLocation } = useMapView()
+  // 출발지는 들어올 때 위치로 고정. 위치 추적으로 바뀌어도 경로를 다시 부르지 않음 (2026-11-22 결정)
+  const [origin] = useState(userLocation)
   const {
     station,
     route,
@@ -65,7 +67,7 @@ export default function RouteScreen() {
     isRouteRateLimited,
     routeRetryAfterSeconds,
     retryRoute,
-  } = useRouteData(userLocation, stationId, horizon)
+  } = useRouteData(origin, stationId, horizon)
 
   // 경로가 시트에 가리지 않게 시트 높이를 재서 지도 안쪽 여백으로 씀
   const [sheetHeight, setSheetHeight] = useState(0)
@@ -84,11 +86,11 @@ export default function RouteScreen() {
     const destination: LatLng = { lat: destinationLat, lng: destinationLng }
     const points = path?.length
       ? [...path.map(([lat, lng]) => ({ lat, lng })), destination]
-      : [userLocation, destination]
+      : [origin, destination]
     const region = toRegion(points)
     // 맞출 범위가 있을 때만 카메라를 옮김
     if (region) mapRef.current?.animateRegionTo(region)
-  }, [isMapReady, sheetHeight, path, destinationLat, destinationLng, userLocation])
+  }, [isMapReady, sheetHeight, path, destinationLat, destinationLng, origin])
 
   // 충전소 정보를 받은 뒤에만 목적지를 알 수 있어 그 전엔 null
   const destination = station ? { lat: station.lat, lng: station.lng, name: station.name } : null
@@ -114,8 +116,8 @@ export default function RouteScreen() {
         ref={mapRef}
         style={{ flex: 1 }}
         initialCamera={{
-          latitude: userLocation.lat,
-          longitude: userLocation.lng,
+          latitude: origin.lat,
+          longitude: origin.lng,
           zoom: toAppZoom(INITIAL_WEB_ZOOM),
         }}
         // 경로를 화면에 맞출 때 위 버튼 · 아래 시트를 뺀 영역 안에 들어오게 함
@@ -128,10 +130,10 @@ export default function RouteScreen() {
         isShowLocationButton={false}
         isShowZoomControls={false}
         onInitialized={() => setIsMapReady(true)}
-        // 출발지 표시 (웹 내 위치 마커). 지도 홈과 같은 기준 위치
+        // 출발지 표시 (웹 내 위치 마커). 들어올 때 고정한 출발지
         locationOverlay={{
           isVisible: true,
-          position: { latitude: userLocation.lat, longitude: userLocation.lng },
+          position: { latitude: origin.lat, longitude: origin.lng },
         }}
       >
         {path && destination && <RouteOverlay path={path} destination={destination} />}

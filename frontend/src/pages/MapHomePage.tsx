@@ -19,6 +19,7 @@ import { UpdateStatus } from '@/components/UpdateStatus'
 import { ZoomInNotice } from '@/components/ZoomInNotice'
 import { useCoverageMask } from '@/hooks/useCoverageMask'
 import { useCurrentLocation } from '@/hooks/useCurrentLocation'
+import { useLocationTracking } from '@/hooks/useLocationTracking'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMyLocationMarker, useStationMarkers } from '@/hooks/useMapMarkers'
 import { useNaverMap } from '@/hooks/useNaverMap'
@@ -75,7 +76,7 @@ export function MapHomePage() {
     recommendedIds,
     recommendState,
     recommendRetryAfterSeconds,
-  } = useMapHomeData(userLocation, horizon, filters)
+  } = useMapHomeData(horizon, filters)
 
   // 마커는 시점이 바뀔 때마다 다시 만들지 않도록 최신 시점만 ref로 읽음
   const horizonRef = useRef(horizon)
@@ -123,7 +124,10 @@ export function MapHomePage() {
   }, [notice])
 
   const { locate, isLocating } = useCurrentLocation()
+  // 위치 권한이 이미 있으면 탭이 열려 있는 동안 위치를 따라감. 추천은 500m · 2분 · 5분 규칙으로만 다시 부름
+  const { recheck: recheckTracking } = useLocationTracking(IS_GEOLOCATION_ENABLED)
   const panTo = (target: LatLng) => map?.panTo(new window.naver.maps.LatLng(target.lat, target.lng))
+  // 지도만 옮기고 추천은 바로 부르지 않음 (2026-11-22 결정)
   const handleLocate = async () => {
     // 기능이 꺼져 있으면 GPS 없이 지금 기준 위치(시연 위치)로 지도만 옮김
     if (!IS_GEOLOCATION_ENABLED) {
@@ -131,7 +135,9 @@ export function MapHomePage() {
       return
     }
     const result = await locate()
-    // 찾았으면 그 위치로, 마포구 밖이면 지금 추천 기준 위치로 지도를 옮김
+    // 이 버튼으로 처음 권한을 허용했으면 그때부터 위치를 따라감 (마포구 밖이어도 허용은 된 것)
+    recheckTracking(result.ok || result.reason === 'out-of-area')
+    // 찾았으면 그 위치로, 마포구 밖이면 마지막 사용자 위치로 지도를 옮김
     if (result.ok || result.reason === 'out-of-area') {
       panTo(result.ok ? result.location : userLocation)
     }
