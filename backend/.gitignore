@@ -8,4 +8,6 @@ data/*.csv
 !data/mapo_fast_chargers.csv
 # 휴게소 statId -> 휴게소명·노선·방향 매핑도 적재·분석에 필요해 예외로 커밋함
 !data/rest_area_mapping.csv
+# 전국 휴게소 statId -> 노선 · 방향 · 길 순서 (scripts/build_rest_area_routes.py 결과, 서버 적재에 필요)
+!data/rest_area_routes.csv
 *.log
