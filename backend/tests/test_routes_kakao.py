@@ -1,4 +1,4 @@
-"""길찾기(POST /routes) - 카카오모빌리티 제공자. 공통 동작(캐시 · 예산 · 호출 제한)은 test_routes.py에서 확인함"""
+"""길찾기(POST /routes) - 카카오모빌리티 제공자. 공통 동작(예산 · 호출 제한)은 test_routes.py에서 확인함"""
 
 import httpx
 import pytest
@@ -72,7 +72,7 @@ def test_returns_route_with_lat_lng_path(client, kakao, db):  # noqa: F811
     assert call["url"] == directions.KAKAO_URL
     # 카카오에도 경도,위도 순서 · 소수 4자리로 반올림한 출발 좌표를 보냄
     assert call["params"] == {
-        "origin": "126.922,37.5563",
+        "origin": "126.92204,37.55631",
         "destination": "126.8978,37.555",
         "priority": "DISTANCE",
     }
@@ -91,7 +91,7 @@ def test_already_at_station_returns_zero_minutes(client, kakao):
     body = post(client).json()
     assert body["travelTimeMinutes"] == 0
     assert body["distanceMeters"] == 0
-    assert body["path"] == [[37.5563, 126.922], [37.555, 126.8978]]
+    assert body["path"] == [[37.55631, 126.92204], [37.555, 126.8978]]
 
 
 @pytest.mark.parametrize("code", [1, 102, 103, 105, 106])
@@ -147,10 +147,9 @@ def test_missing_key_is_502_without_calling(client, kakao, monkeypatch):
     assert kakao.calls == []
 
 
-def test_cache_is_kept_per_provider(client, kakao, fake_redis, monkeypatch):  # noqa: F811
+def test_switching_provider_calls_new_provider(client, kakao, monkeypatch):
     post(client)
-    assert f"route:v2:kakao:37.5563:126.9220:{MAPO_ID}" in fake_redis.values
-    # 네이버로 바꾸면 카카오 캐시를 쓰지 않고 네이버를 부름
+    # 네이버로 바꾸면 다음 요청부터 네이버를 부름
     monkeypatch.setattr(settings, "directions_provider", "naver")
     monkeypatch.setattr(settings, "naver_client_id", "test-id")
     monkeypatch.setattr(settings, "naver_client_secret", SecretStr("test-secret"))

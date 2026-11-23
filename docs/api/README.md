@@ -223,7 +223,7 @@
 | 1 | `GET /stations` | — | UC-U01 · U02 | `get_stations` | 예측 필드 ⏳ `AI-07` |
 | 2 | `GET /stations/{stationId}` | — | UC-U03 · U04 · U05 | `get_station` | 도심만 (휴게소는 6번). 예측 필드 ⏳ `AI-07` |
 | 3 | `POST /recommendations` | — | UC-U06 | `recommend` | 15 · 30분 추천을 한 번에 응답 (🟡 잠정). 점수는 api가 요청 때 계산 — 혼잡도 · 대기는 Redis, 이동거리 · 이동시간은 Directions (🟡 제안: 직선거리 가까운 20곳 호출, [이동시간 처리](user.md#이동시간-처리)). ⏳ 계산식 |
-| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 (SER-002). 3번과 같은 캐시 — 출발 좌표 소수 4자리 + stationId, TTL 30분 `MAP-02` |
+| 4 | `POST /routes` | — | UC-U07 | `get_route` | 경로 캐시 없음 — 부를 때마다 길찾기 호출 (2026-11-22 `MAP-02`) |
 | 5 | `GET /service-areas` | — | UC-U08 | `get_service_areas` | |
 | 6 | `GET /service-areas/chargers?name=&direction=` | — | UC-U08 | `get_service_area_chargers` | |
 | 7 | `POST /auth/login` | — | UC-O01 | `login` | ⏳ `admin_users` |

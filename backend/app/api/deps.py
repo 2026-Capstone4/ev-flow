@@ -22,8 +22,8 @@ def limit_routes(request: Request) -> None:
     rate_limit.check("routes", auth_service.client_ip(request), settings.route_rate_limit_per_min)
 
 
-# 추천 호출 제한 - 길찾기와 같은 한도(IP당 분당 10회), 횟수는 따로 셈 (2026-11-19 합의)
+# 추천 호출 제한 - IP당 분당 5회, 길찾기와 횟수는 따로 셈 (2026-11-22 결정)
 def limit_recommendations(request: Request) -> None:
     rate_limit.check(
-        "recommendations", auth_service.client_ip(request), settings.route_rate_limit_per_min
+        "recommendations", auth_service.client_ip(request), settings.recommend_rate_limit_per_min
     )

@@ -25,6 +25,7 @@ import { RecommendSheet, type RecommendSheetHandle } from '../../components/Reco
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
+import { useLocationTracking } from '../../hooks/useLocationTracking'
 import { INITIAL_MAP_CENTER, IS_GEOLOCATION_ENABLED } from '../../lib/config'
 import { appStorage } from '../../lib/storage'
 import { CoverageMask } from '../../map/CoverageMask'
@@ -88,7 +89,7 @@ export default function MapHomeScreen() {
     recommendedIds,
     recommendState,
     recommendRetryAfterSeconds,
-  } = useMapHomeData(userLocation, horizon, filters)
+  } = useMapHomeData(horizon, filters)
 
   const [camera, setCamera] = useState<CameraState>({
     webZoomLevel: INITIAL_WEB_ZOOM,
@@ -141,10 +142,12 @@ export default function MapHomeScreen() {
   }, [notice])
 
   const { locate, isLocating } = useCurrentLocation()
+  // 위치 권한이 이미 있으면 앱이 켜져 있는 동안 위치를 따라감. 추천은 500m · 2분 · 5분 규칙으로만 다시 부름
+  const { recheck: recheckTracking } = useLocationTracking(IS_GEOLOCATION_ENABLED)
   /** 줌은 그대로 두고 지도 가운데만 옮김 */
   const panTo = (target: LatLng) =>
     mapRef.current?.animateCameraTo({ latitude: target.lat, longitude: target.lng })
-  // 웹 MapHomePage handleLocate와 같은 흐름
+  // 웹 MapHomePage handleLocate와 같은 흐름. 지도만 옮기고 추천은 바로 부르지 않음 (2026-11-22 결정)
   const handleLocate = async () => {
     // 기능이 꺼져 있으면 GPS 없이 지금 기준 위치(시연 위치)로 지도만 옮김
     if (!IS_GEOLOCATION_ENABLED) {
@@ -152,7 +155,9 @@ export default function MapHomeScreen() {
       return
     }
     const result = await locate()
-    // 찾았으면 그 위치로, 마포구 밖이면 지금 추천 기준 위치로 지도를 옮김
+    // 이 버튼으로 처음 권한을 허용했으면 그때부터 위치를 따라감
+    recheckTracking()
+    // 찾았으면 그 위치로, 마포구 밖이면 마지막 사용자 위치로 지도를 옮김
     if (result.ok || result.reason === 'out-of-area') {
       panTo(result.ok ? result.location : userLocation)
     }

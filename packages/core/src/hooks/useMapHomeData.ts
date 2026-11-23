@@ -1,22 +1,26 @@
 import { useMemo } from 'react'
+import { useMapView } from './useMapView'
+import { useRecommendationOrigin } from './useRecommendationOrigin'
 import { getApiErrorCode, getRetryAfterSeconds } from '../api/errors'
 import { useRecommendationsQuery, useStationsQuery } from './useStationsQuery'
 import { getListLoadState, type ListLoadState } from '../lib/loadState'
 import { matchesFilters } from '../lib/stationFilter'
-import type { LatLng } from '../types/geo'
 import type { HorizonMinutes, RecommendationFilters } from '../types/station'
 
 /** 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area) · 호출 제한(rate_limited)이 더해짐 */
 export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
-export function useMapHomeData(
-  origin: LatLng,
-  horizon: HorizonMinutes,
-  filters: RecommendationFilters,
-) {
+// 추천은 사용자 위치가 아니라 추천 기준점으로 부름 - 5분마다 또는 500m + 2분마다 기준점이 지금 위치로 옮겨짐
+export function useMapHomeData(horizon: HorizonMinutes, filters: RecommendationFilters) {
   const stationsQuery = useStationsQuery()
-  const recommendationsQuery = useRecommendationsQuery(origin, filters)
+  const { recommendOrigin, markRecommendCalled } = useMapView()
+  const recommendationsQuery = useRecommendationsQuery(
+    recommendOrigin,
+    filters,
+    markRecommendCalled,
+  )
+  useRecommendationOrigin(recommendationsQuery.refetch)
   // 시점을 바꿔도 다시 요청하지 않고 받은 결과에서 고름
   const recommendations = recommendationsQuery.data?.results.find(
     (result) => result.horizonMinutes === horizon,

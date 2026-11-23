@@ -1,5 +1,4 @@
 import os
-import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -15,7 +14,6 @@ from app.schemas.recommendation import RecommendationFilters, RecommendationRequ
 from app.schemas.station import Station  # noqa: E402
 from app.services import ai_ranking  # noqa: E402
 from app.services import recommendations as rec  # noqa: E402
-from app.services.directions import DirectionsUnavailable, Route  # noqa: E402
 from app.services.snapshot import ChargerState  # noqa: E402
 
 NOW = datetime(2026, 11, 21, 3, 0, tzinfo=UTC)
@@ -444,30 +442,3 @@ def test_ai_scoring_rejects_connector_mismatch(scorer):
 
 
 # --- 이동시간 ---
-
-
-def test_travel_times_fall_back_to_estimate(monkeypatch):
-    fetched = NOW.isoformat()
-
-    def fake_route(origin, sid, dest):
-        if sid == "OK":
-            return Route(600, 3000, [origin, dest], fetched)
-        if sid == "SLOW":
-            time.sleep(0.5)
-            return Route(60, 100, [origin, dest], fetched)
-        if sid == "OLD":
-            return Route(60, 100, [origin, dest])  # 조회 시각을 모르는 예전 캐시
-        raise DirectionsUnavailable()
-
-    monkeypatch.setattr(rec.directions, "get_route", fake_route)
-    monkeypatch.setattr(rec, "DIRECTIONS_WAIT_SEC", 0.1)
-    cands = [
-        (station(s), km) for s, km in [("OK", 1.2), ("FAIL", 2.4), ("SLOW", 0.5), ("OLD", 0.5)]
-    ]
-    result = rec.travel_times(ORIGIN, cands)
-    assert result["OK"] == rec.Travel(10.0, 10, 3000, "directions", fetched)
-    # 실패 · 시간 초과는 2분 + 60 × km / 24 (AI에는 경로 없이 넘겨 AI가 같은 식으로 계산)
-    assert result["FAIL"] == rec.Travel(8.0, 8, 2400, "estimate")
-    assert result["SLOW"].source == "estimate" and result["SLOW"].minutes == pytest.approx(3.25)
-    # 얼마나 오래된 경로인지 모르면 방금 조회한 것처럼 넘기지 않고 추정으로
-    assert result["OLD"].source == "estimate"
