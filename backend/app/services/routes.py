@@ -26,7 +26,7 @@ def get_route(db: Session, body: RouteRequest) -> RouteResponse:
     # Directions는 최대 5초 걸림 - 그동안 DB 연결을 붙잡지 않게 먼저 풀에 돌려줌 (풀 기본 5 + 10개)
     db.close()
 
-    route = directions.get_route((body.origin.lat, body.origin.lng), body.station_id, dest)
+    route = directions.get_route((body.origin.lat, body.origin.lng), dest)
     # 0분은 이미 충전소에 있을 때(Directions code 1)만 - 그 밖에는 1분 미만도 1분으로 보여줌
     minutes = 0 if route.duration_sec == 0 else max(1, round(route.duration_sec / 60))
     return RouteResponse(
@@ -34,6 +34,6 @@ def get_route(db: Session, body: RouteRequest) -> RouteResponse:
         travel_time_minutes=minutes,
         distance_meters=route.distance_m,
         path=route.path,
-        # 캐시 키가 제공자별이라 지금 설정값이 곧 이 경로를 만든 제공자
+        # 캐시가 없어 지금 설정값이 곧 이 경로를 만든 제공자
         provider=settings.directions_provider,
     )

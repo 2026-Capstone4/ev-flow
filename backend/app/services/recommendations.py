@@ -5,13 +5,14 @@ docs/api/user.md 3번
   후보가 먼저(점수 = 이동시간/30 + 예측 점유율), 예측이 없으면 최근 15분 관측 근거(참고 안내) 후보가 뒤에 옴
 - 백엔드 몫(AI 계약의 backend 담당): 후보 고르기(마포 · 반경 15km · 가까운 20곳 · 사용자 조건) · 이동시간 ·
   충전소 중복 없이 Top 3 · 혼잡 제외 필터(그 탭 혼잡도, 우리 규칙) · 응답 문구
-- 이동시간은 가까운 20곳만 Directions(길찾기와 같은 캐시 · 하루 예산), 3초 안에 못 받으면 경로 없이 넘김 →
-  AI가 직선거리로 추정(2분 + 시속 24km)
+- 이동시간은 가까운 20곳, 3단계 (2026-11-22 결정, 캐시 없음): 카카오 다중 목적지 1회 → 자동차 길찾기 20곳 →
+  직선거리 추정. 전체 3초 안에 못 받으면 경로 없이 넘김 → AI가 직선거리로 추정(2분 + 시속 24km)
 """
 
 import json
 import logging
 import math
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ from app.schemas.recommendation import (
 from app.schemas.station import Station
 from app.services import directions
 from app.services.ai_ranking import TABS, AiPackageUnavailable, get_scorer
+from app.services.directions import DirectionsQuotaExceeded
 from app.services.predictions import load_raw_predictions, round_wait
 from app.services.snapshot import ChargerState, latest_success_run, load_charger_states
 from app.services.stations import MAPO, area_stations
@@ -47,7 +49,7 @@ TOP_N = 3
 CANDIDATE_LIMIT = 20  # Directions를 부르는 후보 수 (MAP-02) - AI 채점 함수도 20곳까지만 받음
 RADIUS_KM = 15
 DIRECTIONS_WAIT_SEC = (
-    3  # 이 안에 못 받은 후보는 AI가 직선거리로 추정 - 늦게 온 결과는 경로 캐시에만 남음
+    3  # 이동시간을 기다리는 전체 시간 - 이 안에 못 받은 후보는 AI가 직선거리로 추정
 )
 CONGESTION_ORDER = {"low": 0, "medium": 1, "high": 2}
 CONGESTION_LABEL = {"low": "여유", "medium": "보통", "high": "혼잡"}
@@ -66,7 +68,7 @@ class Travel:
     display_minutes: int
     distance_m: int
     source: str  # directions · estimate
-    fetched_at: str | None = None  # Directions를 실제로 부른 시각 - AI가 경로 나이(30분 미만)를 봄
+    fetched_at: str | None = None  # Directions를 부른 시각 - AI가 경로 나이(30분 미만)를 봄
 
 
 @dataclass(frozen=True)
@@ -151,40 +153,100 @@ def nearest_candidates(stations, states, origin, filters, members) -> list[tuple
     return found[:CANDIDATE_LIMIT]
 
 
-def travel_times(origin, candidates) -> dict[str, Travel]:
-    """후보마다 Directions를 동시에 부르고 3초까지만 기다림. 실패 · 시간 초과는 직선거리 추정"""
-    futures = {
-        _executor.submit(directions.get_route, origin, s.station_id, (s.lat, s.lng)): (s, km)
+def _remaining(deadline: float) -> float:
+    return max(0.0, deadline - time.monotonic())
+
+
+def _multi_stage(origin, candidates, deadline) -> dict[str, Travel]:
+    """1단계 - 다중 목적지 1회. 10km 밖 후보는 보내지 않음 (그곳은 추정)
+
+    오늘 카카오가 한도 초과로 답했거나 예산 · 한도를 넘으면 DirectionsQuotaExceeded → 2단계로
+    """
+    # 카카오가 오늘 이미 한도 초과로 답함 - 자정까지 다중 목적지를 건너뜀
+    if directions.multi_exhausted_today():
+        raise DirectionsQuotaExceeded()
+    near = {
+        s.station_id: (s.lat, s.lng)
         for s, km in candidates
+        if km * 1000 <= directions.KAKAO_MULTI_RADIUS_M
     }
-    done, _ = wait(futures, timeout=DIRECTIONS_WAIT_SEC)
-    result, estimated = {}, 0
-    for future, (s, km) in futures.items():
-        route = None
-        if future in done:
-            try:
-                route = future.result()
-            except ApiError:
-                pass  # 키 없음 · 하루 예산 소진 · 경로 없음 · 제공자 오류 - 로그는 directions에서 남김
-            except Exception:
-                logger.exception("추천 이동시간 조회 오류 - 직선거리 추정으로 대체")
-        # 조회 시각을 모르는 경로(Redis TTL도 못 읽은 예전 캐시)는 얼마나 오래됐는지 몰라 추정으로 둠 -
-        # 방금 조회한 것처럼 넘기면 AI의 경로 30분 검사를 그대로 통과함
-        if route is not None and route.fetched_at is None:
-            route = None
-        if route is None:
-            estimated += 1
-            minutes = estimate_minutes(km)
-            result[s.station_id] = Travel(
-                minutes, max(1, round(minutes)), round(km * 1000), "estimate"
-            )
-        else:
-            minutes = route.duration_sec / 60
-            # 0분은 이미 충전소에 있을 때만 - 길찾기와 같은 규칙
-            display = 0 if route.duration_sec == 0 else max(1, round(minutes))
-            result[s.station_id] = Travel(
-                minutes, display, route.distance_m, "directions", route.fetched_at
-            )
+    # 보낼 곳이 없으면 부르지 않음 - 모두 추정
+    if not near:
+        return {}
+    future = _executor.submit(directions.get_travel_times, origin, near)
+    summaries = future.result(timeout=_remaining(deadline))
+    fetched_at = datetime.now(UTC).isoformat()
+    result = {}
+    for sid, summary in summaries.items():
+        # 그곳만 경로를 못 찾음 - 추정으로 둠
+        if summary is None:
+            continue
+        minutes = summary.duration_sec / 60
+        # 0분은 이미 충전소에 있을 때만 - 길찾기와 같은 규칙
+        display = 0 if summary.duration_sec == 0 else max(1, round(minutes))
+        result[sid] = Travel(minutes, display, summary.distance_m, "directions", fetched_at)
+    return result
+
+
+def _car_stage(origin, candidates, deadline) -> dict[str, Travel]:
+    """2단계 - 자동차 길찾기를 후보마다. 이어 쓰기 예산에서 후보 수만큼 먼저 잡아 둔 뒤 동시에 부름"""
+    # 키가 없으면 예산을 잡지 않고 모두 추정
+    if not directions.has_key():
+        return {}
+    try:
+        directions.reserve(directions.REC_CAR, len(candidates))
+    except DirectionsQuotaExceeded:
+        return {}  # 3단계 - 모두 직선거리 추정
+    futures = {
+        _executor.submit(directions.get_route, origin, (s.lat, s.lng), None): s
+        for s, _ in candidates
+    }
+    done, _ = wait(futures, timeout=_remaining(deadline))
+    result = {}
+    for future, s in futures.items():
+        # 시간 안에 못 받은 곳은 추정
+        if future not in done:
+            continue
+        try:
+            route = future.result()
+        except ApiError:
+            continue  # 키 없음 · 한도 초과 · 경로 없음 · 제공자 오류 - 로그는 directions에서 남김
+        except Exception:
+            logger.exception("추천 이동시간 조회 오류 - 직선거리 추정으로 대체")
+            continue
+        minutes = route.duration_sec / 60
+        # 0분은 이미 충전소에 있을 때만 - 길찾기와 같은 규칙
+        display = 0 if route.duration_sec == 0 else max(1, round(minutes))
+        result[s.station_id] = Travel(
+            minutes, display, route.distance_m, "directions", route.fetched_at
+        )
+    return result
+
+
+def travel_times(origin, candidates) -> dict[str, Travel]:
+    """후보 이동시간 - 다중 목적지 1회 → (예산 · 한도 초과면) 자동차 길찾기 → 직선거리 추정. 전체 3초"""
+    deadline = time.monotonic() + DIRECTIONS_WAIT_SEC
+    fetched: dict[str, Travel] = {}
+    try:
+        fetched = _multi_stage(origin, candidates, deadline)
+    except DirectionsQuotaExceeded:
+        logger.info("다중 목적지 예산 · 한도 초과 - 자동차 길찾기로 이어 씀")
+        fetched = _car_stage(origin, candidates, deadline)
+    except TimeoutError:
+        logger.warning("다중 목적지 %d초 안에 응답 없음 - 직선거리 추정", DIRECTIONS_WAIT_SEC)
+    except ApiError:
+        pass  # 키 없음 · 제공자 오류 - 이어 쓰기로 넘기지 않고 추정. 로그는 directions에서 남김
+    except Exception:
+        logger.exception("추천 이동시간 조회 오류 - 직선거리 추정으로 대체")
+    result = {}
+    for s, km in candidates:
+        # 받은 곳은 그대로, 못 받은 곳은 직선거리 추정
+        if s.station_id in fetched:
+            result[s.station_id] = fetched[s.station_id]
+            continue
+        minutes = estimate_minutes(km)
+        result[s.station_id] = Travel(minutes, max(1, round(minutes)), round(km * 1000), "estimate")
+    estimated = len(candidates) - len(fetched)
     if estimated:
         logger.info("추천 이동시간 %d/%d곳 직선거리 추정", estimated, len(candidates))
     return result
@@ -224,7 +286,6 @@ def candidate_input(
     if travel.source == "directions" and travel.fetched_at:
         route = {
             "travel_minutes": travel.minutes,
-            # 원래 조회 시각부터 30분 - 캐시를 읽은 시각이 아님
             "requested_at": travel.fetched_at,
             "source": "directions",
             "distance_km": travel.distance_m / 1000,
