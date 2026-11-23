@@ -45,6 +45,9 @@ Organization Owner 또는 저장소 Admin 권한으로 진행한다.
 5. **저장소 Settings > General**
    - Default branch: `develop`
    - Pull Requests: **Allow merge commits** · **Allow squash merging** 체크, **Allow rebase merging** 해제
+   - 병합 기본 메시지 — 병합 화면 제목이 처음부터 `PR 제목 (#번호)`가 되게 함 (2026-11-23)
+     - Allow merge commits: **Default commit message → Pull request title**
+     - Allow squash merging: **Default commit message → Pull request title and commit details**
    - **Automatically delete head branches** 체크
 6. **저장소 Settings > Rules > Rulesets > New branch ruleset**
    - Ruleset name: `protect-main-develop`
