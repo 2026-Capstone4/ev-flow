@@ -22,6 +22,8 @@ ROUTE_COLUMNS = (
     "bidirectional",
     "route_seq",
     "seq_order",
+    "rest_area_lat",
+    "rest_area_lng",
 )
 KIND = "C0"  # 휴게시설 전체 (C001 고속도로 휴게소 · C002 지방도로 휴게소 · C003 쉼터)
 KIND_DETAIL = "C001"  # 고속도로 휴게소
@@ -72,6 +74,8 @@ def route_fields(row: dict | None) -> dict:
         "bidirectional": row["bidirectional"] == "Y",
         "route_seq": int(row["route_seq"]),
         "seq_order": row["seq_order"] or None,
+        "rest_area_lat": float(row["rest_area_lat"]),
+        "rest_area_lng": float(row["rest_area_lng"]),
     }
 
 

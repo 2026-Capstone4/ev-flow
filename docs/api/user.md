@@ -11,6 +11,8 @@
 - [4. 길찾기 — `POST /routes`](#4-길찾기--post-routes)
 - [5. 휴게소 목록 — `GET /service-areas`](#5-휴게소-목록--get-service-areas)
 - [6. 휴게소 충전기 현황 — `GET /service-areas/chargers`](#6-휴게소-충전기-현황--get-service-areaschargers)
+- [15. 전국 휴게소 목록 — `GET /service-areas/nationwide`](#15-전국-휴게소-목록--get-service-areasnationwide)
+- [16. 전국 휴게소 충전기 현황 — `GET /service-areas/nationwide/chargers`](#16-전국-휴게소-충전기-현황--get-service-areasnationwidechargers)
 
 ---
 
@@ -305,6 +307,8 @@
 
 휴게소 탭 목록 (UC-U08). 사업자마다 다른 충전소(statId)를 휴게소 · 방향 단위로 묶어 보낸다. 예측은 없다 (DATA-003).
 
+> 2026-11-23부터 **천안 대조군 4곳만** 돌려준다 — 이미 배포한 앱(1.0.0 (2))이 `direction`을 서울 · 부산 방향으로 고정해서 보여 주기 때문. 전국 휴게소는 [15번](#15-전국-휴게소-목록--get-service-areasnationwide).
+
 **요청**: 파라미터 없음
 
 **응답 200**
@@ -364,5 +368,91 @@
 ```
 
 한 휴게소에 운영기관이 여럿이라 충전기마다 `stationId` · `operator`를 붙인다.
+
+**에러**: 404 `SERVICE_AREA_NOT_FOUND` · 422 `VALIDATION_ERROR` · 503 `DATA_UNAVAILABLE`
+
+---
+
+## 15. 전국 휴게소 목록 — `GET /service-areas/nationwide`
+
+전국 고속도로 휴게소 목록 (UC-U08, 2026-11-24). 노선 목록 · 노선 화면(방향 버튼 · 길 순서) · 가까운 휴게소 · 검색 · 노선 미확인 묶음을 이 응답 하나로 앱에서 만든다. 예측은 없다 (DATA-003).
+
+- 노선이 붙은 곳은 표준데이터 휴게소(방향별, 예: `기흥(부산)`)로 statId를 묶는다 — 매핑은 `backend/data/rest_area_routes.csv` ([database.md](../database.md) `service_area_stations`)
+- 노선을 못 붙인 곳(민자 노선 등)은 statId 하나씩 보내고 노선 필드는 모두 `null` — 화면에서 실시간 상태만 보여 준다
+- 순서: 노선 이름 → `routeSeq`, 노선 미확인은 맨 뒤
+
+**요청**: 파라미터 없음
+
+**응답 200**
+
+```json
+{
+  "updatedAt": "2026-11-24T14:05:00+09:00",
+  "dataQuality": "normal",
+  "serviceAreas": [
+    {
+      "id": "천안호두(부산)",
+      "name": "천안호두(부산)",
+      "routeName": "경부선",
+      "routeNo": "1",
+      "heading": "부산",
+      "towards": "부산",
+      "bidirectional": false,
+      "routeSeq": 12,
+      "seqOrder": "desc",
+      "address": "충청남도 천안시 동남구 광덕면 …",
+      "lat": 36.7965,
+      "lng": 127.1286,
+      "totalChargers": 6,
+      "availableChargers": 5,
+      "statusCounts": { "available": 5, "charging": 1, "stopped": 0, "maintenance": 0, "unknown": 0 },
+      "dataQuality": "normal"
+    }
+  ]
+}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `id` | string | 16번 요청의 `id` — 노선이 붙은 곳은 휴게소명, 못 붙인 곳은 statId |
+| `name` | string | 화면 이름 — 노선이 붙은 곳은 `id`와 같고, 못 붙인 곳은 충전소 이름 |
+| `routeName` · `routeNo` | string \| null | 노선명 · 번호. 번호 하나에 노선이 여럿이라(12 · 20 · 65번) 묶을 때는 `routeName` |
+| `heading` | string \| null | 방향 버튼 — 노선 끝 도시. 노선마다 두 개. 양방향 휴게소 · 순환 노선은 `null` |
+| `towards` | string \| null | 이름의 목적지 도시 (`heading`과 다를 수 있음 — 당진영덕선 `공주(대전)`은 `heading` `영덕`) |
+| `bidirectional` | boolean | 양방향 휴게소 — 노선 화면의 두 방향 모두에 넣는다 |
+| `routeSeq` · `seqOrder` | number · string \| null | 노선 안 순서. 방향 버튼 쪽으로 갈 때 `seqOrder`가 `asc`면 `routeSeq`가 커지고 `desc`면 작아진다 |
+| `address` | string \| null | 대표 statId 주소 (5번과 같은 규칙) |
+| `lat` · `lng` | number | 노선이 붙은 곳은 표준데이터 휴게소 좌표(충전기 좌표가 틀린 곳이 있음), 못 붙인 곳은 대표 statId 좌표 |
+
+노선 화면은 `routeName`이 같고 `heading`이 고른 방향이거나 `bidirectional`인 휴게소를 `routeSeq`로 정렬하면 된다 (`seqOrder`가 `desc`면 큰 순서부터).
+
+**에러**: 503 `DATA_UNAVAILABLE`
+
+---
+
+## 16. 전국 휴게소 충전기 현황 — `GET /service-areas/nationwide/chargers`
+
+전국 휴게소 한 곳의 충전기별 실시간 상태 (UC-U08, 2026-11-24).
+
+**요청**: 쿼리 `id`(15번의 `id`, 한글이면 URL 인코딩). 예: `?id=천안호두(부산)` · `?id=SGMAC003`
+
+**응답 200**
+
+```json
+{
+  "updatedAt": "2026-11-24T14:05:00+09:00",
+  "dataQuality": "normal",
+  "serviceArea": { "id": "천안호두(부산)", "name": "천안호두(부산)", "routeName": "경부선", "routeNo": "1",
+                   "heading": "부산", "towards": "부산", "bidirectional": false, "routeSeq": 12, "seqOrder": "desc",
+                   "address": "충청남도 천안시 동남구 광덕면 …", "lat": 36.7965, "lng": 127.1286,
+                   "totalChargers": 6, "availableChargers": 5 },
+  "chargers": [
+    { "stationId": "ME21A209", "operator": "기후에너지환경부", "chargerId": "01", "status": "available",
+      "connectorTypes": ["dc_combo"], "capacityKw": 100, "unstable": false, "chargingStartedAt": null }
+  ]
+}
+```
+
+충전기 항목은 6번과 같다.
 
 **에러**: 404 `SERVICE_AREA_NOT_FOUND` · 422 `VALIDATION_ERROR` · 503 `DATA_UNAVAILABLE`
