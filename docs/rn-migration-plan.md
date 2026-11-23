@@ -311,6 +311,7 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 지도 홈 + 추천 Top 3 시트 — 완료 (`feat/app-map-home`, 2026-11-20)
 - 화면: 3단계 지도 검증 화면을 `src/app/(tabs)/index.tsx` 지도 홈으로 바꿈. 데이터는 core `useMapHomeData` 그대로, 시점 · 필터는 검색 화면과 함께 쓰는 `MapViewProvider` 상태
   - 위쪽 확인용 표시(웹 줌 · 마커 수 · 겹침 숨김 토글)는 뺌. 겹침 숨김은 켠 채로 둠 (점만, 마포 · 추천 숫자 마커는 `StationMarker`가 뺌)
+  - 2026-11-23 겹침 숨김을 끔 (`IS_HIDE_COLLIDED = false`). 숨기면 지도에서 찾을 수 없는 충전소가 생기고, 지도를 끄는 동안 SDK가 마커 1,600여 개의 겹침을 계속 다시 계산해 느려짐
   - 마커는 필터를 적용하고 추천 Top 3는 추천 색(형광 파랑)으로, 필터와 상관없이 남김 (웹과 같음). 너무 멀리 보면 "확대하면 충전소가 보여요"
   - 서비스 범위 칠하기(`src/map/CoverageMask.tsx`): 웹 `useCoverageMask`와 같은 경계 파일을 SDK 폴리곤으로. SDK 규칙대로 바깥 고리는 시계 방향, 구멍은 반시계. 마포구는 테두리만 그려서 폴리곤 대신 선(`NaverMapPolylineOverlay`)으로 그림 — 채움 없는 폴리곤은 `"transparent"` · `rgba(0, 0, 0, 0)` 둘 다 색 값 0이 되어 SDK가 흰색으로 칠함
 - 추천 시트(`src/components/RecommendSheet.tsx`): 계획 4번 6대로 `@gorhom/bottom-sheet` 5.2 + `react-native-gesture-handler` 3.3 (Expo SDK 58 권장 버전). 루트 레이아웃을 `GestureHandlerRootView`로 감쌈
