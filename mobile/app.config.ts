@@ -49,6 +49,8 @@ const config: ExpoConfig = {
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,
         motionUsagePermission: false,
+        // 정확한 위치 임시 허용(requestTemporaryFullAccuracy)은 쓰지 않아서 영어 기본 설명을 넣지 않음
+        locationFullAccuracyPermission: false,
       },
     ],
     // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)
