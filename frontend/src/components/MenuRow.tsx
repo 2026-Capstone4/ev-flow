@@ -29,16 +29,33 @@ type MenuRowProps = {
   onClick?: () => void
   /** 묶음의 첫 줄이면 위 구분선을 그리지 않음 */
   isFirst?: boolean
+  /** 눈에 띄게 할 줄이면 글자를 브랜드 파란색 · 굵게 씀 */
+  isHighlighted?: boolean
 }
 
 /** 왼쪽 글자 · 오른쪽 화살표(또는 값) 한 줄 */
-export function MenuRow({ label, value, to, href, onClick, isFirst = false }: MenuRowProps) {
+export function MenuRow({
+  label,
+  value,
+  to,
+  href,
+  onClick,
+  isFirst = false,
+  isHighlighted = false,
+}: MenuRowProps) {
   const className = `flex min-h-[52px] w-full items-center justify-between gap-3 px-4 text-left ${
     isFirst ? '' : 'border-t border-border-default'
   }`
   const content = (
     <>
-      <span className="flex-1 text-[15px] font-medium text-text-primary">{label}</span>
+      {/* 강조할 줄은 파란 굵은 글자, 나머지는 기본 글자 */}
+      <span
+        className={`flex-1 text-[15px] ${
+          isHighlighted ? 'font-bold text-brand-primary' : 'font-medium text-text-primary'
+        }`}
+      >
+        {label}
+      </span>
       {/* 값이 있으면 값만, 누를 수 있는 줄이면 화살표를 붙임 */}
       {value !== undefined ? (
         <span className="text-[15px] text-text-secondary">{value}</span>

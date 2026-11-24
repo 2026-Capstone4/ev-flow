@@ -2808,6 +2808,12 @@
     "url": "https://github.com/Rob--W/proxy-from-env#readme"
   },
   {
+    "name": "qrcode.react",
+    "version": "4.2.0",
+    "license": "ISC",
+    "url": "http://zpao.github.io/qrcode.react"
+  },
+  {
     "name": "queue-microtask",
     "version": "1.2.3",
     "license": "MIT",

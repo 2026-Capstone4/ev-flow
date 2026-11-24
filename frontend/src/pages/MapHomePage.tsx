@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { AppInstallQrCard } from '@/components/AppInstallQrCard'
+import { AppInstallSheet } from '@/components/AppInstallSheet'
 import { BottomTab } from '@/components/BottomTab'
 import { DevZoomBadge } from '@/components/DevZoomBadge'
 import { ChargerIssuesButton } from '@/components/ChargerIssuesButton'
@@ -26,6 +28,7 @@ import { useNaverMap } from '@/hooks/useNaverMap'
 import { useSheetCollapsedOffset } from '@/hooks/useSheetCollapsedOffset'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
+import { dismissAppInstallForToday, hasDismissedAppInstallToday, isIPhone } from '@/lib/appInstall'
 import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { LOCATE_FAILURE_MESSAGE } from '@ev-flow/core/lib/geolocation'
@@ -115,6 +118,22 @@ export function MapHomePage() {
     // 다시 보기로 열었으면 기록의 값도 지움. 상세에 갔다 뒤로 돌아와도 다시 뜨지 않게 함
     if (isOnboardingReplay) navigate('/', { replace: true })
   }, [isOnboardingReplay, navigate])
+
+  // 아이폰으로 들어오면 첫 안내보다 먼저 앱 설치 안내를 띄움. 오늘 이미 닫았거나 첫 안내 다시 보기로 왔으면 띄우지 않음
+  const [isAppInstallOpen, setIsAppInstallOpen] = useState(
+    () => !isOnboardingReplay && isIPhone() && !hasDismissedAppInstallToday(),
+  )
+  /** 앱 안내를 닫으면 오늘은 다시 띄우지 않고, 첫 안내를 아직 안 봤으면 이어서 첫 안내가 뜸 */
+  const closeAppInstall = useCallback(() => {
+    dismissAppInstallForToday()
+    setIsAppInstallOpen(false)
+  }, [])
+  /** 앱스토어로 가면 앱을 쓸 사람이라 웹 첫 안내는 띄우지 않음. 본 기록은 남기지 않아 다음에 웹으로 오면 뜸 */
+  const handleAppInstall = useCallback(() => {
+    dismissAppInstallForToday()
+    setIsAppInstallOpen(false)
+    setIsOnboardingOpen(false)
+  }, [])
 
   // 필터 버튼은 검색 화면으로 가지 않고 검색창 아래에 필터 패널을 엶. 지도는 덮지 않음
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -374,7 +393,12 @@ export function MapHomePage() {
         </section>
       </main>
       <BottomTab />
-      {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
+      {/* 앱 안내가 떠 있는 동안에는 첫 안내를 미뤄 두었다가 앱 안내를 닫으면 띄움 */}
+      {isAppInstallOpen && (
+        <AppInstallSheet onClose={closeAppInstall} onInstall={handleAppInstall} />
+      )}
+      {isOnboardingOpen && !isAppInstallOpen && <OnboardingDialog onClose={closeOnboarding} />}
+      <AppInstallQrCard />
     </div>
   )
 }
