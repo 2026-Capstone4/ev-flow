@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 
 import redis
-from sqlalchemy import Integer, and_, cast, extract, func, literal_column, select
+from sqlalchemy import Integer, cast, extract, func, literal_column, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -94,6 +94,11 @@ def log_counts(db: Session, target: str, start: datetime, end: datetime, group: 
         "date": [func.date(kst)],
         "charger": [log.station_id, log.charger_id],
     }[group]
+    # 버스전용은 충전기 표와 조인하지 않고 NOT IN으로 뺌 - 조인하면 플래너가 충전기마다 lookup 인덱스로
+    # 흩어 읽음(서버 2026-11-24 오늘 56.5만 행에 6.8초). 조인이 없어야 collected_at 인덱스로 오늘 구간만 이어 읽음
+    bus = select(charger.station_id, charger.charger_id).where(
+        charger.charger_type == BUS_CHARGER_TYPE
+    )
     query = (
         select(
             *keys,
@@ -101,17 +106,13 @@ def log_counts(db: Session, target: str, start: datetime, end: datetime, group: 
             func.count().filter(log.stat.in_(CHARGING_STATS + AVAILABLE_STATS)),
         )
         .select_from(log)
-        .join(
-            charger,
-            and_(charger.station_id == log.station_id, charger.charger_id == log.charger_id),
-        )
         .join(CollectionRun, CollectionRun.id == log.collection_run_id)
         .where(
             log.collected_at >= start,
             log.collected_at < end + LOG_SAVED_WITHIN,
             CollectionRun.started_at >= start,
             CollectionRun.started_at < end,
-            charger.charger_type != BUS_CHARGER_TYPE,
+            tuple_(log.station_id, log.charger_id).not_in(bus),
             CollectionRun.status.in_(SAVED_RUN_STATUSES),
         )
         .group_by(*keys)
