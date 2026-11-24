@@ -10,6 +10,12 @@ const TAB_LABEL: Record<string, string> = {
   more: '더보기',
 }
 
+/** 글자 위치만 옮기는 값(px). 누르는 영역은 그대로 둠. 웹 BottomTab shiftClass와 같은 값 */
+const TAB_LABEL_SHIFT_X: Partial<Record<string, number>> = {
+  // 도심 충전소 글자를 왼쪽으로 15px 옮김
+  index: -15,
+}
+
 /** 글자 대신 아이콘만 보여 주는 탭. 글자는 화면 읽기 프로그램용 이름으로만 씀 */
 const TAB_ICON: Partial<Record<string, LucideIcon>> = {
   more: Menu,
@@ -46,6 +52,7 @@ export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
               />
             ) : (
               <Text
+                style={{ transform: [{ translateX: TAB_LABEL_SHIFT_X[route.name] ?? 0 }] }}
                 className={`text-[13px] ${
                   isActive ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'
                 }`}

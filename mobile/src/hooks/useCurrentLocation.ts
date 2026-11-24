@@ -1,16 +1,14 @@
 import * as Location from 'expo-location'
 import { useCallback, useState } from 'react'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
-import { isInMapo } from '@ev-flow/core/lib/coverage'
-import {
-  isLocateFailure,
-  LOCATE_FAILURE_MESSAGE,
-  type LocateFailure,
-} from '@ev-flow/core/lib/geolocation'
+import { LOCATE_FAILURE_MESSAGE, type LocateFailure } from '@ev-flow/core/lib/geolocation'
 import type { LatLng } from '@ev-flow/core/types/geo'
 
-/** 앱에서 생길 수 있는 실패 이유. 'insecure'(HTTP 주소)는 브라우저에만 있는 경우라 뺌 */
-export type AppLocateFailure = Exclude<LocateFailure, 'insecure'>
+/**
+ * 앱에서 생길 수 있는 실패 이유. 'insecure'(HTTP 주소)는 브라우저에만 있는 경우라 뺌
+ * 'out-of-area'도 뺌 - 앱은 마포구 밖 위치도 그대로 씀 (11/24 결정, 추천 시트가 마포구만 지원한다고 알려 줌)
+ */
+export type AppLocateFailure = Exclude<LocateFailure, 'insecure' | 'out-of-area'>
 
 /**
  * 앱 안내 문구. 웹 core 문구를 그대로 쓰고, 브라우저를 가리키는 두 문구만 앱에 맞게 바꿈
@@ -21,7 +19,6 @@ export const APP_LOCATE_FAILURE_MESSAGE: Record<AppLocateFailure, string> = {
   denied: '위치 권한이 꺼져 있어요. 설정 앱에서 EV-flow의 위치 접근을 허용해 주세요',
   unavailable: LOCATE_FAILURE_MESSAGE.unavailable,
   timeout: LOCATE_FAILURE_MESSAGE.timeout,
-  'out-of-area': LOCATE_FAILURE_MESSAGE['out-of-area'],
 }
 
 /** 웹 POSITION_OPTIONS와 같은 기준. 10초 넘으면 포기, 30초 안에 잰 위치는 다시 재지 않고 씀 */
@@ -72,7 +69,7 @@ export async function readDeviceLocation(): Promise<LatLng | null> {
 }
 
 /**
- * 현재 위치를 한 번 재서, 마포구 안이면 사용자 위치(검색 거리 · 길찾기 출발지)로 바꿈 (웹 useCurrentLocation과 같은 흐름)
+ * 현재 위치를 한 번 재서 사용자 위치(검색 거리 · 길찾기 출발지)로 바꿈. 마포구 밖이어도 바꿈 (웹은 마포구 안만)
  * 추천은 바로 부르지 않고 기준점 규칙(500m · 2분 · 5분, core useRecommendationOrigin)대로 부름
  * 버튼을 누를 때만 재므로 앱을 열자마자 권한 창이 뜨지 않음
  */
@@ -90,16 +87,15 @@ export function useCurrentLocation() {
       // 거부했으면 다시 물을 수 없어서 설정 앱 안내를 띄움
       if (!granted) return { ok: false, reason: 'denied' }
 
+      // 마포구 밖이어도 기준 위치로 씀. 추천은 서버가 마포구만 지원한다고 답해 시트에 안내가 뜸
       const location = await readPosition()
-      // 마포구 밖은 추천을 못 하므로 기준 위치를 바꾸지 않음
-      if (!isInMapo(location)) return { ok: false, reason: 'out-of-area' }
       setUserLocation(location)
       return { ok: true, location }
     } catch (error) {
       // 시간 초과면 그 이유를, 위치 신호 없음 · 예상 못 한 오류면 위치를 못 찾은 것으로 안내
       return {
         ok: false,
-        reason: isLocateFailure(error) && error !== 'insecure' ? error : 'unavailable',
+        reason: error === 'timeout' ? 'timeout' : 'unavailable',
       }
     } finally {
       setIsLocating(false)

@@ -133,20 +133,20 @@ export function OnboardingDialog({ onClose }: OnboardingDialogProps) {
             ))}
           </View>
 
+          {/* 버튼을 flex: 1 칸으로 감싸 두 버튼이 글자 길이와 상관없이 절반씩 같은 폭이 되게 함
+              (버튼에 바로 준 flex-1은 글자 폭을 기준으로 늘어나 '시작하기'처럼 긴 쪽이 넓어짐) */}
           <View className="flex-row gap-2">
             {/* 첫 장에서는 돌아갈 곳이 없어 이전 버튼을 숨김 */}
             {stepIndex > 0 && (
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onPress={() => setStepIndex(stepIndex - 1)}
-              >
-                이전
-              </Button>
+              <View style={{ flex: 1 }}>
+                <Button variant="secondary" onPress={() => setStepIndex(stepIndex - 1)}>
+                  이전
+                </Button>
+              </View>
             )}
-            <Button className="flex-1" onPress={handleNext}>
-              {isLastStep ? '시작하기' : '다음'}
-            </Button>
+            <View style={{ flex: 1 }}>
+              <Button onPress={handleNext}>{isLastStep ? '시작하기' : '다음'}</Button>
+            </View>
           </View>
         </View>
       </View>

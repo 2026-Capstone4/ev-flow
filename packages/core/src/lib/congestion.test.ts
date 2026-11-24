@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { formatWaitRange, formatWaitTime, getCongestionLabel, getWaitNote } from './congestion'
+import {
+  formatWaitRange,
+  formatWaitTime,
+  getCongestionLabel,
+  getCongestionNote,
+  getWaitNote,
+  OUT_OF_AREA_PREDICTION_NOTE,
+} from './congestion'
 
 describe('getCongestionLabel', () => {
   it('3단계 혼잡도를 한국어로 표기함', () => {
@@ -74,5 +81,18 @@ describe('getWaitNote', () => {
   it('범위가 있거나 값이 없으면 null', () => {
     expect(getWaitNote(5, 15, 'high')).toBeNull()
     expect(getWaitNote(null, null, 'high')).toBeNull()
+  })
+})
+
+describe('getCongestionNote', () => {
+  it('예측 지역 밖이면 아직 지원하지 않는다고 안내함', () => {
+    expect(getCongestionNote(null, 4, false)).toBe(OUT_OF_AREA_PREDICTION_NOTE)
+  })
+
+  it('예측 지역 안에서 예측이 없으면 받아오지 못했다고 안내함', () => {
+    expect(getCongestionNote(null, 4)).toEqual([
+      '이 시간대 예측을 받아오지 못했어요',
+      '지금 사용 가능 대수를 참고해보세요',
+    ])
   })
 })
