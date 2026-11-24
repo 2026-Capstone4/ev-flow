@@ -1,3 +1,4 @@
+import gzip
 import threading
 import time
 from dataclasses import dataclass
@@ -43,8 +44,10 @@ MAPO = Area("city", CityStation, CityCharger, CityStatusLog, True)
 # 서울은 예측 · 기준선이 없음 - predictions는 형식만 유지하고 값은 전부 null (build_predictions에 둘 다 None)
 SEOUL = Area("live", LiveStation, LiveCharger, LiveStatusLog, False)
 
-STATIONS_CACHE_SEC = 30  # 목록 응답 캐시 유효 시간 (get_stations_json)
-_stations_cache: tuple[tuple, float, bytes] | None = None  # (회차 키, 만든 시각 monotonic, JSON)
+STATIONS_CACHE_SEC = 30  # 목록 응답 캐시 유효 시간 (get_stations_payload)
+GZIP_LEVEL = 6  # 목록 압축본 - nginx 기본(1)보다 높게. 캐시를 만들 때 한 번만 압축함
+# (회차 키, 만든 시각 monotonic, 응답)
+_stations_cache: tuple[tuple, float, "StationsPayload"] | None = None
 _stations_lock = threading.Lock()
 
 
@@ -126,33 +129,63 @@ def get_stations(db: Session) -> StationsResponse:
     return build_stations_response(db, city_run, live_run)
 
 
-def get_stations_json(db: Session) -> bytes:
-    """GET /stations 응답 JSON - 같은 회차면 STATIONS_CACHE_SEC 동안 만든 결과를 그대로 줌
+@dataclass(frozen=True)
+class StationsPayload:
+    """목록 응답 JSON과 그 gzip 압축본 - 클라이언트가 gzip을 받으면 압축본을 그대로 보냄"""
+
+    body: bytes
+    gzip_body: bytes
+
+
+def get_stations_payload(db: Session) -> StationsPayload:
+    """GET /stations 응답 - 같은 회차면 STATIONS_CACHE_SEC 동안 만든 결과를 그대로 줌
 
     목록은 요청마다 1,600여 곳을 DB에서 읽고 조립해 무거움(실서버 약 0.25초). 데이터는 수집 회차(5분)마다만 바뀜
     - 키를 회차 id로 잡아 새 회차가 들어오면 바로 다시 만듦
     - 시간에 따라 바뀌는 값(dataQuality · 20분 지난 상태의 unknown · 기준선 시간대)과 회차보다 늦게 들어오는
       예측(pred:v2)은 유효 시간만큼 늦게 반영됨 - 화면은 1분마다 다시 부르고 경계는 10 · 20분 단위라 30초면 충분
     - 워커마다 따로 둠. 만들 때는 잠금으로 한 요청만 계산하고 나머지는 기다렸다가 결과를 같이 씀
+    - gzip 압축본도 만들 때 한 번만 만듦 - 원본이 약 1.4MB라 nginx가 요청마다 압축하면 서버 실측 12.6ms(level 1)로
+      캐시를 꺼내는 시간(약 7ms)보다 큼. level 6은 20.8ms지만 30초에 한 번이고 크기도 level 1 압축본 124KB → 90KB로 줄어듦
     """
     global _stations_cache
     city_run = latest_success_run(db, MAPO.target)
     live_run = find_latest_success_run(db, SEOUL.target)
     key = (city_run.id, live_run.id if live_run else None)
-    body = _cached_stations(key)
-    if body is not None:
-        return body
+    payload = _cached_stations(key)
+    if payload is not None:
+        return payload
     with _stations_lock:
         # 잠금을 기다리는 동안 다른 요청이 만들었으면 그대로 씀
-        body = _cached_stations(key)
-        if body is None:
+        payload = _cached_stations(key)
+        if payload is None:
             response = build_stations_response(db, city_run, live_run)
             body = response.model_dump_json(by_alias=True).encode()
-            _stations_cache = (key, time.monotonic(), body)
-    return body
+            # mtime=0 - 같은 내용이면 압축본도 같은 바이트가 되게 함
+            payload = StationsPayload(body, gzip.compress(body, GZIP_LEVEL, mtime=0))
+            _stations_cache = (key, time.monotonic(), payload)
+    return payload
 
 
-def _cached_stations(key: tuple) -> bytes | None:
+def accepts_gzip(accept_encoding: str) -> bool:
+    """Accept-Encoding이 gzip을 받는지 - gzip을 직접 적은 값이 *보다 우선, q=0은 거부"""
+    q_by_name = {}
+    for item in accept_encoding.split(","):
+        name, *params = (part.strip() for part in item.split(";"))
+        q = 1.0
+        for param in params:
+            key, _, value = param.partition("=")
+            if key.strip().lower() == "q":
+                try:
+                    q = float(value)
+                except ValueError:
+                    q = 0.0
+        q_by_name[name.lower()] = q
+    q = q_by_name.get("gzip", q_by_name.get("*", 0.0))
+    return q > 0
+
+
+def _cached_stations(key: tuple) -> StationsPayload | None:
     cache = _stations_cache
     if cache and cache[0] == key and time.monotonic() - cache[1] < STATIONS_CACHE_SEC:
         return cache[2]
