@@ -2,11 +2,13 @@ import { useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { MenuRow, MenuSection } from '@/components/MenuRow'
 import { APP_STORE_URL } from '@/lib/appInstall'
+import { usePageTitle } from '@/hooks/usePageMeta'
 import { PRIVACY_PATH, SUPPORT_EMAIL, SUPPORT_PATH } from '@/lib/serviceInfo'
 
 // 더보기 (하단 탭 세 번째). 앱 더보기 탭과 같은 메뉴. 웹은 버전이 따로 없어서 앱 정보 묶음만 뺌
 export function MorePage() {
   const navigate = useNavigate()
+  usePageTitle('더보기')
 
   // 지도 홈으로 가면서 첫 방문 안내를 다시 띄움 (홈에서 안내를 닫으면 값을 지움)
   const replayOnboarding = () => navigate('/', { state: { showOnboarding: true } })

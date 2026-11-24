@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin
+Disallow: /api/
+Disallow: /stations/*/route
+
+Sitemap: https://evflowkr.app/sitemap.xml

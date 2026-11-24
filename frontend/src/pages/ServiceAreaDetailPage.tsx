@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { ChargerRow } from '@/components/ChargerRow'
 import { DirectionTag } from '@/components/DirectionTag'
 import { UpdateStatus } from '@/components/UpdateStatus'
+import { useNoIndex, usePageTitle } from '@/hooks/usePageMeta'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useServiceAreaDetailData } from '@ev-flow/core/hooks/useServiceAreaDetailData'
 import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
@@ -23,6 +24,9 @@ export function ServiceAreaDetailPage() {
   const now = useNow()
   const { serviceArea, chargerGroups, unknownCount, updatedAt, isError, isNotFound } =
     useServiceAreaDetailData(name, direction)
+  // 휴게소 이름이 검색 결과 제목이 됨. 없는 휴게소는 색인하지 않음
+  usePageTitle(serviceArea ? serviceArea.name : isNotFound ? '휴게소를 찾을 수 없어요' : undefined)
+  useNoIndex(isNotFound)
 
   const platform = detectPlatform(navigator.userAgent)
   // 휴게소 정보를 받은 뒤에만 목적지를 알 수 있어 그 전엔 null

@@ -9,6 +9,7 @@ import { ChargerIssuesPage } from '@/pages/ChargerIssuesPage'
 import { PRIVACY_PATH, SUPPORT_PATH } from '@/lib/serviceInfo'
 import { MapHomePage } from '@/pages/MapHomePage'
 import { MorePage } from '@/pages/MorePage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { DataSourcesPage } from '@/pages/more/DataSourcesPage'
 import { ServiceAreaInfoPage } from '@/pages/more/ServiceAreaInfoPage'
 import { PrivacyPage } from '@/pages/PrivacyPage'
@@ -70,6 +71,8 @@ export function App() {
               <Route path="charger-issues" element={<AdminChargerIssuesPage />} />
               <Route path="collection" element={<AdminCollectionPage />} />
             </Route>
+            {/* 위 경로에 하나도 맞지 않는 주소 (React Router가 순서와 상관없이 가장 나중에 고름) */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </BrowserRouter>
       </MapViewProvider>

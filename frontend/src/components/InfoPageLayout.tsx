@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { usePageTitle } from '@/hooks/usePageMeta'
 import {
   OPERATOR_NAME,
   PRIVACY_PATH,
@@ -20,15 +21,11 @@ type InfoPageLayoutProps = {
  * 앱에서 외부 브라우저로 열고 PC에서도 읽으므로, 모바일 폭 기준에 최대 폭만 제한함
  */
 export function InfoPageLayout({ title, description, children }: InfoPageLayoutProps) {
-  // 탭 제목을 화면 이름으로 바꾸고, 다른 화면으로 옮기면 원래 제목으로 되돌림
+  usePageTitle(title)
+
   // 지원 ↔ 처리방침 링크로 넘어오면 앞 화면의 스크롤 위치가 남아 있어서 맨 위부터 보여 줌
   useEffect(() => {
-    const previousTitle = document.title
-    document.title = `${title} - ${SERVICE_NAME}`
     window.scrollTo(0, 0)
-    return () => {
-      document.title = previousTitle
-    }
   }, [title])
 
   return (
