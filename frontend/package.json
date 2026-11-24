@@ -15,7 +15,8 @@
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "licenses": "node scripts/generate-licenses.mjs"
   },
   "dependencies": {
     "@ev-flow/core": "workspace:*",

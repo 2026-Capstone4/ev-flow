@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AdminLayout } from '@/app/AdminLayout'
 import { MapViewProvider } from '@ev-flow/core/app/MapViewProvider'
@@ -8,6 +8,9 @@ import { AdminLoginPage } from '@/pages/AdminLoginPage'
 import { ChargerIssuesPage } from '@/pages/ChargerIssuesPage'
 import { PRIVACY_PATH, SUPPORT_PATH } from '@/lib/serviceInfo'
 import { MapHomePage } from '@/pages/MapHomePage'
+import { MorePage } from '@/pages/MorePage'
+import { DataSourcesPage } from '@/pages/more/DataSourcesPage'
+import { ServiceAreaInfoPage } from '@/pages/more/ServiceAreaInfoPage'
 import { PrivacyPage } from '@/pages/PrivacyPage'
 import { ServiceAreaDetailPage } from '@/pages/ServiceAreaDetailPage'
 import { ServiceAreaListPage } from '@/pages/ServiceAreaListPage'
@@ -17,6 +20,10 @@ import { StationDetailPage } from '@/pages/StationDetailPage'
 import { SupportPage } from '@/pages/SupportPage'
 
 // 운영자 화면은 차트 라이브러리(Recharts)가 커서 운영자가 들어올 때만 따로 받음 — 사용자 화면 첫 로딩에 포함하지 않음
+// 오픈소스 라이선스 목록(수백 줄 JSON)도 그 화면에 들어올 때만 받음
+const LicensesPage = lazy(() =>
+  import('@/pages/more/LicensesPage').then((module) => ({ default: module.LicensesPage })),
+)
 const AdminStatusPage = lazy(() =>
   import('@/pages/AdminStatusPage').then((module) => ({ default: module.AdminStatusPage })),
 )
@@ -42,6 +49,17 @@ export function App() {
             <Route path="/stations/:stationId/route" element={<RoutePage />} />
             <Route path="/service-areas" element={<ServiceAreaListPage />} />
             <Route path="/service-areas/detail" element={<ServiceAreaDetailPage />} />
+            <Route path="/more" element={<MorePage />} />
+            <Route path="/more/service-area" element={<ServiceAreaInfoPage />} />
+            <Route path="/more/data-sources" element={<DataSourcesPage />} />
+            <Route
+              path="/more/licenses"
+              element={
+                <Suspense fallback={null}>
+                  <LicensesPage />
+                </Suspense>
+              }
+            />
             {/* App Store 지원 · 개인정보 처리방침 URL. 앱 더보기 탭이 이 주소를 외부 브라우저로 엶 */}
             <Route path={SUPPORT_PATH} element={<SupportPage />} />
             <Route path={PRIVACY_PATH} element={<PrivacyPage />} />

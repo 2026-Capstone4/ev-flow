@@ -102,12 +102,19 @@ export function MapHomePage() {
   useMyLocationMarker(map, userLocation)
 
   // 처음 들어온 사용자에게만 사용법 안내를 띄움. 본 기록은 브라우저(localStorage)에 남김
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !hasSeenOnboarding())
+  // 더보기의 "첫 방문 안내 다시 보기"로 왔으면(state.showOnboarding) 본 적이 있어도 띄움
+  const isOnboardingReplay =
+    (location.state as { showOnboarding?: boolean } | null)?.showOnboarding === true
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(
+    () => isOnboardingReplay || !hasSeenOnboarding(),
+  )
   /** 안내를 닫으면 본 것으로 기록해서 다음 방문부터는 띄우지 않음 */
   const closeOnboarding = useCallback(() => {
     markOnboardingSeen()
     setIsOnboardingOpen(false)
-  }, [])
+    // 다시 보기로 열었으면 기록의 값도 지움. 상세에 갔다 뒤로 돌아와도 다시 뜨지 않게 함
+    if (isOnboardingReplay) navigate('/', { replace: true })
+  }, [isOnboardingReplay, navigate])
 
   // 필터 버튼은 검색 화면으로 가지 않고 검색창 아래에 필터 패널을 엶. 지도는 덮지 않음
   const [isFilterOpen, setIsFilterOpen] = useState(false)
