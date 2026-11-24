@@ -156,6 +156,20 @@ export function MapHomePage() {
     const index = SHEET_LEVELS.indexOf(sheetLevel) + step
     changeSheetLevel(SHEET_LEVELS[Math.min(Math.max(index, 0), SHEET_LEVELS.length - 1)])
   }
+  // 지도 빈 곳을 클릭하면 추천 시트를 최소로 내려 지도를 넓게 봄 (앱과 같음). 마커 클릭은 지도 click으로 오지 않음
+  useEffect(() => {
+    // 지도가 아직 없으면 붙일 곳이 없음
+    if (!map) return
+    const { maps } = window.naver
+    const listener = maps.Event.addListener(map, 'click', () => {
+      setIsSheetAnimating(true)
+      setSheetLevel('minimized')
+    })
+    return () => {
+      // 인증 실패로 SDK가 비워졌으면 정리 호출도 예외를 던지므로 건너뜀
+      if (window.naver.maps) maps.Event.removeListener(listener)
+    }
+  }, [map])
   const sheetDrag = useSheetDrag({
     onDragUp: () => moveSheetLevel(-1),
     onDragDown: () => moveSheetLevel(1),

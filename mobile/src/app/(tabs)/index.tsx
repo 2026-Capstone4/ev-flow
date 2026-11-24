@@ -243,6 +243,8 @@ export default function MapHomeScreen() {
         extent={SEOUL_EXTENT}
         isShowZoomControls={false}
         onCameraIdle={handleCameraIdle}
+        // 지도 빈 곳을 탭하면 추천 시트를 최소로 내려 지도를 넓게 봄. 마커 탭은 SDK가 먼저 받아서 여기로 오지 않음
+        onTapMap={() => sheetRef.current?.minimize()}
         // 추천 · 검색 기준 위치 표시 (웹 내 위치 마커). 시연 위치이거나 현재 위치 버튼으로 바꾼 위치
         locationOverlay={{
           isVisible: true,

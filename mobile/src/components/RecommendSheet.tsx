@@ -53,6 +53,8 @@ const SHEET_SHADOW = {
 export type RecommendSheetHandle = {
   /** 펼침(Top 3)으로 올림. 펼침 단계가 없으면(안내 문구뿐) 맨 끝 단계로 */
   expand: () => void
+  /** 최소(헤더만)로 내림. 지도를 탭했을 때 씀 */
+  minimize: () => void
 }
 
 type RecommendSheetProps = {
@@ -96,7 +98,14 @@ export function RecommendSheet({
 }: RecommendSheetProps) {
   const sheetRef = useRef<BottomSheet>(null)
   // 번호 없이 맨 끝 단계로 가는 expand()를 씀 (아래 toggleLevel과 같은 이유)
-  useImperativeHandle(ref, () => ({ expand: () => sheetRef.current?.expand() }), [])
+  useImperativeHandle(
+    ref,
+    () => ({
+      expand: () => sheetRef.current?.expand(),
+      minimize: () => sheetRef.current?.snapToIndex(LEVEL.minimized),
+    }),
+    [],
+  )
   const [level, setLevel] = useState(LEVEL.collapsed)
   // 펼침 높이는 카드 수 · "후보가 n곳뿐" 안내에 따라 달라서 그린 뒤 잰 내용 높이로 정함
   const [contentHeight, setContentHeight] = useState(0)
