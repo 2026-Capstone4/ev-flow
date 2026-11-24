@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
 import { MenuRow, MenuSection } from '@/components/MenuRow'
+import { APP_STORE_URL } from '@/lib/appInstall'
 import { PRIVACY_PATH, SUPPORT_EMAIL, SUPPORT_PATH } from '@/lib/serviceInfo'
 
 // 더보기 (하단 탭 세 번째). 앱 더보기 탭과 같은 메뉴. 웹은 버전이 따로 없어서 앱 정보 묶음만 뺌
@@ -16,7 +17,9 @@ export function MorePage() {
         <h1 className="text-[22px] font-bold text-text-primary">더보기</h1>
 
         <MenuSection title="서비스 정보">
-          <MenuRow label="첫 방문 안내 다시 보기" onClick={replayOnboarding} isFirst />
+          {/* 아이폰 · 안드로이드 · 컴퓨터 모두 보이는 앱 설치 줄. App Store 앱 페이지로 감 */}
+          <MenuRow label="앱 설치하기" href={APP_STORE_URL} isFirst isHighlighted />
+          <MenuRow label="첫 방문 안내 다시 보기" onClick={replayOnboarding} />
           <MenuRow label="서비스 지역 안내" to="/more/service-area" />
         </MenuSection>
 
