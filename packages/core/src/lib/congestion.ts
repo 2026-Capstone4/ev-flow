@@ -66,8 +66,23 @@ export function getWaitNote(
   return null
 }
 
-/** 대기 예측이 없을 때 혼잡도 큰 글씨 아래 설명 줄. 문장마다 한 줄 */
-export function getCongestionNote(congestion: PredictedCongestion | null, totalChargers: number) {
+/** 예측을 하지 않는 지역(마포구 밖) 충전소의 혼잡도 아래 설명 */
+export const OUT_OF_AREA_PREDICTION_NOTE = [
+  '현재 혼잡 예측 기능은 마포구에서 먼저 서비스 중이에요',
+  '조금만 기다려주세요!',
+]
+
+/**
+ * 대기 예측이 없을 때 혼잡도 큰 글씨 아래 설명 줄. 문장마다 한 줄
+ * isPredictionArea가 false면 예측 지역 밖이라 곧 지원한다고 안내함 (Station.predictionAvailable)
+ */
+export function getCongestionNote(
+  congestion: PredictedCongestion | null,
+  totalChargers: number,
+  isPredictionArea = true,
+) {
+  // 예측 지역 밖이면 받아오지 못한 게 아니라 아직 지원하지 않는 지역이라고 안내
+  if (congestion === null && !isPredictionArea) return OUT_OF_AREA_PREDICTION_NOTE
   // 예측이 없으면 지금 상태를 보도록 안내
   if (congestion === null) {
     return ['이 시간대 예측을 받아오지 못했어요', '지금 사용 가능 대수를 참고해보세요']

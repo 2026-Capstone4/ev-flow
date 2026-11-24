@@ -1,26 +1,42 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useMapView } from './useMapView'
 import { useRecommendationOrigin } from './useRecommendationOrigin'
-import { getApiErrorCode, getRetryAfterSeconds } from '../api/errors'
+import { getApiErrorCode } from '../api/errors'
 import { useRecommendationsQuery, useStationsQuery } from './useStationsQuery'
 import { getListLoadState, type ListLoadState } from '../lib/loadState'
 import { matchesFilters } from '../lib/stationFilter'
 import type { HorizonMinutes, RecommendationFilters } from '../types/station'
 
-/** 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area) · 호출 제한(rate_limited)이 더해짐 */
-export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited'
+/**
+ * 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area) · 호출 제한(rate_limited)이 더해짐
+ * waiting_location: 앱이 온보딩 · 처음 위치 재기가 끝나길 기다려 아직 추천을 안 부른 상태
+ */
+export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited' | 'waiting_location'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
 // 추천은 사용자 위치가 아니라 추천 기준점으로 부름 - 5분마다 또는 500m + 2분마다 기준점이 지금 위치로 옮겨짐
-export function useMapHomeData(horizon: HorizonMinutes, filters: RecommendationFilters) {
+// isRecommendReady: false인 동안은 추천을 부르지 않고 시트에 불러오는 중으로 둠. 웹은 안 넘겨서 바로 부름
+export function useMapHomeData(
+  horizon: HorizonMinutes,
+  filters: RecommendationFilters,
+  isRecommendReady = true,
+) {
   const stationsQuery = useStationsQuery()
   const { recommendOrigin, markRecommendCalled } = useMapView()
   const recommendationsQuery = useRecommendationsQuery(
     recommendOrigin,
     filters,
     markRecommendCalled,
+    isRecommendReady,
   )
-  useRecommendationOrigin(recommendationsQuery.refetch)
+  // 이미 부르는 중이면 그 요청을 끊고 새로 부르지 않고 기다림. 끊으면 서버에는 요청이 두 번 감
+  const { refetch } = recommendationsQuery
+  const refetchRecommendations = useCallback(() => {
+    // 아직 부를 때가 아니면 규칙이 불러 달라고 해도 부르지 않음 (refetch는 enabled와 상관없이 부름)
+    if (!isRecommendReady) return
+    refetch({ cancelRefetch: false })
+  }, [refetch, isRecommendReady])
+  useRecommendationOrigin(refetchRecommendations)
   // 시점을 바꿔도 다시 요청하지 않고 받은 결과에서 고름
   const recommendations = recommendationsQuery.data?.results.find(
     (result) => result.horizonMinutes === horizon,
@@ -54,12 +70,14 @@ export function useMapHomeData(horizon: HorizonMinutes, filters: RecommendationF
     isStationsError: stationsQuery.isError,
     recommendations,
     recommendedIds,
-    recommendState: getRecommendState(
-      getListLoadState(recommendations, recommendationsQuery.isError),
-      recommendationsQuery.error,
-    ),
-    /** 호출 제한(rate_limited)일 때 다시 시도할 수 있기까지 남은 초. 모르면 null */
-    recommendRetryAfterSeconds: getRetryAfterSeconds(recommendationsQuery.error),
+    // 아직 부를 때가 아니고 받아 둔 결과도 없으면 불러오는 중 대신 기다리는 안내를 띄움
+    recommendState:
+      !isRecommendReady && !recommendations
+        ? 'waiting_location'
+        : getRecommendState(
+            getListLoadState(recommendations, recommendationsQuery.isError),
+            recommendationsQuery.error,
+          ),
   }
 }
 

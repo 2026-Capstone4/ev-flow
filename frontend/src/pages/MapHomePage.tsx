@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { AppInstallQrCard } from '@/components/AppInstallQrCard'
+import { AppInstallSheet } from '@/components/AppInstallSheet'
 import { BottomTab } from '@/components/BottomTab'
 import { DevZoomBadge } from '@/components/DevZoomBadge'
 import { ChargerIssuesButton } from '@/components/ChargerIssuesButton'
@@ -26,11 +28,11 @@ import { useNaverMap } from '@/hooks/useNaverMap'
 import { useSheetCollapsedOffset } from '@/hooks/useSheetCollapsedOffset'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
+import { dismissAppInstallForToday, hasDismissedAppInstallToday, isIPhone } from '@/lib/appInstall'
 import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { LOCATE_FAILURE_MESSAGE } from '@ev-flow/core/lib/geolocation'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
-import { getRetryWaitText } from '@ev-flow/core/lib/rateLimit'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
@@ -75,7 +77,6 @@ export function MapHomePage() {
     recommendations,
     recommendedIds,
     recommendState,
-    recommendRetryAfterSeconds,
   } = useMapHomeData(horizon, filters)
 
   // 마커는 시점이 바뀔 때마다 다시 만들지 않도록 최신 시점만 ref로 읽음
@@ -102,10 +103,33 @@ export function MapHomePage() {
   useMyLocationMarker(map, userLocation)
 
   // 처음 들어온 사용자에게만 사용법 안내를 띄움. 본 기록은 브라우저(localStorage)에 남김
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !hasSeenOnboarding())
+  // 더보기의 "첫 방문 안내 다시 보기"로 왔으면(state.showOnboarding) 본 적이 있어도 띄움
+  const isOnboardingReplay =
+    (location.state as { showOnboarding?: boolean } | null)?.showOnboarding === true
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(
+    () => isOnboardingReplay || !hasSeenOnboarding(),
+  )
   /** 안내를 닫으면 본 것으로 기록해서 다음 방문부터는 띄우지 않음 */
   const closeOnboarding = useCallback(() => {
     markOnboardingSeen()
+    setIsOnboardingOpen(false)
+    // 다시 보기로 열었으면 기록의 값도 지움. 상세에 갔다 뒤로 돌아와도 다시 뜨지 않게 함
+    if (isOnboardingReplay) navigate('/', { replace: true })
+  }, [isOnboardingReplay, navigate])
+
+  // 아이폰으로 들어오면 첫 안내보다 먼저 앱 설치 안내를 띄움. 오늘 이미 닫았거나 첫 안내 다시 보기로 왔으면 띄우지 않음
+  const [isAppInstallOpen, setIsAppInstallOpen] = useState(
+    () => !isOnboardingReplay && isIPhone() && !hasDismissedAppInstallToday(),
+  )
+  /** 앱 안내를 닫으면 오늘은 다시 띄우지 않고, 첫 안내를 아직 안 봤으면 이어서 첫 안내가 뜸 */
+  const closeAppInstall = useCallback(() => {
+    dismissAppInstallForToday()
+    setIsAppInstallOpen(false)
+  }, [])
+  /** 앱스토어로 가면 앱을 쓸 사람이라 웹 첫 안내는 띄우지 않음. 본 기록은 남기지 않아 다음에 웹으로 오면 뜸 */
+  const handleAppInstall = useCallback(() => {
+    dismissAppInstallForToday()
+    setIsAppInstallOpen(false)
     setIsOnboardingOpen(false)
   }, [])
 
@@ -156,6 +180,20 @@ export function MapHomePage() {
     const index = SHEET_LEVELS.indexOf(sheetLevel) + step
     changeSheetLevel(SHEET_LEVELS[Math.min(Math.max(index, 0), SHEET_LEVELS.length - 1)])
   }
+  // 지도 빈 곳을 클릭하면 추천 시트를 최소로 내려 지도를 넓게 봄 (앱과 같음). 마커 클릭은 지도 click으로 오지 않음
+  useEffect(() => {
+    // 지도가 아직 없으면 붙일 곳이 없음
+    if (!map) return
+    const { maps } = window.naver
+    const listener = maps.Event.addListener(map, 'click', () => {
+      setIsSheetAnimating(true)
+      setSheetLevel('minimized')
+    })
+    return () => {
+      // 인증 실패로 SDK가 비워졌으면 정리 호출도 예외를 던지므로 건너뜀
+      if (window.naver.maps) maps.Event.removeListener(listener)
+    }
+  }, [map])
   const sheetDrag = useSheetDrag({
     onDragUp: () => moveSheetLevel(-1),
     onDragDown: () => moveSheetLevel(1),
@@ -302,12 +340,12 @@ export function MapHomePage() {
             <p
               className={`flex w-full flex-col items-center justify-center rounded-lg bg-bg-subtle text-center text-sm text-text-secondary ${RECOMMEND_CARD_HEIGHT_CLASS}`}
             >
-              {/* 호출 제한이면 남은 시간을 넣어 두 줄로, 나머지는 정해진 한 줄 문구 */}
+              {/* 호출 제한이면 두 줄로, 나머지는 정해진 한 줄 문구 */}
               {recommendState === 'rate_limited' ? (
                 <>
                   요청이 많아 추천을 불러오지 못했어요.
                   <br />
-                  {getRetryWaitText(recommendRetryAfterSeconds)} 다시 시도해 주세요.
+                  잠시 후 다시 시도해 주세요.
                 </>
               ) : (
                 RECOMMEND_MESSAGE[recommendState]
@@ -353,7 +391,12 @@ export function MapHomePage() {
         </section>
       </main>
       <BottomTab />
-      {isOnboardingOpen && <OnboardingDialog onClose={closeOnboarding} />}
+      {/* 앱 안내가 떠 있는 동안에는 첫 안내를 미뤄 두었다가 앱 안내를 닫으면 띄움 */}
+      {isAppInstallOpen && (
+        <AppInstallSheet onClose={closeAppInstall} onInstall={handleAppInstall} />
+      )}
+      {isOnboardingOpen && !isAppInstallOpen && <OnboardingDialog onClose={closeOnboarding} />}
+      <AppInstallQrCard />
     </div>
   )
 }

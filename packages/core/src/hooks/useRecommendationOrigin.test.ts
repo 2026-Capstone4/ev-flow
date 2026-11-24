@@ -34,4 +34,19 @@ describe('getRecommendStep', () => {
       checkInMs: 90_000,
     })
   })
+
+  it('시연 위치에서 부른 뒤 처음 잰 위치가 500m 넘게 떨어지면 2분 전이어도 바로 부름', () => {
+    expect(getRecommendStep(NOW, NOW - 5_000, ORIGIN, FAR, true)).toEqual({ call: true })
+  })
+
+  it('첫 추천 응답 전이어도 처음 잰 위치가 멀면 바로 부름', () => {
+    expect(getRecommendStep(NOW, null, ORIGIN, FAR, true)).toEqual({ call: true })
+  })
+
+  it('처음 잰 위치가 시연 위치에서 500m 안이면 평소 규칙대로 기다림', () => {
+    expect(getRecommendStep(NOW, NOW - MIN, ORIGIN, NEAR, true)).toEqual({
+      call: false,
+      checkInMs: 4 * MIN,
+    })
+  })
 })

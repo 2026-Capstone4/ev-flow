@@ -14,7 +14,12 @@ import { WaitRangeBar } from './WaitRangeBar'
 type HorizonSummaryProps = {
   station: Pick<
     Station,
-    'availableChargers' | 'totalChargers' | 'chargers' | 'congestion' | 'predictions'
+    | 'availableChargers'
+    | 'totalChargers'
+    | 'chargers'
+    | 'congestion'
+    | 'predictions'
+    | 'predictionAvailable'
   >
   horizon: HorizonMinutes
 }
@@ -33,9 +38,13 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
     // 충전기가 모두 확인 불가면 빈 충전기가 없는 게 아니라 상태를 모르는 것
     const isAllUnknown =
       station.chargers.length > 0 && station.chargers.every((c) => c.status === 'unknown')
+    // 상태는 알지만 빈 충전기가 없으면 제목에서 바로 알려 줌
+    const isNoneAvailable = station.availableChargers === 0 && !isAllUnknown
     return (
       <View className="gap-3">
-        <Text className="font-bold text-base text-text-primary">지금 사용 가능</Text>
+        <Text className="font-bold text-base text-text-primary">
+          {isNoneAvailable ? '사용 가능한 충전기가 없어요' : '지금 사용 가능'}
+        </Text>
         {/* 빈 충전기가 있으면 대수를 크게, 모두 확인 불가면 상태를 못 받았다고 안내, 그 밖에는 15 · 30분 예측을 보도록 안내 */}
         {station.availableChargers > 0 ? (
           <View className="gap-1">
@@ -59,10 +68,8 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
             />
           </View>
         ) : (
-          <View className="gap-1">
-            <Text className="font-bold text-lg text-text-secondary">빈 충전기 없음</Text>
-            <NoteLines lines={['15분 후 · 30분 후의 예상 대기시간을 확인해보세요']} />
-          </View>
+          // 제목이 이미 빈 충전기가 없다고 알려서 큰 글씨 없이 안내만 둠
+          <NoteLines lines={['15분 후 · 30분 후의 예상 대기시간을 확인해보세요']} />
         )}
         <ChargerStatusBar statuses={station.chargers.map((c) => c.status)} />
       </View>
@@ -82,7 +89,7 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
     return (
       <View className="gap-3">
         <Text className="font-bold text-base text-text-primary">
-          {getHorizonWhen(horizon)} 예상 대기
+          {getHorizonWhen(horizon)} 도착 시 예상 대기시간
         </Text>
         <View className="gap-1">
           <Text className="font-bold text-[28px] text-text-primary">{waitRange}</Text>
@@ -111,7 +118,13 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
         ) : (
           <Text className="font-bold text-lg text-text-secondary">{getCongestionLabel(null)}</Text>
         )}
-        <NoteLines lines={getCongestionNote(prediction.congestion, station.totalChargers)} />
+        <NoteLines
+          lines={getCongestionNote(
+            prediction.congestion,
+            station.totalChargers,
+            station.predictionAvailable,
+          )}
+        />
       </View>
     </View>
   )

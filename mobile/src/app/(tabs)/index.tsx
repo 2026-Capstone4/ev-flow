@@ -8,7 +8,7 @@ import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { Pressable, View, type GestureResponderEvent } from 'react-native'
 import Animated, {
   Extrapolation,
   interpolate,
@@ -69,6 +69,13 @@ const IS_HIDE_COLLIDED = false
 /** 안내 문구를 띄워 두는 시간 */
 const NOTICE_DURATION_MS = 3000
 
+/**
+ * 지도를 '탭'으로 볼 기준. 손을 뗀 순간 바로 시트를 내림
+ * SDK onTapMap은 두 번 탭(확대)인지 기다렸다 불려서 늦게 반응해서 직접 판단함
+ */
+const MAP_TAP_MAX_MS = 250
+const MAP_TAP_MAX_MOVE = 10
+
 /** 현재 위치 버튼과 시트 위쪽 끝 사이 간격 (웹 mb-3) */
 const LOCATE_BUTTON_GAP = 12
 
@@ -81,6 +88,9 @@ export default function MapHomeScreen() {
   const mapRef = useRef<NaverMapViewRef>(null)
   // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
   const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
+  // 처음 위치 재기(아래 온보딩 뒤 locate)가 끝났는지. 끝나기 전에는 추천을 부르지 않음
+  // 시연 위치로 먼저 부르면 실제 위치로 한 번 더 불러야 해서 호출을 아낌. 위치 기능이 꺼진 빌드는 바로 부름
+  const [isStartLocateDone, setIsStartLocateDone] = useState(!IS_GEOLOCATION_ENABLED)
   const {
     stations,
     allStations,
@@ -89,8 +99,7 @@ export default function MapHomeScreen() {
     recommendations,
     recommendedIds,
     recommendState,
-    recommendRetryAfterSeconds,
-  } = useMapHomeData(horizon, filters)
+  } = useMapHomeData(horizon, filters, isStartLocateDone)
 
   const [camera, setCamera] = useState<CameraState>({
     webZoomLevel: INITIAL_WEB_ZOOM,
@@ -144,6 +153,27 @@ export default function MapHomeScreen() {
     return () => clearTimeout(timer)
   }, [notice])
 
+  /** 지도를 누르기 시작한 시각 · 위치. 한 손가락일 때만 둠 */
+  const mapTouchRef = useRef<{ time: number; x: number; y: number } | null>(null)
+  const handleMapTouchStart = (event: GestureResponderEvent) => {
+    const { touches, pageX, pageY } = event.nativeEvent
+    // 두 손가락(확대 · 회전)은 탭이 아니라서 기록을 지움
+    mapTouchRef.current = touches.length === 1 ? { time: Date.now(), x: pageX, y: pageY } : null
+  }
+  // 짧게 누르고 거의 안 움직였으면 탭으로 보고 바로 내림. 지도를 끈 경우는 그대로 둠
+  // 마커를 탭해도 내려가지만 마커는 상세 화면으로 넘어가서 상관없음
+  const handleMapTouchEnd = (event: GestureResponderEvent) => {
+    const start = mapTouchRef.current
+    mapTouchRef.current = null
+    // 시작 기록이 없으면(두 손가락) 탭이 아님
+    if (!start) return
+    const { pageX, pageY } = event.nativeEvent
+    const isShort = Date.now() - start.time <= MAP_TAP_MAX_MS
+    const isStill = Math.hypot(pageX - start.x, pageY - start.y) <= MAP_TAP_MAX_MOVE
+    // 짧고 거의 안 움직인 터치만 시트를 내림
+    if (isShort && isStill) sheetRef.current?.minimize()
+  }
+
   const { locate, isLocating } = useCurrentLocation()
   // 위치 권한이 이미 있으면 앱이 켜져 있는 동안 위치를 따라감. 추천은 500m · 2분 · 5분 규칙으로만 다시 부름
   const { recheck: recheckTracking } = useLocationTracking(IS_GEOLOCATION_ENABLED)
@@ -160,14 +190,13 @@ export default function MapHomeScreen() {
     const result = await locate()
     // 이 버튼으로 처음 권한을 허용했으면 그때부터 위치를 따라감
     recheckTracking()
-    // 찾았으면 그 위치로, 마포구 밖이면 마지막 사용자 위치로 지도를 옮김
-    if (result.ok || result.reason === 'out-of-area') {
-      panTo(result.ok ? result.location : userLocation)
+    // 찾았으면 그 위치로 지도를 옮김 (마포구 밖이어도 옮김)
+    if (result.ok) {
+      panTo(result.location)
+      return
     }
-    // 못 쓴 이유는 잠깐 안내 (권한 거부 · 위치 서비스 꺼짐 · 마포구 밖 등)
-    if (!result.ok) {
-      setNotice({ id: Date.now(), message: APP_LOCATE_FAILURE_MESSAGE[result.reason] })
-    }
+    // 못 쓴 이유는 잠깐 안내 (권한 거부 · 위치 서비스 꺼짐 · 시간 초과 등)
+    setNotice({ id: Date.now(), message: APP_LOCATE_FAILURE_MESSAGE[result.reason] })
   }
 
   // 현재 위치 버튼은 시트 위에 붙어 함께 움직이고, 시트를 펼칠수록 흐려짐 (웹과 같음)
@@ -210,6 +239,27 @@ export default function MapHomeScreen() {
     expandSheet?: string
     showOnboarding?: string
   }>()
+
+  // 온보딩이 끝나면(다시 연 사용자는 화면을 열자마자) 한 번 위치를 잼
+  // 처음이면 여기서 iOS 권한 창이 뜨고, 이미 정했으면 창 없이 현재 위치로 지도를 옮김
+  // 거부하면 시연 위치(마포구)에 그대로 둠. 방금 고른 결과라 안내 문구는 띄우지 않음
+  // 성공 · 실패와 상관없이 끝나면 첫 추천을 부름 (찾았으면 그 위치, 못 찾았으면 시연 위치)
+  const hasLocatedOnStartRef = useRef(false)
+  const isOnboardingVisible = isOnboardingOpen || showOnboarding === '1'
+  useEffect(() => {
+    // 위치 기능이 꺼진 빌드 · 안내를 보는 중 · 이미 한 번 잰 경우는 건너뜀
+    if (!IS_GEOLOCATION_ENABLED || isOnboardingVisible || hasLocatedOnStartRef.current) return
+    hasLocatedOnStartRef.current = true
+    locate().then((result) => {
+      setIsStartLocateDone(true)
+      recheckTracking()
+      // 찾았으면 그 위치로 지도를 옮김
+      if (result.ok) panTo(result.location)
+    })
+    // 처음 한 번만 부르면 돼서 함수들은 의존성에서 뺌
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnboardingVisible])
+
   useEffect(() => {
     // 펼쳐 달라는 값이 없으면 그대로 둠
     if (expandSheet !== '1') return
@@ -229,48 +279,50 @@ export default function MapHomeScreen() {
       className="flex-1 bg-bg-map"
       onLayout={(event) => setContainerHeight(event.nativeEvent.layout.height)}
     >
-      <NaverMapView
-        ref={mapRef}
-        style={{ flex: 1 }}
-        initialCamera={{
-          latitude: INITIAL_MAP_CENTER.lat,
-          longitude: INITIAL_MAP_CENTER.lng,
-          zoom: toAppZoom(INITIAL_WEB_ZOOM),
-        }}
-        isShowLocationButton={false}
-        minZoom={MIN_APP_ZOOM}
-        // 서비스 지역(서울) 밖으로 지도를 끌어가지 않게 지도 가운데를 서울 사각형 안으로 묶음
-        extent={SEOUL_EXTENT}
-        isShowZoomControls={false}
-        onCameraIdle={handleCameraIdle}
-        // 추천 · 검색 기준 위치 표시 (웹 내 위치 마커). 시연 위치이거나 현재 위치 버튼으로 바꾼 위치
-        locationOverlay={{
-          isVisible: true,
-          position: { latitude: userLocation.lat, longitude: userLocation.lng },
-        }}
-      >
-        <CoverageMask />
-        {visibleStations.map((station) => {
-          const isRecommended = recommendedIds.has(station.stationId)
-          return (
-            <StationMarker
-              key={station.stationId}
-              station={station}
-              isRecommended={isRecommended}
-              isDot={isDotMarker(camera.webZoomLevel, station, isRecommended)}
-              isHideCollided={IS_HIDE_COLLIDED}
-              onTap={handleMarkerTap}
-            />
-          )
-        })}
-      </NaverMapView>
+      {/* 지도를 탭하면 추천 시트를 최소로 내려 지도를 넓게 봄. 손가락 움직임만 보고 지도 터치는 막지 않음 */}
+      <View className="flex-1" onTouchStart={handleMapTouchStart} onTouchEnd={handleMapTouchEnd}>
+        <NaverMapView
+          ref={mapRef}
+          style={{ flex: 1 }}
+          initialCamera={{
+            latitude: INITIAL_MAP_CENTER.lat,
+            longitude: INITIAL_MAP_CENTER.lng,
+            zoom: toAppZoom(INITIAL_WEB_ZOOM),
+          }}
+          isShowLocationButton={false}
+          minZoom={MIN_APP_ZOOM}
+          // 서비스 지역(서울) 밖으로 지도를 끌어가지 않게 지도 가운데를 서울 사각형 안으로 묶음
+          extent={SEOUL_EXTENT}
+          isShowZoomControls={false}
+          onCameraIdle={handleCameraIdle}
+          // 추천 · 검색 기준 위치 표시 (웹 내 위치 마커). 시연 위치이거나 현재 위치 버튼으로 바꾼 위치
+          locationOverlay={{
+            isVisible: true,
+            position: { latitude: userLocation.lat, longitude: userLocation.lng },
+          }}
+        >
+          <CoverageMask />
+          {visibleStations.map((station) => {
+            const isRecommended = recommendedIds.has(station.stationId)
+            return (
+              <StationMarker
+                key={station.stationId}
+                station={station}
+                isRecommended={isRecommended}
+                isDot={isDotMarker(camera.webZoomLevel, station, isRecommended)}
+                isHideCollided={IS_HIDE_COLLIDED}
+                onTap={handleMarkerTap}
+              />
+            )
+          })}
+        </NaverMapView>
+      </View>
 
       {containerHeight > 0 && (
         <RecommendSheet
           ref={sheetRef}
           recommendations={recommendations}
           recommendState={recommendState}
-          retryAfterSeconds={recommendRetryAfterSeconds}
           horizon={horizon}
           onHorizonChange={setHorizon}
           onSelect={openStation}
@@ -340,9 +392,7 @@ export default function MapHomeScreen() {
         {notice && <MapNotice key={notice.id} message={notice.message} />}
       </View>
       {/* 처음 들어왔거나, 더보기의 "첫 방문 안내 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
-      {(isOnboardingOpen || showOnboarding === '1') && (
-        <OnboardingDialog onClose={closeOnboarding} />
-      )}
+      {isOnboardingVisible && <OnboardingDialog onClose={closeOnboarding} />}
     </View>
   )
 }

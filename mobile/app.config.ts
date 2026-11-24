@@ -29,7 +29,7 @@ const config: ExpoConfig = {
     // NCP 콘솔에 등록한 값과 글자 하나까지 같아야 지도 인증이 됨 (계획 문서 9번)
     bundleIdentifier: 'app.evflowkr.evflow',
     // App Store Connect 빌드 번호 (CFBundleVersion). 같은 버전 안에서 올릴 때마다 1씩 올려야 업로드됨
-    buildNumber: '2',
+    buildNumber: '5',
     config: {
       // HTTPS 같은 기본 암호화만 써서 수출 규정 면제 대상. 적어 두면 빌드마다 암호화 질문을 안 받음
       usesNonExemptEncryption: false,
@@ -52,7 +52,7 @@ const config: ExpoConfig = {
         // 처음 현재 위치 버튼을 누를 때 iOS 권한 창에 뜨는 설명 (Info.plist NSLocationWhenInUseUsageDescription)
         // 앱을 쓰는 동안만 요청하고, 백그라운드 위치는 쓰지 않음
         locationWhenInUsePermission:
-          '현재 위치를 추천 · 검색 · 길찾기의 기준 위치로 쓰려고 위치 정보를 사용합니다. 마포구 안에서만 기준 위치를 바꿉니다.',
+          '현재 위치를 추천 · 검색 · 길찾기의 기준 위치로 쓰려고 위치 정보를 사용합니다.',
         // 플러그인이 기본으로 넣는 항상 위치 · 움직임 권한 설명은 쓰지 않아서 뺌 (false면 Info.plist에서 지움)
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,

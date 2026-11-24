@@ -41,14 +41,17 @@ export function useStationQuery(stationId: string) {
 // origin은 추천 기준점(useRecommendationOrigin). 언제 다시 부를지는 기준점 훅이 정해서 여기서는 주기 갱신을 끔
 // 키가 같으면 5분 동안 받아 둔 결과를 다시 보여 주고(필터를 바꿨다 되돌린 경우), 5분 지난 결과는 버림
 // onCall: 서버를 실제로 부를 때마다 불러 마지막 추천 시각을 남김
+// isEnabled: false면 아직 부르지 않음 (앱은 온보딩을 닫고 위치 권한 · 현재 위치가 정해진 뒤 true)
 export function useRecommendationsQuery(
   origin: LatLng,
   filters: RecommendationFilters,
   onCall?: () => void,
+  isEnabled = true,
 ) {
   const isScreenActive = useScreenActive()
   return useQuery({
     queryKey: ['recommendations', origin.lat, origin.lng, filters],
+    enabled: isEnabled,
     // 화면이 가려지면(앱 스택 뒤) 구독을 끊음. 웹은 항상 true
     subscribed: isScreenActive,
     queryFn: () => {
@@ -65,6 +68,8 @@ export function useRecommendationsQuery(
     refetchInterval: false,
     // 돌아올 때 · 다시 연결될 때도 기준점 훅이 5분 규칙으로 정함. 받은 결과가 없는 새 키는 그대로 바로 부름
     refetchOnMount: false,
+    // 실패한 결과(마포구 밖 · 호출 제한 등)도 다른 탭에 갔다 오며 다시 부르지 않음. 다시 부를지는 기준점 훅이 정함
+    retryOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
