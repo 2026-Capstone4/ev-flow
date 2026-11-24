@@ -14,7 +14,7 @@ import type {
 import type { ChargerStatus } from '@ev-flow/core/types/station'
 
 /** Mock 운영자 계정 — 화면 개발용 (실제 서버 계정 아님) */
-export const MOCK_ADMIN = { loginId: 'admin', password: 'evflow-mock', name: '운영자(Mock)' }
+export const MOCK_ADMIN = { loginId: 'admin', password: 'evflowmock', name: '운영자(Mock)' }
 
 /** Mock 로그인 유지 시간. 실제 값은 SER-001 확정 후 서버가 정함 */
 export const MOCK_SESSION_MS = 2 * 60 * 60_000
