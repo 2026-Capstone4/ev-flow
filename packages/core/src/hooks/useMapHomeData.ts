@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useMapView } from './useMapView'
 import { useRecommendationOrigin } from './useRecommendationOrigin'
-import { getApiErrorCode, getRetryAfterSeconds } from '../api/errors'
+import { getApiErrorCode } from '../api/errors'
 import { useRecommendationsQuery, useStationsQuery } from './useStationsQuery'
 import { getListLoadState, type ListLoadState } from '../lib/loadState'
 import { matchesFilters } from '../lib/stationFilter'
@@ -20,7 +20,12 @@ export function useMapHomeData(horizon: HorizonMinutes, filters: RecommendationF
     filters,
     markRecommendCalled,
   )
-  useRecommendationOrigin(recommendationsQuery.refetch)
+  // 이미 부르는 중이면 그 요청을 끊고 새로 부르지 않고 기다림. 끊으면 서버에는 요청이 두 번 감
+  const { refetch } = recommendationsQuery
+  const refetchRecommendations = useCallback(() => {
+    refetch({ cancelRefetch: false })
+  }, [refetch])
+  useRecommendationOrigin(refetchRecommendations)
   // 시점을 바꿔도 다시 요청하지 않고 받은 결과에서 고름
   const recommendations = recommendationsQuery.data?.results.find(
     (result) => result.horizonMinutes === horizon,
@@ -58,8 +63,6 @@ export function useMapHomeData(horizon: HorizonMinutes, filters: RecommendationF
       getListLoadState(recommendations, recommendationsQuery.isError),
       recommendationsQuery.error,
     ),
-    /** 호출 제한(rate_limited)일 때 다시 시도할 수 있기까지 남은 초. 모르면 null */
-    recommendRetryAfterSeconds: getRetryAfterSeconds(recommendationsQuery.error),
   }
 }
 

@@ -96,7 +96,6 @@ export default function MapHomeScreen() {
     recommendations,
     recommendedIds,
     recommendState,
-    recommendRetryAfterSeconds,
   } = useMapHomeData(horizon, filters)
 
   const [camera, setCamera] = useState<CameraState>({
@@ -319,7 +318,6 @@ export default function MapHomeScreen() {
           ref={sheetRef}
           recommendations={recommendations}
           recommendState={recommendState}
-          retryAfterSeconds={recommendRetryAfterSeconds}
           horizon={horizon}
           onHorizonChange={setHorizon}
           onSelect={openStation}

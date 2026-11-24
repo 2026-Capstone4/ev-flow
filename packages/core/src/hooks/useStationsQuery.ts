@@ -65,6 +65,8 @@ export function useRecommendationsQuery(
     refetchInterval: false,
     // 돌아올 때 · 다시 연결될 때도 기준점 훅이 5분 규칙으로 정함. 받은 결과가 없는 새 키는 그대로 바로 부름
     refetchOnMount: false,
+    // 실패한 결과(마포구 밖 · 호출 제한 등)도 다른 탭에 갔다 오며 다시 부르지 않음. 다시 부를지는 기준점 훅이 정함
+    retryOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
