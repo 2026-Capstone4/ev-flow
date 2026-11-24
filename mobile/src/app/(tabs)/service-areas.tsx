@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { ChevronRight, Search, X } from 'lucide-react-native'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { UNMATCHED_REGION_CODE } from '@ev-flow/core/hooks/useServiceAreaRegionData'
 import { useServiceAreaRoutesData } from '@ev-flow/core/hooks/useServiceAreaRoutesData'
-import { getRouteLabel, type RouteSummary } from '@ev-flow/core/lib/nationwideServiceArea'
+import { getRouteLabel } from '@ev-flow/core/lib/nationwideServiceArea'
 import { NO_FORECAST_SERVICE_AREA_LABEL } from '@ev-flow/core/lib/serviceArea'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import type { NationwideServiceArea } from '@ev-flow/core/types/serviceArea'
@@ -32,8 +33,16 @@ export default function ServiceAreaListScreen() {
   const insets = useSafeAreaInsets()
   // 검색어는 한글 조합이 끊기지 않게 화면 안 상태로 받음. 상세에 갔다 와도 탭 화면이 살아 있어 유지됨
   const [searchText, setSearchText] = useState('')
-  const { routes, searchResults, totalCount, updatedAt, isError, loadState } =
-    useServiceAreaRoutesData(searchText)
+  const {
+    routes,
+    regions,
+    searchResults,
+    unmatchedCount,
+    totalCount,
+    updatedAt,
+    isError,
+    loadState,
+  } = useServiceAreaRoutesData(searchText)
   const isSearching = searchText.trim() !== ''
 
   // 묶음을 바꾸면 화면 기록을 쌓지 않고 이 화면의 값만 바꿈
@@ -91,22 +100,41 @@ export default function ServiceAreaListScreen() {
         </Text>
       </View>
 
-      {/* 검색 중이면 검색 결과, 아니면 고른 묶음. 지역별은 다음 작업에서 채움 */}
+      {/* 검색 중이면 검색 결과, 아니면 고른 묶음(노선별 · 지역별) */}
       {isSearching && searchResults ? (
         <SearchResults
           results={searchResults}
           onPress={(id) => router.push({ pathname: '/service-areas/detail', params: { id } })}
         />
-      ) : view === 'region' && !isSearching ? (
-        <Text className="py-12 text-center font-sans text-sm text-text-secondary">
-          지역별 보기는 준비 중이에요
-        </Text>
+      ) : loadState === 'ready' && view === 'region' ? (
+        <View className="overflow-hidden rounded-lg bg-bg-page">
+          {regions?.map((region, index) => (
+            <GroupRow
+              key={region.code}
+              title={region.label}
+              count={region.areaCount}
+              isFirst={index === 0}
+              onPress={() =>
+                router.push({ pathname: '/service-areas/region', params: { code: region.code } })
+              }
+            />
+          ))}
+        </View>
       ) : loadState === 'ready' ? (
         <View className="overflow-hidden rounded-lg bg-bg-page">
           {routes?.map((route, index) => (
-            <RouteRow
+            <GroupRow
               key={route.routeName}
-              route={route}
+              // 세 자리 번호 배지만큼 자리를 잡아 두어 노선 이름이 줄마다 같은 위치에서 시작하게 함
+              badge={
+                <View className="w-[36px] items-center">
+                  <RouteBadge routeNo={route.routeNo} />
+                </View>
+              }
+              title={route.label}
+              // 양 끝 도시는 방향 버튼이 있는 노선만 (순환선 등은 없음)
+              subtitle={route.ends && `${route.ends[0]}–${route.ends[1]}`}
+              count={route.areaCount}
               isFirst={index === 0}
               onPress={() =>
                 router.push({
@@ -116,6 +144,21 @@ export default function ServiceAreaListScreen() {
               }
             />
           ))}
+          {/* 노선을 못 붙인 휴게소(민자 노선 등)는 맨 아래 한 줄로 모아 시도별 화면으로 */}
+          {!!unmatchedCount && (
+            <GroupRow
+              title="노선 미확인"
+              subtitle="민자 고속도로 등"
+              count={unmatchedCount}
+              isFirst={false}
+              onPress={() =>
+                router.push({
+                  pathname: '/service-areas/region',
+                  params: { code: UNMATCHED_REGION_CODE },
+                })
+              }
+            />
+          )}
         </View>
       ) : loadState === 'loading' ? (
         <View className="h-[240px] rounded-lg bg-bg-page" />
@@ -128,38 +171,41 @@ export default function ServiceAreaListScreen() {
   )
 }
 
-type RouteRowProps = {
-  route: RouteSummary
+type GroupRowProps = {
+  /** 왼쪽 배지 (노선 번호). 지역 줄은 없음 */
+  badge?: ReactNode
+  title: string
+  /** 이름 옆 작은 글자 (노선 양 끝 도시 등) */
+  subtitle?: string | null
+  /** 오른쪽 휴게소 수 */
+  count: number
   isFirst: boolean
   onPress: () => void
 }
 
-/** 노선 목록 한 줄. 번호 배지 · 노선 이름 · 양 끝 도시 · 휴게소 수 */
-function RouteRow({ route, isFirst, onPress }: RouteRowProps) {
+/** 노선별 · 지역별 목록 한 줄. 배지 · 이름 · 작은 설명 · 휴게소 수 · 화살표 */
+function GroupRow({ badge, title, subtitle, count, isFirst, onPress }: GroupRowProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${route.label} 휴게소 ${route.areaCount}곳`}
+      accessibilityLabel={`${title} 휴게소 ${count}곳`}
       onPress={onPress}
       className={`min-h-[56px] flex-row items-center gap-3 px-4 py-3 active:bg-bg-subtle ${
         isFirst ? '' : 'border-t border-border-default'
       }`}
     >
-      {/* 세 자리 번호 배지만큼 자리를 잡아 두어 노선 이름이 줄마다 같은 위치에서 시작하게 함 */}
-      <View className="w-[36px] items-center">
-        <RouteBadge routeNo={route.routeNo} />
-      </View>
+      {badge}
       <Text numberOfLines={1} className="min-w-0 flex-1">
-        <Text className="font-bold text-base text-text-primary">{route.label}</Text>
-        {/* 양 끝 도시는 방향 버튼이 있는 노선만 (순환선 등은 없음) */}
-        {route.ends && (
+        <Text className="font-bold text-base text-text-primary">{title}</Text>
+        {/* 작은 설명이 있을 때만 이름 옆에 */}
+        {subtitle && (
           <Text className="font-sans text-[13px] text-text-secondary">
             {'  '}
-            {route.ends[0]}–{route.ends[1]}
+            {subtitle}
           </Text>
         )}
       </Text>
-      <Text className="font-sans text-sm text-text-secondary">{route.areaCount}곳</Text>
+      <Text className="font-sans text-sm text-text-secondary">{count}곳</Text>
       <ChevronRight size={18} strokeWidth={2} color={COLORS['text-secondary']} />
     </Pressable>
   )
