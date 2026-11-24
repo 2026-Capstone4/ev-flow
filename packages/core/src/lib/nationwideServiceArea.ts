@@ -143,3 +143,34 @@ export function excludeDuplicateRegistrations(
   }
   return chargers.filter((c) => !duplicateIds.has(c.stationId))
 }
+
+/**
+ * 목록에서 숨길 이중 등록 휴게소 - 노선을 못 붙여 statId 하나로 온 HY 충전소 중 충전기가 모두 확인 불가인 곳
+ * 같은 휴게소의 현대자동차(HD) 충전소가 따로 있어 실제 충전기는 그쪽에 보임. 양평 용문(HY000160)처럼 상태가 들어오는 곳은 남김
+ * 백엔드에서 HY를 빼고 보내면 조건에 맞는 곳이 없어서 아무것도 숨기지 않음
+ */
+export function isDuplicateRegistrationArea(area: NationwideServiceArea) {
+  return (
+    area.routeName === null &&
+    area.id.startsWith('HY') &&
+    area.statusCounts.unknown === area.totalChargers
+  )
+}
+
+/**
+ * 휴게소 검색. 휴게소 이름 · 노선 이름 · 시도 · 주소에 검색어가 들어 있는 곳을 응답 순서(노선 · 길 순서)대로 돌려줌
+ * 띄어쓰기는 무시함 ('천안 호두' → 천안호두휴게소). 검색어가 비어 있으면 빈 배열
+ */
+export function searchServiceAreas(areas: NationwideServiceArea[], query: string) {
+  const normalize = (text: string | null) => (text ?? '').replace(/\s/g, '').toLowerCase()
+  const keyword = normalize(query)
+  // 검색어가 공백뿐이면 검색하지 않음 - 화면은 노선별 · 지역별 목록을 그대로 보여 줌
+  if (!keyword) return []
+  return areas.filter(
+    (area) =>
+      !isDuplicateRegistrationArea(area) &&
+      [area.name, area.routeName, area.regionName, area.address].some((text) =>
+        normalize(text).includes(keyword),
+      ),
+  )
+}

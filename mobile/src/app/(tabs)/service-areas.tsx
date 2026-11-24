@@ -1,13 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router'
-import { ChevronRight } from 'lucide-react-native'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { ChevronRight, Search, X } from 'lucide-react-native'
+import { useState } from 'react'
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useServiceAreaRoutesData } from '@ev-flow/core/hooks/useServiceAreaRoutesData'
-import type { RouteSummary } from '@ev-flow/core/lib/nationwideServiceArea'
+import { getRouteLabel, type RouteSummary } from '@ev-flow/core/lib/nationwideServiceArea'
 import { NO_FORECAST_SERVICE_AREA_LABEL } from '@ev-flow/core/lib/serviceArea'
 import { COLORS } from '@ev-flow/core/lib/theme'
+import type { NationwideServiceArea } from '@ev-flow/core/types/serviceArea'
 import { RouteBadge } from '../../components/RouteBadge'
 import { SegmentedControl } from '../../components/SegmentedControl'
+import { ServiceAreaRow } from '../../components/ServiceAreaRow'
 import { UpdateStatus } from '../../components/UpdateStatus'
 
 /** 상태 표시줄 아래 제목까지 띄우는 여백 */
@@ -21,18 +24,26 @@ const VIEW_OPTIONS: { value: ListView; label: string }[] = [
 ]
 
 // 전국 고속도로 휴게소 (하단 탭 두 번째). 노선별 · 지역별로 묶고, 누르면 노선 · 지역 화면으로 넘어감
+// 위 검색창에 입력하면 묶음 대신 검색 결과를 보여 주고, 결과를 누르면 바로 휴게소 상세로 감
 export default function ServiceAreaListScreen() {
   // 노선 화면에서 돌아와도 고른 묶음이 유지되도록 화면 값(?view=)에 둠
   const params = useLocalSearchParams<{ view?: string }>()
   const view: ListView = params.view === 'region' ? 'region' : 'route'
   const insets = useSafeAreaInsets()
-  const { routes, totalCount, updatedAt, isError, loadState } = useServiceAreaRoutesData()
+  // 검색어는 한글 조합이 끊기지 않게 화면 안 상태로 받음. 상세에 갔다 와도 탭 화면이 살아 있어 유지됨
+  const [searchText, setSearchText] = useState('')
+  const { routes, searchResults, totalCount, updatedAt, isError, loadState } =
+    useServiceAreaRoutesData(searchText)
+  const isSearching = searchText.trim() !== ''
 
   // 묶음을 바꾸면 화면 기록을 쌓지 않고 이 화면의 값만 바꿈
   const changeView = (value: ListView) => router.setParams({ view: value })
 
   return (
     <ScrollView
+      // 키보드가 떠 있어도 결과를 한 번에 누를 수 있고, 목록을 끌면 키보드가 내려감
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       className="flex-1 bg-bg-subtle"
       contentContainerClassName="gap-3 px-4 pb-6"
       contentContainerStyle={{ paddingTop: insets.top + TOP_GAP }}
@@ -43,7 +54,36 @@ export default function ServiceAreaListScreen() {
           전국{totalCount !== undefined && ` ${totalCount}곳`} · 현재 충전기 현황
         </Text>
       </View>
-      <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={changeView} />
+      <View className="flex-row items-center gap-2 rounded-md bg-bg-page px-3.5">
+        <Search size={18} strokeWidth={2} color={COLORS['text-secondary']} />
+        <TextInput
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="휴게소 · 고속도로 · 지역"
+          placeholderTextColor={COLORS['text-secondary']}
+          accessibilityLabel="휴게소 검색"
+          returnKeyType="search"
+          autoCorrect={false}
+          // 검색창이라 iOS 자동 완성(AutoFill) 말풍선이 뜨지 않게 함
+          autoComplete="off"
+          className="min-w-0 flex-1 py-3 font-medium text-[15px] text-text-primary"
+        />
+        {/* 검색어가 있을 때만 지우기 버튼 */}
+        {searchText !== '' && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="검색어 지우기"
+            onPress={() => setSearchText('')}
+            hitSlop={8}
+          >
+            <X size={16} strokeWidth={2} color={COLORS['text-secondary']} />
+          </Pressable>
+        )}
+      </View>
+      {/* 검색 중에는 묶음 탭이 결과와 상관없어서 숨김 */}
+      {!isSearching && (
+        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={changeView} />
+      )}
       <View className="flex-row items-center justify-between gap-2">
         <UpdateStatus updatedAt={updatedAt} isError={isError} />
         <Text className="flex-shrink-0 font-medium text-xs text-text-secondary">
@@ -51,8 +91,13 @@ export default function ServiceAreaListScreen() {
         </Text>
       </View>
 
-      {/* 지역별은 다음 작업에서 채움. 지금은 탭 자리만 */}
-      {view === 'region' ? (
+      {/* 검색 중이면 검색 결과, 아니면 고른 묶음. 지역별은 다음 작업에서 채움 */}
+      {isSearching && searchResults ? (
+        <SearchResults
+          results={searchResults}
+          onPress={(id) => router.push({ pathname: '/service-areas/detail', params: { id } })}
+        />
+      ) : view === 'region' && !isSearching ? (
         <Text className="py-12 text-center font-sans text-sm text-text-secondary">
           지역별 보기는 준비 중이에요
         </Text>
@@ -117,5 +162,41 @@ function RouteRow({ route, isFirst, onPress }: RouteRowProps) {
       <Text className="font-sans text-sm text-text-secondary">{route.areaCount}곳</Text>
       <ChevronRight size={18} strokeWidth={2} color={COLORS['text-secondary']} />
     </Pressable>
+  )
+}
+
+type SearchResultsProps = {
+  results: NationwideServiceArea[]
+  onPress: (id: string) => void
+}
+
+/** 검색 결과 목록. 이름은 방향이 들어간 이름, 옆에 노선(없으면 노선 미확인)을 작게 */
+function SearchResults({ results, onPress }: SearchResultsProps) {
+  // 찾은 휴게소가 없으면 안내 문구만
+  if (results.length === 0) {
+    return (
+      <Text className="py-12 text-center font-sans text-sm text-text-secondary">
+        찾는 휴게소가 없어요
+      </Text>
+    )
+  }
+  return (
+    <View className="gap-2">
+      <Text className="px-1 font-medium text-[13px] text-text-secondary">
+        검색 결과 {results.length}곳
+      </Text>
+      <View className="overflow-hidden rounded-lg bg-bg-page">
+        {results.map((area, index) => (
+          <ServiceAreaRow
+            key={area.id}
+            serviceArea={area}
+            title={area.name}
+            note={area.routeName ? getRouteLabel(area.routeName) : '노선 미확인'}
+            isFirst={index === 0}
+            onPress={() => onPress(area.id)}
+          />
+        ))}
+      </View>
+    </View>
   )
 }

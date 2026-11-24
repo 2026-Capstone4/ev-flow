@@ -5,6 +5,8 @@ import {
   getRouteHeadings,
   getRouteLabel,
   getTowardsNote,
+  isDuplicateRegistrationArea,
+  searchServiceAreas,
   summarizeRoutes,
 } from './nationwideServiceArea'
 import type { NationwideServiceArea, ServiceAreaCharger } from '../types/serviceArea'
@@ -163,5 +165,53 @@ describe('excludeDuplicateRegistrations', () => {
       charger('HY002005', '01', 'unknown'),
     ]
     expect(excludeDuplicateRegistrations(chargers)).toEqual(chargers)
+  })
+})
+
+describe('isDuplicateRegistrationArea', () => {
+  const unknownAll = { available: 0, charging: 0, stopped: 0, maintenance: 0, unknown: 6 }
+
+  it('노선 미확인 HY 충전소 중 모두 확인 불가인 곳만', () => {
+    const hy = area({ id: 'HY002005', routeName: null, totalChargers: 6, statusCounts: unknownAll })
+    expect(isDuplicateRegistrationArea(hy)).toBe(true)
+    // 상태가 들어오는 HY(양평 용문) · HY가 아닌 곳은 숨기지 않음
+    expect(isDuplicateRegistrationArea(area({ id: 'HY000160', routeName: null }))).toBe(false)
+    expect(
+      isDuplicateRegistrationArea(
+        area({ id: 'HD000042', routeName: null, totalChargers: 6, statusCounts: unknownAll }),
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('searchServiceAreas', () => {
+  const areas = [
+    area({ id: '천안호두(부산)', name: '천안호두휴게소 (부산 방향)', regionName: '충청남도' }),
+    area({
+      id: '덕평',
+      name: '덕평휴게소',
+      routeName: '영동선',
+      regionName: '경기도',
+      address: '경기도 이천시 마장면',
+    }),
+    area({
+      id: 'HY002005',
+      name: '가평휴게소(서울방향)',
+      routeName: null,
+      totalChargers: 6,
+      statusCounts: { available: 0, charging: 0, stopped: 0, maintenance: 0, unknown: 6 },
+    }),
+  ]
+
+  it('이름 · 노선 · 시도 · 주소에서 띄어쓰기 없이 찾음', () => {
+    expect(searchServiceAreas(areas, '천안 호두').map((a) => a.id)).toEqual(['천안호두(부산)'])
+    expect(searchServiceAreas(areas, '경부').map((a) => a.id)).toEqual(['천안호두(부산)'])
+    expect(searchServiceAreas(areas, '이천').map((a) => a.id)).toEqual(['덕평'])
+    expect(searchServiceAreas(areas, '경기').map((a) => a.id)).toEqual(['덕평'])
+  })
+
+  it('검색어가 비면 빈 배열, 이중 등록 휴게소는 빼고 찾음', () => {
+    expect(searchServiceAreas(areas, '  ')).toEqual([])
+    expect(searchServiceAreas(areas, '가평')).toEqual([])
   })
 })
