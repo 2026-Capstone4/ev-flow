@@ -24,6 +24,8 @@ const RECOMMEND_MESSAGE = {
   empty: '추천할 충전소가 없습니다',
   out_of_area: '현재 예측 서비스는 마포구만 지원해요',
   rate_limited: '요청이 많아 추천을 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.',
+  // 온보딩을 보는 중 · 처음 위치를 재는 중. 빈 회색 카드 대신 이 칸이 무엇인지 알려 줌
+  waiting_location: '현재 위치 주변 추천 충전소가 여기에 표시돼요',
 }
 
 /** 추천을 불러오는 동안 그리는 자리표시 카드 수 (Top 3) */
@@ -118,7 +120,8 @@ export function RecommendSheet({
     recommendState === 'error' ||
     recommendState === 'empty' ||
     recommendState === 'out_of_area' ||
-    recommendState === 'rate_limited'
+    recommendState === 'rate_limited' ||
+    recommendState === 'waiting_location'
   // 손잡이 + 내용 전체. 아직 못 쟀으면 카드 3장 기준으로 잡아 둠
   const expandedHeight = Math.min(
     HANDLE_HEIGHT + (contentHeight || headerHeight + GAP * 4 + RECOMMEND_CARD_HEIGHT * 3),

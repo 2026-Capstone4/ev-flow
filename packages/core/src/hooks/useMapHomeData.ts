@@ -7,8 +7,11 @@ import { getListLoadState, type ListLoadState } from '../lib/loadState'
 import { matchesFilters } from '../lib/stationFilter'
 import type { HorizonMinutes, RecommendationFilters } from '../types/station'
 
-/** 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area) · 호출 제한(rate_limited)이 더해짐 */
-export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited'
+/**
+ * 추천 시트 표시 상태. 목록 상태에 마포구 밖(out_of_area) · 호출 제한(rate_limited)이 더해짐
+ * waiting_location: 앱이 온보딩 · 처음 위치 재기가 끝나길 기다려 아직 추천을 안 부른 상태
+ */
+export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited' | 'waiting_location'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
 // 추천은 사용자 위치가 아니라 추천 기준점으로 부름 - 5분마다 또는 500m + 2분마다 기준점이 지금 위치로 옮겨짐
@@ -67,10 +70,14 @@ export function useMapHomeData(
     isStationsError: stationsQuery.isError,
     recommendations,
     recommendedIds,
-    recommendState: getRecommendState(
-      getListLoadState(recommendations, recommendationsQuery.isError),
-      recommendationsQuery.error,
-    ),
+    // 아직 부를 때가 아니고 받아 둔 결과도 없으면 불러오는 중 대신 기다리는 안내를 띄움
+    recommendState:
+      !isRecommendReady && !recommendations
+        ? 'waiting_location'
+        : getRecommendState(
+            getListLoadState(recommendations, recommendationsQuery.isError),
+            recommendationsQuery.error,
+          ),
   }
 }
 
