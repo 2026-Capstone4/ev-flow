@@ -5,6 +5,7 @@ import { getApiErrorCode, getRetryAfterSeconds } from '@ev-flow/core/api/errors'
 import { Button } from '@/components/Button'
 import { useAuthMeQuery, useLoginMutation } from '@/hooks/useAdminAuth'
 import { getLoginErrorMessage } from '@/lib/admin/auth'
+import { SUPPORT_EMAIL } from '@/lib/serviceInfo'
 
 /** 가드(AdminLayout)가 로그인 화면으로 보낼 때 넘기는 값 */
 export type AdminLoginState = {
@@ -53,7 +54,7 @@ export function AdminLoginPage() {
         className="flex w-full max-w-[360px] flex-col gap-4 rounded-lg border border-border-default bg-bg-page p-6"
       >
         <header className="flex flex-col gap-1">
-          <h1 className="text-[22px] font-bold">EV-flow 운영자</h1>
+          <h1 className="text-[22px] font-bold">EV Flow 운영자</h1>
           <p className="text-[13px] text-text-secondary">운영자 계정으로 로그인해 주세요</p>
         </header>
 
@@ -109,6 +110,17 @@ export function AdminLoginPage() {
         <Button type="submit" disabled={!loginId.trim() || !password || loginMutation.isPending}>
           {loginMutation.isPending ? '로그인 중…' : '로그인'}
         </Button>
+
+        {/* 메일 앱이 없는 컴퓨터에서도 복사해 쓰도록 주소를 그대로 보여 주고, 누르면 제목을 채워 메일 앱을 엶 */}
+        <p className="self-center text-[13px] text-text-secondary">
+          운영자 계정 문의 ·{' '}
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[EV Flow] 운영자 계정 문의')}`}
+            className="underline"
+          >
+            {SUPPORT_EMAIL}
+          </a>
+        </p>
       </form>
     </div>
   )
