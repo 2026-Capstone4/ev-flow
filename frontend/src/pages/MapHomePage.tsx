@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
-import { AppInstallQrCard } from '@/components/AppInstallQrCard'
 import { AppInstallSheet } from '@/components/AppInstallSheet'
 import { BottomTab } from '@/components/BottomTab'
 import { DevZoomBadge } from '@/components/DevZoomBadge'
@@ -396,7 +395,6 @@ export function MapHomePage() {
         <AppInstallSheet onClose={closeAppInstall} onInstall={handleAppInstall} />
       )}
       {isOnboardingOpen && !isAppInstallOpen && <OnboardingDialog onClose={closeOnboarding} />}
-      <AppInstallQrCard />
     </div>
   )
 }

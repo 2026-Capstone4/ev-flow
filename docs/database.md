@@ -99,7 +99,7 @@ erDiagram
 | `collected_at` | timestamptz | 수집 시각 — 같은 회차의 행은 같은 분(minute) |
 | `collection_run_id` | int FK · NULL 허용 | 이 행을 저장한 수집 실행 (`collection_runs.id`). `collection_runs` 도입 이전 행은 소급으로 채움 |
 
-인덱스: `(station_id, charger_id, collected_at)` — 충전기별 시계열 조회용. 도심만 `(collection_run_id, id)` — `ml_read.collection_runs` 뷰의 회차별 판정용, `(collected_at, id)` — ml 회차 검증(기점 ~ cutoff 중 마지막 행)용. 충전기별 인덱스로는 이력 전체를 읽어 서버에서 27~30초 걸림(2026-11-18, 276만 행).
+인덱스: `(station_id, charger_id, collected_at)` — 충전기별 시계열 조회용. 도심만 `(collection_run_id, id)` — `ml_read.collection_runs` 뷰의 회차별 판정용. `(collected_at, id)` — 도심은 ml 회차 검증(기점 ~ cutoff 중 마지막 행)용, 충전기별 인덱스로는 이력 전체를 읽어 서버에서 27~30초 걸림(2026-11-18, 276만 행). 휴게소는 운영자 '오늘' 집계용, 충전기별 인덱스로 흩어 읽어 서버에서 6.8초 걸림(2026-11-24, 오늘 56.5만 행).
 
 ### `collection_runs` — 수집 실행 이력 (지역별 5분마다 1행)
 

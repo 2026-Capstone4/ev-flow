@@ -6,6 +6,7 @@ import { CongestionBadge } from '@/components/CongestionBadge'
 import { HorizonSummary } from '@/components/HorizonSummary'
 import { PredictionTile } from '@/components/PredictionTile'
 import { UpdateStatus } from '@/components/UpdateStatus'
+import { useNoIndex, usePageTitle } from '@/hooks/usePageMeta'
 import { useNow } from '@ev-flow/core/hooks/useNow'
 import { useStationDetailData } from '@ev-flow/core/hooks/useStationDetailData'
 import { findPrediction, HORIZONS, parseHorizon } from '@ev-flow/core/lib/horizon'
@@ -18,6 +19,9 @@ export function StationDetailPage() {
   const horizon = parseHorizon(searchParams.get('horizon'))
   const now = useNow()
   const { station, updatedAt, isError, isNotFound } = useStationDetailData(stationId, horizon)
+  // 충전소 이름이 검색 결과 제목이 됨. 없어진 충전소는 색인하지 않음
+  usePageTitle(station ? station.name : isNotFound ? '충전소를 찾을 수 없어요' : undefined)
+  useNoIndex(isNotFound)
 
   const selectHorizon = (value: HorizonMinutes) =>
     setSearchParams({ horizon: String(value) }, { replace: true })

@@ -6,6 +6,7 @@ import { DistrictPicker } from '@/components/DistrictPicker'
 import { FilterChip } from '@/components/FilterChip'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { readDeviceLocation } from '@/hooks/useCurrentLocation'
+import { usePageTitle } from '@/hooks/usePageMeta'
 import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
 import { useChargerIssuesData } from '@ev-flow/core/hooks/useChargerIssuesData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
@@ -100,6 +101,7 @@ function EmptyRow({ message }: { message: string }) {
 export function ChargerIssuesPage() {
   const navigate = useNavigate()
   const { horizon } = useMapView()
+  usePageTitle('상태 이상 충전기')
 
   // 사용자가 직접 고른 구. 고르기 전이면 null이라 위치로 잡은 구 또는 기본 구를 씀
   const [pickedDistrict, setPickedDistrict] = useState<string | null>(null)

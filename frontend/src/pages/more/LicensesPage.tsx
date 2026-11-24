@@ -1,9 +1,12 @@
 import { BackButton } from '@/components/BackButton'
+import { usePageTitle } from '@/hooks/usePageMeta'
 import licenses from '@/assets/licenses.json'
 
 // 더보기 > 오픈소스 라이선스. 목록은 scripts/generate-licenses.mjs가 만든 src/assets/licenses.json
 // 목록이 커서 App.tsx에서 이 화면에 들어올 때만 따로 받음
 export function LicensesPage() {
+  usePageTitle('오픈소스 라이선스')
+
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
