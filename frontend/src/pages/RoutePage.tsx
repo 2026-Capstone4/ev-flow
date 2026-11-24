@@ -9,6 +9,7 @@ import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { useNaverMap } from '@/hooks/useNaverMap'
 import { useRouteData } from '@ev-flow/core/hooks/useRouteData'
 import { useRouteOverlay } from '@/hooks/useRouteOverlay'
+import { usePageTitle } from '@/hooks/usePageMeta'
 import { formatWaitRange, getCongestionLabel } from '@ev-flow/core/lib/congestion'
 import { MAPO_CENTER } from '@ev-flow/core/lib/constants'
 import { getHorizonWhen, parseHorizon } from '@ev-flow/core/lib/horizon'
@@ -44,6 +45,7 @@ export function RoutePage() {
     routeRetryAfterSeconds,
     retryRoute,
   } = useRouteData(origin, stationId, horizon)
+  usePageTitle(station ? `${station.name} 길찾기` : '길찾기')
 
   const stations = useMemo(() => (station ? [station] : undefined), [station])
   useStationMarkers(map, stations)

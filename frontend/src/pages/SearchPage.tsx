@@ -7,6 +7,7 @@ import { FilterChip } from '@/components/FilterChip'
 import { HorizonSelector } from '@/components/HorizonSelector'
 import { SearchResultRow } from '@/components/SearchResultRow'
 import { FilterRow, StationFilterOptions } from '@/components/StationFilterOptions'
+import { usePageTitle } from '@/hooks/usePageMeta'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { useSearchData } from '@ev-flow/core/hooks/useSearchData'
 import { DEFAULT_FILTERS, isDefaultFilters } from '@ev-flow/core/lib/stationFilter'
@@ -28,6 +29,7 @@ function parseSortKey(value: string | null): StationSortKey {
 export function SearchPage() {
   const navigate = useNavigate()
   const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
+  usePageTitle('충전소 검색')
   // 검색어 · 정렬은 URL에 두어 상세에서 뒤로 와도 유지. 입력은 한글 조합이 끊기지 않게 로컬 상태로 받음
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '')

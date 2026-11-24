@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { BackButton } from '@/components/BackButton'
+import { usePageTitle } from '@/hooks/usePageMeta'
 
 type SubPageLayoutProps = {
   title: string
@@ -8,6 +9,8 @@ type SubPageLayoutProps = {
 
 /** 더보기에서 들어가는 글 화면의 틀. 상세 화면과 같은 뒤로가기 헤더 + 스크롤 본문 */
 export function SubPageLayout({ title, children }: SubPageLayoutProps) {
+  usePageTitle(title)
+
   return (
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
