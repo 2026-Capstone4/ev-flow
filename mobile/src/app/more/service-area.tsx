@@ -13,7 +13,8 @@ export default function ServiceAreaInfoScreen() {
         혼잡 예측과 추천은 아직 제공하지 않아요.
       </InfoBlock>
       <InfoBlock title="고속도로 휴게소">
-        천안 구간 휴게소의 현재 충전기 현황만 볼 수 있어요.
+        전국 고속도로 휴게소의 현재 충전기 현황만 볼 수 있어요.{'\n'}
+        노선별 · 지역별로 찾아볼 수 있어요.
       </InfoBlock>
     </SubPageLayout>
   )

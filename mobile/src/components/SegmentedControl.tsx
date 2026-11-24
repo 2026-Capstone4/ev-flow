@@ -1,29 +1,30 @@
 import { Pressable, Text, View } from 'react-native'
-import { DIRECTION_LABEL } from '@ev-flow/core/lib/serviceArea'
-import type { Direction } from '@ev-flow/core/types/serviceArea'
 
-const OPTIONS: Direction[] = ['up', 'down']
-
-type DirectionSelectorProps = {
-  value: Direction
-  onChange: (value: Direction) => void
+type SegmentedControlProps<T extends string> = {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
 }
 
-/** 휴게소 상행(서울 방향) · 하행(부산 방향) 선택 */
-export function DirectionSelector({ value, onChange }: DirectionSelectorProps) {
+/** 회색 바탕 위에 고른 칸만 흰색으로 띄우는 선택 버튼 묶음 (휴게소 노선별 · 지역별, 노선 방향) */
+export function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: SegmentedControlProps<T>) {
   return (
     <View
       accessibilityRole="radiogroup"
       className="h-10 w-full flex-row gap-1 rounded-md bg-bg-subtle p-1"
     >
-      {OPTIONS.map((option) => {
-        const isSelected = option === value
+      {options.map((option) => {
+        const isSelected = option.value === value
         return (
           <Pressable
-            key={option}
+            key={option.value}
             accessibilityRole="radio"
             accessibilityState={{ checked: isSelected }}
-            onPress={() => onChange(option)}
+            onPress={() => onChange(option.value)}
             // 웹 그림자(0 1px 2px 10%)를 RN 그림자 속성으로 옮김
             style={
               isSelected
@@ -42,7 +43,7 @@ export function DirectionSelector({ value, onChange }: DirectionSelectorProps) {
                 isSelected ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'
               }`}
             >
-              {DIRECTION_LABEL[option]}
+              {option.label}
             </Text>
           </Pressable>
         )

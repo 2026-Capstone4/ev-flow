@@ -3,33 +3,27 @@ import { Info } from 'lucide-react-native'
 import { ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNow } from '@ev-flow/core/hooks/useNow'
-import { useServiceAreaDetailData } from '@ev-flow/core/hooks/useServiceAreaDetailData'
-import {
-  AVAILABILITY_TONE_CLASS,
-  getAvailabilityTone,
-  parseDirection,
-} from '@ev-flow/core/lib/serviceArea'
+import { useNationwideServiceAreaDetailData } from '@ev-flow/core/hooks/useNationwideServiceAreaDetailData'
+import { AVAILABILITY_TONE_CLASS, getAvailabilityTone } from '@ev-flow/core/lib/serviceArea'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import { BackButton } from '../../components/BackButton'
 import { Button } from '../../components/Button'
 import { ChargerRow } from '../../components/ChargerRow'
-import { DirectionTag } from '../../components/DirectionTag'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { openNaverMapCarRoute } from '../../lib/openMapApp'
 
 /** 아래 버튼 영역의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(12px, safe-area)) */
 const FOOTER_MIN_PADDING = 12
 
-// 휴게소 상세. 웹과 같은 주소(/service-areas/detail?name=&direction=)와 core useServiceAreaDetailData를 씀
+// 전국 휴게소 상세 (/service-areas/detail?id=). id는 15번 목록의 id(노선이 붙은 곳은 휴게소명, 못 붙인 곳은 statId)
 // 휴게소는 앱 안 경로 미리보기가 없어서(POST /routes는 도심 충전소만) 길찾기 버튼이 바로 네이버 지도 앱을 엶
 export default function ServiceAreaDetailScreen() {
-  const params = useLocalSearchParams<{ name?: string; direction?: string }>()
-  const name = params.name ?? ''
-  const direction = parseDirection(params.direction ?? null)
+  const params = useLocalSearchParams<{ id?: string }>()
+  const id = params.id ?? ''
   const now = useNow()
   const insets = useSafeAreaInsets()
   const { serviceArea, chargerGroups, unknownCount, updatedAt, isError, isNotFound } =
-    useServiceAreaDetailData(name, direction)
+    useNationwideServiceAreaDetailData(id)
 
   return (
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
@@ -42,14 +36,9 @@ export default function ServiceAreaDetailScreen() {
         <>
           <ScrollView className="flex-1" contentContainerClassName="gap-6 px-4 pt-2 pb-8">
             <View className="items-start gap-1.5">
-              <View className="flex-row items-center gap-2">
-                <Text className="flex-shrink font-bold text-[22px] text-text-primary">
-                  {serviceArea.name}
-                </Text>
-                <DirectionTag direction={serviceArea.direction} />
-              </View>
+              <Text className="font-bold text-[22px] text-text-primary">{serviceArea.name}</Text>
               <Text className="font-sans text-sm text-text-secondary">
-                {serviceArea.route}선 · 급속 {serviceArea.totalChargers}기
+                {serviceArea.routeName ?? '노선 미확인'} · 급속 {serviceArea.totalChargers}기
               </Text>
               <UpdateStatus updatedAt={updatedAt} isError={isError} />
             </View>
