@@ -19,8 +19,19 @@ export function MapViewProvider({
 }) {
   const [horizon, setHorizon] = useState<HorizonMinutes>(DEFAULT_HORIZON)
   const [filters, setFilters] = useState<RecommendationFilters>(DEFAULT_FILTERS)
-  const [userLocation, setUserLocation] = useState<LatLng>(initialUserLocation)
-  const [recommendOrigin, setRecommendOrigin] = useState<LatLng>(initialUserLocation)
+  const [userLocation, setUserLocationState] = useState<LatLng>(initialUserLocation)
+  const [recommendOrigin, setRecommendOriginState] = useState<LatLng>(initialUserLocation)
+  // 처음엔 둘 다 시연 위치라 false. 위치 추적 · 현재 위치 버튼이 한 번이라도 재면 true
+  const [isUserLocationMeasured, setIsUserLocationMeasured] = useState(false)
+  const [isRecommendOriginMeasured, setIsRecommendOriginMeasured] = useState(false)
+  const setUserLocation = useCallback((location: LatLng) => {
+    setUserLocationState(location)
+    setIsUserLocationMeasured(true)
+  }, [])
+  const setRecommendOrigin = useCallback((location: LatLng, isMeasured: boolean) => {
+    setRecommendOriginState(location)
+    setIsRecommendOriginMeasured(isMeasured)
+  }, [])
   const [lastRecommendAt, setLastRecommendAt] = useState<number | null>(null)
   const markRecommendCalled = useCallback(() => setLastRecommendAt(Date.now()), [])
   const value = useMemo(
@@ -31,12 +42,25 @@ export function MapViewProvider({
       setFilters,
       userLocation,
       setUserLocation,
+      isUserLocationMeasured,
       recommendOrigin,
       setRecommendOrigin,
+      isRecommendOriginMeasured,
       lastRecommendAt,
       markRecommendCalled,
     }),
-    [horizon, filters, userLocation, recommendOrigin, lastRecommendAt, markRecommendCalled],
+    [
+      horizon,
+      filters,
+      userLocation,
+      setUserLocation,
+      isUserLocationMeasured,
+      recommendOrigin,
+      setRecommendOrigin,
+      isRecommendOriginMeasured,
+      lastRecommendAt,
+      markRecommendCalled,
+    ],
   )
   return <MapViewContext.Provider value={value}>{children}</MapViewContext.Provider>
 }

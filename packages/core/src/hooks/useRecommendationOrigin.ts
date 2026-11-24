@@ -18,19 +18,25 @@ export type RecommendStep = { call: true } | { call: false; checkInMs: number | 
  * - 마지막 추천에서 5분 지났으면 부름 (5분 주기 · 다른 화면 · 백그라운드에서 돌아온 경우 모두)
  * - 기준점에서 500m 넘게 벗어났으면, 마지막 추천에서 2분 지났을 때 부름. 2분 전이면 2분이 될 때 다시 봄
  * - 아직 한 번도 안 불렀으면(null) 쿼리가 처음 열 때 스스로 부르므로 여기서는 부르지 않음
+ * - 시연 위치에서 부른 추천인데 처음 잰 위치가 500m 넘게 떨어져 있으면 2분을 기다리지 않고 바로 부름
+ *   (앱은 GPS를 받기 전에 시연 위치로 먼저 부르므로, 기다리면 2분 동안 엉뚱한 곳 추천이 보임)
+ * isFirstFix: 추천 기준점은 시연 위치인데 사용자 위치는 기기에서 잰 값인지
  */
 export function getRecommendStep(
   now: number,
   lastCallAt: number | null,
   origin: LatLng,
   location: LatLng,
+  isFirstFix = false,
 ): RecommendStep {
+  const moved = getDistanceMeters(origin, location) > RECOMMEND_MOVE_THRESHOLD_M
+  // 처음 잰 위치가 시연 위치에서 멀면 첫 추천을 기다리지 않고 바로 옮겨 부름
+  if (isFirstFix && moved) return { call: true }
   // 처음 열 때는 쿼리가 알아서 부름
   if (lastCallAt === null) return { call: false, checkInMs: null }
   const elapsed = now - lastCallAt
   // 5분이 지났으면 위치와 상관없이 부름
   if (elapsed >= RECOMMEND_INTERVAL_MS) return { call: true }
-  const moved = getDistanceMeters(origin, location) > RECOMMEND_MOVE_THRESHOLD_M
   // 500m 넘게 움직였으면 2분이 지났을 때 부르고, 아직이면 2분이 되는 때 다시 봄
   if (moved) {
     if (elapsed >= RECOMMEND_MIN_INTERVAL_MS) return { call: true }
@@ -45,7 +51,14 @@ export function getRecommendStep(
  * refetch: 기준점이 지금 위치와 같아 쿼리 키가 안 바뀔 때 부를 함수
  */
 export function useRecommendationOrigin(refetch: () => void) {
-  const { userLocation, recommendOrigin, setRecommendOrigin, lastRecommendAt } = useMapView()
+  const {
+    userLocation,
+    isUserLocationMeasured,
+    recommendOrigin,
+    setRecommendOrigin,
+    isRecommendOriginMeasured,
+    lastRecommendAt,
+  } = useMapView()
   const isScreenActive = useScreenActive()
   // 타이머 · 포커스 · 연결 상태가 바뀔 때 다시 판단하게 하는 값
   const [checkCount, setCheckCount] = useState(0)
@@ -64,13 +77,20 @@ export function useRecommendationOrigin(refetch: () => void) {
   useEffect(() => {
     // 안 보이는 동안은 부르지 않음. 돌아오면 위 구독이나 화면 활성 값이 바뀌어 다시 판단함
     if (!isScreenActive || !focusManager.isFocused() || !onlineManager.isOnline()) return
-    const step = getRecommendStep(Date.now(), lastRecommendAt, recommendOrigin, userLocation)
+    const isFirstFix = isUserLocationMeasured && !isRecommendOriginMeasured
+    const step = getRecommendStep(
+      Date.now(),
+      lastRecommendAt,
+      recommendOrigin,
+      userLocation,
+      isFirstFix,
+    )
     if (step.call) {
       const isSamePlace =
         userLocation.lat === recommendOrigin.lat && userLocation.lng === recommendOrigin.lng
       // 위치가 그대로면 키가 같아 기준점을 바꿔도 안 불리므로 직접 다시 부름
       if (isSamePlace) refetch()
-      else setRecommendOrigin(userLocation)
+      else setRecommendOrigin(userLocation, isUserLocationMeasured)
       return
     }
     // 다시 볼 때가 없으면 타이머를 걸지 않음
@@ -81,7 +101,9 @@ export function useRecommendationOrigin(refetch: () => void) {
     isScreenActive,
     lastRecommendAt,
     recommendOrigin,
+    isRecommendOriginMeasured,
     userLocation,
+    isUserLocationMeasured,
     checkCount,
     refetch,
     setRecommendOrigin,
