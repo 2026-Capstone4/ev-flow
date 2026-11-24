@@ -52,7 +52,7 @@ const config: ExpoConfig = {
         // 처음 현재 위치 버튼을 누를 때 iOS 권한 창에 뜨는 설명 (Info.plist NSLocationWhenInUseUsageDescription)
         // 앱을 쓰는 동안만 요청하고, 백그라운드 위치는 쓰지 않음
         locationWhenInUsePermission:
-          '현재 위치를 추천 · 검색 · 길찾기의 기준 위치로 쓰려고 위치 정보를 사용합니다. 마포구 안에서만 기준 위치를 바꿉니다.',
+          '현재 위치를 추천 · 검색 · 길찾기의 기준 위치로 쓰려고 위치 정보를 사용합니다.',
         // 플러그인이 기본으로 넣는 항상 위치 · 움직임 권한 설명은 쓰지 않아서 뺌 (false면 Info.plist에서 지움)
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,

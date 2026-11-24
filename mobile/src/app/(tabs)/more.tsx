@@ -25,8 +25,6 @@ export default function MoreScreen() {
       contentContainerClassName="gap-6 px-4 pb-8"
       contentContainerStyle={{ paddingTop: insets.top + TOP_GAP }}
     >
-      <Text className="font-bold text-[22px] text-text-primary">더보기</Text>
-
       <MenuSection title="서비스 정보">
         <MenuRow label="첫 방문 안내 다시 보기" onPress={replayOnboarding} isFirst />
         <MenuRow label="서비스 지역 안내" onPress={() => router.push('/more/service-area')} />
