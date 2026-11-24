@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react'
+import { useLocation } from 'react-router'
 import { APP_STORE_URL } from '@/lib/appInstall'
 
 /**
@@ -6,6 +7,13 @@ import { APP_STORE_URL } from '@/lib/appInstall'
  * 화면이 넓을 때(lg, 1024px 이상)만 보이고, 휴대폰 화면 폭에서는 숨김
  */
 export function AppInstallQrCard() {
+  const { pathname } = useLocation()
+
+  // 운영자 화면(/admin, /admin/login 등)은 사용자용 안내가 필요 없어서 띄우지 않음
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    return null
+  }
+
   return (
     <aside
       aria-label="앱 설치 안내"
