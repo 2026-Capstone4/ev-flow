@@ -29,7 +29,7 @@ const config: ExpoConfig = {
     // NCP 콘솔에 등록한 값과 글자 하나까지 같아야 지도 인증이 됨 (계획 문서 9번)
     bundleIdentifier: 'app.evflowkr.evflow',
     // App Store Connect 빌드 번호 (CFBundleVersion). 같은 버전 안에서 올릴 때마다 1씩 올려야 업로드됨
-    buildNumber: '3',
+    buildNumber: '4',
     config: {
       // HTTPS 같은 기본 암호화만 써서 수출 규정 면제 대상. 적어 두면 빌드마다 암호화 질문을 안 받음
       usesNonExemptEncryption: false,
