@@ -12,19 +12,27 @@ export type RecommendState = ListLoadState | 'out_of_area' | 'rate_limited'
 
 // 지도 홈 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용
 // 추천은 사용자 위치가 아니라 추천 기준점으로 부름 - 5분마다 또는 500m + 2분마다 기준점이 지금 위치로 옮겨짐
-export function useMapHomeData(horizon: HorizonMinutes, filters: RecommendationFilters) {
+// isRecommendReady: false인 동안은 추천을 부르지 않고 시트에 불러오는 중으로 둠. 웹은 안 넘겨서 바로 부름
+export function useMapHomeData(
+  horizon: HorizonMinutes,
+  filters: RecommendationFilters,
+  isRecommendReady = true,
+) {
   const stationsQuery = useStationsQuery()
   const { recommendOrigin, markRecommendCalled } = useMapView()
   const recommendationsQuery = useRecommendationsQuery(
     recommendOrigin,
     filters,
     markRecommendCalled,
+    isRecommendReady,
   )
   // 이미 부르는 중이면 그 요청을 끊고 새로 부르지 않고 기다림. 끊으면 서버에는 요청이 두 번 감
   const { refetch } = recommendationsQuery
   const refetchRecommendations = useCallback(() => {
+    // 아직 부를 때가 아니면 규칙이 불러 달라고 해도 부르지 않음 (refetch는 enabled와 상관없이 부름)
+    if (!isRecommendReady) return
     refetch({ cancelRefetch: false })
-  }, [refetch])
+  }, [refetch, isRecommendReady])
   useRecommendationOrigin(refetchRecommendations)
   // 시점을 바꿔도 다시 요청하지 않고 받은 결과에서 고름
   const recommendations = recommendationsQuery.data?.results.find(

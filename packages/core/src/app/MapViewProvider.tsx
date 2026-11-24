@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { MapViewContext } from './mapViewContext'
 import { DEFAULT_HORIZON, DEMO_USER_LOCATION } from '../lib/constants'
 import { DEFAULT_FILTERS } from '../lib/stationFilter'
@@ -24,16 +24,26 @@ export function MapViewProvider({
   // 처음엔 둘 다 시연 위치라 false. 위치 추적 · 현재 위치 버튼이 한 번이라도 재면 true
   const [isUserLocationMeasured, setIsUserLocationMeasured] = useState(false)
   const [isRecommendOriginMeasured, setIsRecommendOriginMeasured] = useState(false)
-  const setUserLocation = useCallback((location: LatLng) => {
-    setUserLocationState(location)
-    setIsUserLocationMeasured(true)
-  }, [])
+  // 추천을 한 번이라도 불렀는지. 위치를 바꿀 때 바로 읽어야 해서 state가 아닌 ref로 둠
+  const hasRecommendCalledRef = useRef(false)
   const setRecommendOrigin = useCallback((location: LatLng, isMeasured: boolean) => {
     setRecommendOriginState(location)
     setIsRecommendOriginMeasured(isMeasured)
   }, [])
+  const setUserLocation = useCallback(
+    (location: LatLng) => {
+      setUserLocationState(location)
+      setIsUserLocationMeasured(true)
+      // 아직 추천을 한 번도 안 불렀으면 기준점도 같이 옮김. 부르기 전이라 옮겨도 호출이 늘지 않음
+      if (!hasRecommendCalledRef.current) setRecommendOrigin(location, true)
+    },
+    [setRecommendOrigin],
+  )
   const [lastRecommendAt, setLastRecommendAt] = useState<number | null>(null)
-  const markRecommendCalled = useCallback(() => setLastRecommendAt(Date.now()), [])
+  const markRecommendCalled = useCallback(() => {
+    hasRecommendCalledRef.current = true
+    setLastRecommendAt(Date.now())
+  }, [])
   const value = useMemo(
     () => ({
       horizon,
