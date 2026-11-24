@@ -1,3 +1,5 @@
+import threading
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -40,6 +42,10 @@ class Area:
 MAPO = Area("city", CityStation, CityCharger, CityStatusLog, True)
 # 서울은 예측 · 기준선이 없음 - predictions는 형식만 유지하고 값은 전부 null (build_predictions에 둘 다 None)
 SEOUL = Area("live", LiveStation, LiveCharger, LiveStatusLog, False)
+
+STATIONS_CACHE_SEC = 30  # 목록 응답 캐시 유효 시간 (get_stations_json)
+_stations_cache: tuple[tuple, float, bytes] | None = None  # (회차 키, 만든 시각 monotonic, JSON)
+_stations_lock = threading.Lock()
 
 
 def build_station(
@@ -114,13 +120,52 @@ def area_stations(
 
 
 def get_stations(db: Session) -> StationsResponse:
-    now = datetime.now(UTC)
     city_run = latest_success_run(db, MAPO.target)
+    # 서울 회차가 없으면(수집 전 · 장애) 마포만 줌 - 서울 수집 문제가 마포 화면까지 막지 않게 함
+    live_run = find_latest_success_run(db, SEOUL.target)
+    return build_stations_response(db, city_run, live_run)
+
+
+def get_stations_json(db: Session) -> bytes:
+    """GET /stations 응답 JSON - 같은 회차면 STATIONS_CACHE_SEC 동안 만든 결과를 그대로 줌
+
+    목록은 요청마다 1,600여 곳을 DB에서 읽고 조립해 무거움(실서버 약 0.25초). 데이터는 수집 회차(5분)마다만 바뀜
+    - 키를 회차 id로 잡아 새 회차가 들어오면 바로 다시 만듦
+    - 시간에 따라 바뀌는 값(dataQuality · 20분 지난 상태의 unknown · 기준선 시간대)과 회차보다 늦게 들어오는
+      예측(pred:v2)은 유효 시간만큼 늦게 반영됨 - 화면은 1분마다 다시 부르고 경계는 10 · 20분 단위라 30초면 충분
+    - 워커마다 따로 둠. 만들 때는 잠금으로 한 요청만 계산하고 나머지는 기다렸다가 결과를 같이 씀
+    """
+    global _stations_cache
+    city_run = latest_success_run(db, MAPO.target)
+    live_run = find_latest_success_run(db, SEOUL.target)
+    key = (city_run.id, live_run.id if live_run else None)
+    body = _cached_stations(key)
+    if body is not None:
+        return body
+    with _stations_lock:
+        # 잠금을 기다리는 동안 다른 요청이 만들었으면 그대로 씀
+        body = _cached_stations(key)
+        if body is None:
+            response = build_stations_response(db, city_run, live_run)
+            body = response.model_dump_json(by_alias=True).encode()
+            _stations_cache = (key, time.monotonic(), body)
+    return body
+
+
+def _cached_stations(key: tuple) -> bytes | None:
+    cache = _stations_cache
+    if cache and cache[0] == key and time.monotonic() - cache[1] < STATIONS_CACHE_SEC:
+        return cache[2]
+    return None
+
+
+def build_stations_response(
+    db: Session, city_run: CollectionRun, live_run: CollectionRun | None
+) -> StationsResponse:
+    now = datetime.now(UTC)
     model, baseline = load_model_predictions(), load_baseline()
     stations = area_stations(db, MAPO, city_run, now, model, baseline)
     updated_at = city_run.started_at
-    # 서울 회차가 없으면(수집 전 · 장애) 마포만 줌 - 서울 수집 문제가 마포 화면까지 막지 않게 함
-    live_run = find_latest_success_run(db, SEOUL.target)
     if live_run is not None:
         stations += area_stations(db, SEOUL, live_run, now, None, None)
         # 최상위 기준 시각은 응답에 든 두 출처 중 오래된 쪽 (서울 확대 설계 C안)
