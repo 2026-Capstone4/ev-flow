@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -8,9 +8,10 @@ from app.services import stations as station_service
 router = APIRouter(prefix="/stations", tags=["stations"])
 
 
+# 캐시한 JSON을 그대로 돌려줌 - response_model은 문서(Swagger)용으로만 남음
 @router.get("", response_model=StationsResponse)
 def get_stations(db: Session = Depends(get_db)):
-    return station_service.get_stations(db)
+    return Response(station_service.get_stations_json(db), media_type="application/json")
 
 
 # 경로 이름도 명세(stationId)와 맞춤 - Swagger 파라미터 이름이 그대로 보임
