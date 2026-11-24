@@ -6,8 +6,7 @@ import { COLORS } from '@ev-flow/core/lib/theme'
 /** 탭 화면 파일 이름별 글자. 순서는 (tabs)/_layout.tsx의 Tabs.Screen 순서를 따름 */
 const TAB_LABEL: Record<string, string> = {
   index: '도심 충전소',
-  // 탭 폭이 좁아서 짧게 씀. 화면 제목은 '고속도로 휴게소' 그대로
-  'service-areas': '휴게소',
+  'service-areas': '고속도로 휴게소',
   more: '더보기',
 }
 
