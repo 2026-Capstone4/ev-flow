@@ -88,6 +88,9 @@ export default function MapHomeScreen() {
   const mapRef = useRef<NaverMapViewRef>(null)
   // 예측 시점 · 필터는 검색 화면과 함께 쓰고, 상세에서 뒤로 돌아와도 유지됨
   const { horizon, setHorizon, filters, setFilters, userLocation } = useMapView()
+  // 처음 위치 재기(아래 온보딩 뒤 locate)가 끝났는지. 끝나기 전에는 추천을 부르지 않음
+  // 시연 위치로 먼저 부르면 실제 위치로 한 번 더 불러야 해서 호출을 아낌. 위치 기능이 꺼진 빌드는 바로 부름
+  const [isStartLocateDone, setIsStartLocateDone] = useState(!IS_GEOLOCATION_ENABLED)
   const {
     stations,
     allStations,
@@ -96,8 +99,7 @@ export default function MapHomeScreen() {
     recommendations,
     recommendedIds,
     recommendState,
-    recommendRetryAfterSeconds,
-  } = useMapHomeData(horizon, filters)
+  } = useMapHomeData(horizon, filters, isStartLocateDone)
 
   const [camera, setCamera] = useState<CameraState>({
     webZoomLevel: INITIAL_WEB_ZOOM,
@@ -241,6 +243,7 @@ export default function MapHomeScreen() {
   // 온보딩이 끝나면(다시 연 사용자는 화면을 열자마자) 한 번 위치를 잼
   // 처음이면 여기서 iOS 권한 창이 뜨고, 이미 정했으면 창 없이 현재 위치로 지도를 옮김
   // 거부하면 시연 위치(마포구)에 그대로 둠. 방금 고른 결과라 안내 문구는 띄우지 않음
+  // 성공 · 실패와 상관없이 끝나면 첫 추천을 부름 (찾았으면 그 위치, 못 찾았으면 시연 위치)
   const hasLocatedOnStartRef = useRef(false)
   const isOnboardingVisible = isOnboardingOpen || showOnboarding === '1'
   useEffect(() => {
@@ -248,6 +251,7 @@ export default function MapHomeScreen() {
     if (!IS_GEOLOCATION_ENABLED || isOnboardingVisible || hasLocatedOnStartRef.current) return
     hasLocatedOnStartRef.current = true
     locate().then((result) => {
+      setIsStartLocateDone(true)
       recheckTracking()
       // 찾았으면 그 위치로 지도를 옮김
       if (result.ok) panTo(result.location)
@@ -319,7 +323,6 @@ export default function MapHomeScreen() {
           ref={sheetRef}
           recommendations={recommendations}
           recommendState={recommendState}
-          retryAfterSeconds={recommendRetryAfterSeconds}
           horizon={horizon}
           onHorizonChange={setHorizon}
           onSelect={openStation}

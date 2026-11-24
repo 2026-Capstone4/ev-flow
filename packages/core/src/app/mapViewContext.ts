@@ -14,9 +14,17 @@ export type MapView = {
    */
   userLocation: LatLng
   setUserLocation: (location: LatLng) => void
-  /** 추천을 부른 위치. userLocation이 바뀌어도 500m · 2분 · 5분 규칙(useRecommendationOrigin)으로만 바뀜 */
+  /** userLocation이 기기에서 잰 위치인지. 아직 시연용 고정 좌표면 false */
+  isUserLocationMeasured: boolean
+  /**
+   * 추천을 부른 위치. userLocation이 바뀌어도 500m · 2분 · 5분 규칙(useRecommendationOrigin)으로만 바뀜
+   * 단, 추천을 한 번도 부르기 전에는 userLocation을 그대로 따라감
+   */
   recommendOrigin: LatLng
-  setRecommendOrigin: (location: LatLng) => void
+  /** isMeasured: 옮겨 갈 위치가 기기에서 잰 위치인지 (isUserLocationMeasured 값을 그대로 넘김) */
+  setRecommendOrigin: (location: LatLng, isMeasured: boolean) => void
+  /** recommendOrigin이 기기에서 잰 위치인지. 시연 위치에서 부른 추천이면 false */
+  isRecommendOriginMeasured: boolean
   /** 마지막으로 추천 서버를 부른 시각(ms). 아직 안 불렀으면 null */
   lastRecommendAt: number | null
   markRecommendCalled: () => void
