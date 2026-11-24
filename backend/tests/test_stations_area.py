@@ -1,3 +1,4 @@
+import gzip
 import json
 import os
 from datetime import UTC, datetime, timedelta
@@ -7,6 +8,10 @@ from types import SimpleNamespace
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
 os.environ.setdefault("EV_SERVICE_KEY", "test")
 
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 from app.services import stations  # noqa: E402
 from app.services.snapshot import ChargerState  # noqa: E402
 
@@ -105,7 +110,7 @@ def test_get_stations_without_seoul_run_returns_mapo_only(monkeypatch):
 
 
 def stub_stations_cache(monkeypatch, runs, clock):
-    """회차 · 시각을 바꿔 가며 get_stations_json을 부르게 함 - 만든 횟수를 돌려줌"""
+    """회차 · 시각을 바꿔 가며 get_stations_payload를 부르게 함 - 만든 횟수를 돌려줌"""
     stub_get_stations(monkeypatch, LIVE_RUN)
     monkeypatch.setattr(stations, "_stations_cache", None)
     monkeypatch.setattr(stations, "latest_success_run", lambda db, target: runs["city"])
@@ -123,43 +128,77 @@ def stub_stations_cache(monkeypatch, runs, clock):
 
 def test_stations_json_matches_response_schema(monkeypatch):
     stub_stations_cache(monkeypatch, {"city": CITY_RUN, "live": LIVE_RUN}, {"t": 0})
-    body = json.loads(stations.get_stations_json(None))
+    payload = stations.get_stations_payload(None)
+    body = json.loads(payload.body)
     # 캐시 전 응답(FastAPI가 response_model로 직렬화)과 같은 camelCase · KST 형식
     assert body == stations.get_stations(None).model_dump(mode="json", by_alias=True)
     assert body["updatedAt"].endswith("+09:00") and "stationId" in body["stations"][0]
+    # 압축본은 원본과 같은 내용
+    assert gzip.decompress(payload.gzip_body) == payload.body
+
+
+def test_stations_route_sends_gzip_only_when_accepted(monkeypatch):
+    body = b'{"stations":[]}'
+    payload = stations.StationsPayload(body, gzip.compress(body))
+    monkeypatch.setattr(stations, "get_stations_payload", lambda db: payload)
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        client = TestClient(app)
+        res = client.get("/api/v1/stations", headers={"Accept-Encoding": "gzip, deflate, br"})
+        # 미리 압축한 본을 그대로 보냄 - nginx는 Content-Encoding이 있으면 다시 압축하지 않음
+        assert res.headers["content-encoding"] == "gzip"
+        assert res.headers["vary"] == "Accept-Encoding"
+        assert res.content == body  # TestClient가 압축을 풀어 줌
+        res = client.get("/api/v1/stations", headers={"Accept-Encoding": "identity"})
+        assert "content-encoding" not in res.headers
+        assert res.content == body
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_accepts_gzip():
+    assert stations.accepts_gzip("gzip, deflate, br")
+    assert stations.accepts_gzip("br;q=1.0, GZIP;q=0.5")
+    assert stations.accepts_gzip("*")
+    assert not stations.accepts_gzip("")
+    assert not stations.accepts_gzip("identity")
+    assert not stations.accepts_gzip("br, gzip;q=0")
+    # gzip을 직접 적은 값이 *보다 우선
+    assert not stations.accepts_gzip("gzip;q=0, *")
+    assert stations.accepts_gzip("*;q=0, gzip")
 
 
 def test_stations_json_reuses_cache_within_same_run(monkeypatch):
     clock = {"t": 0}
     built = stub_stations_cache(monkeypatch, {"city": CITY_RUN, "live": LIVE_RUN}, clock)
-    first = stations.get_stations_json(None)
+    first = stations.get_stations_payload(None)
     clock["t"] = stations.STATIONS_CACHE_SEC - 1
-    assert stations.get_stations_json(None) is first
+    assert stations.get_stations_payload(None) is first
     assert len(built) == 1
 
 
 def test_stations_json_rebuilds_on_new_run(monkeypatch):
     runs = {"city": CITY_RUN, "live": LIVE_RUN}
     built = stub_stations_cache(monkeypatch, runs, {"t": 0})
-    stations.get_stations_json(None)
+    stations.get_stations_payload(None)
     # 유효 시간 안이어도 새 회차가 들어오면 바로 다시 만듦 - 마포 · 서울 어느 쪽이든
     runs["live"] = SimpleNamespace(id=3, started_at=NOW)
-    stations.get_stations_json(None)
+    stations.get_stations_payload(None)
     runs["city"] = SimpleNamespace(id=4, started_at=NOW)
-    stations.get_stations_json(None)
+    stations.get_stations_payload(None)
     # 서울 회차가 사라져도(장애) 다른 키
     runs["live"] = None
-    stations.get_stations_json(None)
+    stations.get_stations_payload(None)
     assert len(built) == 4
 
 
 def test_stations_json_rebuilds_after_ttl(monkeypatch):
     clock = {"t": 0}
     built = stub_stations_cache(monkeypatch, {"city": CITY_RUN, "live": LIVE_RUN}, clock)
-    stations.get_stations_json(None)
+    stations.get_stations_payload(None)
     # 같은 회차라도 유효 시간이 지나면 다시 만듦 - dataQuality 등 시간에 따라 바뀌는 값 반영
     clock["t"] = stations.STATIONS_CACHE_SEC
-    stations.get_stations_json(None)
+    stations.get_stations_payload(None)
     assert len(built) == 2
 
 
