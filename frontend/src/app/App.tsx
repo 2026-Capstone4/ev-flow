@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AdminLayout } from '@/app/AdminLayout'
 import { MapViewProvider } from '@ev-flow/core/app/MapViewProvider'
+import { AppInstallQrCard } from '@/components/AppInstallQrCard'
 import { queryClient } from '@/app/queryClient'
 import { AdminLoginPage } from '@/pages/AdminLoginPage'
 import { ChargerIssuesPage } from '@/pages/ChargerIssuesPage'
@@ -74,6 +75,8 @@ export function App() {
             {/* 위 경로에 하나도 맞지 않는 주소 (React Router가 순서와 상관없이 가장 나중에 고름) */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          {/* 앱 설치 QR은 화면을 옮겨도 사라지지 않도록 Routes 밖에 한 번만 둠 */}
+          <AppInstallQrCard />
         </BrowserRouter>
       </MapViewProvider>
     </QueryClientProvider>
