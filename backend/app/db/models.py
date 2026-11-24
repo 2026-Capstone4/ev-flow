@@ -193,6 +193,8 @@ class ServiceAreaStatusLog(StatusLogColumns, Base):
         ),
         ForeignKeyConstraint(["collection_run_id"], ["collection_runs.id"]),
         Index("ix_service_area_status_log_lookup", "station_id", "charger_id", "collected_at"),
+        # 운영자 '오늘' 집계(log_counts)를 수집 시각 범위로 읽게 함 - lookup 인덱스로는 충전기마다 흩어 읽음 (13235af17ecf)
+        Index("ix_service_area_status_log_collected", "collected_at", "id"),
     )
 
 
