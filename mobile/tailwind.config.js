@@ -1,5 +1,5 @@
 // NativeWind(v4 = Tailwind v3) 설정. 색은 웹과 같은 공용 토큰(core lib/theme.ts)을 그대로 씀
-const { COLORS } = require('@ev-flow/core/lib/theme')
+const { COLORS, RADIUS } = require('@ev-flow/core/lib/theme')
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -9,8 +9,10 @@ module.exports = {
   theme: {
     extend: {
       colors: COLORS,
-      // 웹 styles/index.css의 --radius-*와 같은 값 (Tailwind 기본값과 다름)
-      borderRadius: { sm: '6px', md: '12px', lg: '20px' },
+      // 라운드도 웹과 같은 공용 토큰(core lib/theme.ts)을 씀 (Tailwind 기본값과 다름)
+      borderRadius: Object.fromEntries(
+        Object.entries(RADIUS).map(([name, px]) => [name, `${px}px`]),
+      ),
       // 글자 크기는 네이버 지도 앱과 비슷하게 맞춤 (검색창 17 · 칩 15 · 탭 16 · 목록 제목 16 · 보조 글 14 · 작은 정보 13)
       // sm(14) · base(16) · lg(18)는 Tailwind 기본값 그대로, 작은 정보에 쓰는 xs만 12 → 13으로 키움
       fontSize: {

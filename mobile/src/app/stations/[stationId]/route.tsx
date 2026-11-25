@@ -170,7 +170,7 @@ export default function RouteScreen() {
           SHEET_SHADOW,
           { paddingBottom: getFooterPaddingBottom(insets.bottom, SHEET_MIN_PADDING) },
         ]}
-        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-[20px] bg-bg-page px-4 pt-5"
+        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-lg bg-bg-page px-4 pt-5"
       >
         {station ? (
           <View className="gap-1">

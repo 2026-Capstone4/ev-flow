@@ -22,8 +22,9 @@ const VARIANT_CLASS = {
   },
   inline: {
     // 묶음 높이를 정하지 않아서 칸 위아래 여백으로 높이를 냄 (h-full을 쓰면 화면 끝까지 늘어남)
-    group: 'w-full p-1',
-    option: 'flex-1 py-2',
+    // 묶음 여백 6 = 묶음 라운드 md(12) - 칸 라운드 sm(6)이라 두 모서리가 나란히 돎
+    group: 'w-full p-1.5',
+    option: 'flex-1 py-1.5',
     text: 'text-[15px]',
     selectedBox: 'bg-brand-primary',
     selectedText: 'text-text-on-brand',

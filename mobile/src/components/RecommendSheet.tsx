@@ -4,6 +4,7 @@ import BottomSheet, {
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
 import type { RecommendState } from '@ev-flow/core/hooks/useMapHomeData'
+import { RADIUS } from '@ev-flow/core/lib/theme'
 import type { HorizonMinutes, Recommendation } from '@ev-flow/core/types/station'
 import {
   type Ref,
@@ -205,7 +206,7 @@ export function RecommendSheet({
       animatedIndex={animatedIndex}
       backdropComponent={renderBackdrop}
       // 그림자는 바탕색이 있는 배경에 줘야 iOS가 빠르게 그림 (시트 바깥 칸엔 바탕색이 없음)
-      backgroundStyle={{ borderRadius: 20, ...SHEET_SHADOW }}
+      backgroundStyle={{ borderRadius: RADIUS.lg, ...SHEET_SHADOW }}
       // 손잡이를 내용 안에 직접 그림. handleComponent로 넘기면 다시 그릴 때마다 새로 만들어져 누름을 놓침
       handleComponent={null}
     >
@@ -217,7 +218,7 @@ export function RecommendSheet({
         style={{ height: HANDLE_HEIGHT }}
         className="items-center pt-2.5"
       >
-        <View className="h-1 w-10 rounded-[2px] bg-border-default" />
+        <View className="h-1 w-10 rounded-full bg-border-default" />
       </Pressable>
       <BottomSheetScrollView
         // 펼쳤을 때만 스크롤 (작은 화면에서 Top 3가 다 안 들어갈 때). 그 밖엔 끌면 시트가 움직임
