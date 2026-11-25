@@ -215,4 +215,3 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 - 오픈소스 라이선스 목록: Android 작업에서 더한 `expo-localization` · `expo-build-properties` · `expo-system-ui`가 빠져 있어 `pnpm --dir mobile run licenses`로 다시 만듦
 - 백그라운드 폴링: 요청마다 Metro 로그를 남기는 임시 코드로 셈 (커밋 안 함). 백그라운드 150초 동안 요청 0번, 돌아오자마자 충전소 목록을 받고 60초마다 다시 받음, 추천은 5분 규칙대로
 - iOS 시뮬레이터: Info.plist 지도 앱 목록 그대로(`nmap` · `kakaomap`), 길찾기 화면 · 지도 앱 버튼이 바꾸기 전과 같음
-

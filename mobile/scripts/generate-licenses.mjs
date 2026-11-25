@@ -14,11 +14,17 @@ const MOBILE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_FILE = join(MOBILE, 'assets', 'licenses.json')
 
 // pnpm licenses는 라이선스 이름별로 묶은 JSON을 줌 ({ MIT: [{ name, versions, homepage }] })
-const output = execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], {
-  cwd: MOBILE,
-  encoding: 'utf8',
-  maxBuffer: 64 * 1024 * 1024,
-})
+// --filter가 없으면 모노레포 전체(웹 frontend 의존성까지)를 읽어서 앱에 없는 패키지가 섞임
+// → 앱과 앱이 쓰는 워크스페이스 패키지(@ev-flow/core의 axios 등)만 봄 (끝의 ...가 의존 패키지까지 포함)
+const output = execFileSync(
+  'pnpm',
+  ['--filter', 'ev-flow-mobile...', 'licenses', 'list', '--prod', '--json'],
+  {
+    cwd: MOBILE,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  },
+)
 const byLicense = JSON.parse(output)
 
 const packages = Object.entries(byLicense)
