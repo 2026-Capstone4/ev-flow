@@ -93,6 +93,11 @@ HOUR_CACHE_KEY = "admin:occ-hour:v1:{target}:{day}:{hour:02d}"
 HOUR_CACHE_TTL_SEC = 2 * 24 * 3600  # 오늘 · 자정 직후의 어제만 씀
 # 합계 필드 - 관측이 없는 시간대도 이 필드가 남아 저장했다는 표시가 됨 (빈 해시는 Redis에 남지 않음)
 HOUR_TOTAL_FIELD = "_"
+# 오늘 끝난 시간대(0시 ~ upto-1시)의 충전기별 합 - 충전기 목록이 시간대 해시 23개(서울 · 휴게소 27만 값)를
+# 요청마다 읽어 더하면 서버에서 2초 넘게 걸림 (2026-11-25). 필드 · 값은 시간대 해시와 같음.
+# 시간대가 끝날 때마다 새 키가 생기므로 다음 시간대까지만 남김
+CHARGER_SUM_CACHE_KEY = "admin:occ-charger-sum:v1:{target}:{day}:{upto:02d}"
+CHARGER_SUM_CACHE_TTL_SEC = 2 * 3600
 _redis = redis.Redis.from_url(settings.redis_url, socket_timeout=1, socket_connect_timeout=1)
 
 
@@ -193,13 +198,18 @@ def log_counts(db: Session, target: str, start: datetime, end: datetime, group: 
 
 
 def hourly_log_counts(
-    db: Session, target: str, day: date, now: datetime, by_charger: bool = False
+    db: Session,
+    target: str,
+    day: date,
+    now: datetime,
+    by_charger: bool = False,
+    before_hour: int = 24,
 ) -> dict[int, dict[str, tuple[int, int]]]:
-    """day(KST)에서 now 전에 시작한 시간대별 log_counts - {시: {필드: (충전 중, 분모)}}.
+    """day(KST)에서 now 전에 시작한 시간대(before_hour시 전까지)별 log_counts - {시: {필드: (충전 중, 분모)}}.
     필드는 합계 HOUR_TOTAL_FIELD와 충전기별 charger_field. by_charger가 아니면 Redis에서 합계만 읽음
     (DB에서 센 시간대는 충전기별 필드도 들어 있음). 끝난 시간대는 Redis에 저장해 두고 씀 -
     Redis 장애면 DB에서 바로 셈"""
-    hours = [h for h in range(24) if hour_start(day, h) < now]
+    hours = [h for h in range(before_hour) if hour_start(day, h) < now]
     keys = {h: HOUR_CACHE_KEY.format(target=target, day=day.isoformat(), hour=h) for h in hours}
     counts: dict[int, dict[str, tuple[int, int]]] = {}
     try:
@@ -251,6 +261,68 @@ def hourly_log_counts(
             pipe.execute()
         except redis.RedisError:
             logger.warning("Redis 오류 - 시간대별 집계를 저장하지 못함", exc_info=True)
+    return counts
+
+
+def closed_hours(day: date, now: datetime) -> int:
+    """day(KST)에서 끝나 저장할 수 있는 시간대 수 - 0시부터 이어지므로 0 ~ 그 수-1시"""
+    return sum(
+        1 for h in range(24) if hour_start(day, h) + timedelta(hours=1) + DAY_CLOSED_AFTER <= now
+    )
+
+
+def closed_charger_sums(
+    db: Session, target: str, day: date, now: datetime
+) -> tuple[int, dict[str, tuple[int, int]]]:
+    """day에서 끝난 시간대의 충전기별 합 - (끝난 시간대 수 upto, {필드: (충전 중, 분모)}).
+    한 번 더한 값은 CHARGER_SUM_CACHE_KEY에 저장해 시간대가 끝날 때까지 그대로 씀"""
+    upto = closed_hours(day, now)
+    if not upto:
+        return 0, {}
+    key = CHARGER_SUM_CACHE_KEY.format(target=target, day=day.isoformat(), upto=upto)
+    try:
+        raw = _redis.hgetall(key)
+        if raw:
+            return upto, {
+                field.decode(): tuple(int(v) for v in value.decode().split(","))
+                for field, value in raw.items()
+            }
+    except redis.RedisError:
+        logger.warning("Redis 오류 - 충전기별 오늘 합을 시간대별 집계로 계산", exc_info=True)
+
+    sums: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    for fields in hourly_log_counts(
+        db, target, day, now, by_charger=True, before_hour=upto
+    ).values():
+        for field, (charging, observed) in fields.items():
+            sums[field][0] += charging
+            sums[field][1] += observed
+    # 시간대 합계 HOUR_TOTAL_FIELD를 더한 값이 함께 남아 관측이 없어도 저장 표시가 됨
+    counts = {field: (c, o) for field, (c, o) in sums.items()} or {HOUR_TOTAL_FIELD: (0, 0)}
+    try:
+        pipe = _redis.pipeline()
+        pipe.hset(key, mapping={field: f"{c},{o}" for field, (c, o) in counts.items()})
+        pipe.expire(key, CHARGER_SUM_CACHE_TTL_SEC)
+        pipe.execute()
+    except redis.RedisError:
+        logger.warning("Redis 오류 - 충전기별 오늘 합을 저장하지 못함", exc_info=True)
+    return upto, counts
+
+
+def today_charger_counts(db: Session, target: str, now: datetime) -> dict[str, tuple[int, int]]:
+    """충전기별 오늘 합 {charger_field: (충전 중, 분모)} - 끝난 시간대의 합(Redis)에
+    아직 저장하지 않은 시간대만 DB에서 세어 더함"""
+    day = kst_today(now)
+    upto, closed = closed_charger_sums(db, target, day, now)
+    counts = dict(closed)
+    counts.pop(HOUR_TOTAL_FIELD, None)
+    if hour_start(day, upto) < now:
+        for (_, station_id, charger_id), (c, o) in log_counts(
+            db, target, hour_start(day, upto), now, "hour_charger"
+        ).items():
+            field = charger_field(station_id, charger_id)
+            charging, observed = counts.get(field, (0, 0))
+            counts[field] = (charging + c, observed + o)
     return counts
 
 
@@ -349,6 +421,11 @@ def daily_district_counts(
     return counts
 
 
+def warm_charger_sums(db: Session, target: str, days: list[date], now: datetime) -> None:
+    """warm_cache 작업 - 오늘(days 마지막)의 충전기별 끝난 시간대 합을 저장"""
+    closed_charger_sums(db, target, days[-1], now)
+
+
 def warm_cache(db: Session, now: datetime | None = None) -> None:
     """이용률 집계를 화면 요청 전에 Redis에 채움 - collector가 매시 끝난 시간대 뒤에 부름.
     끝난 날(4주)과 오늘의 끝난 시간대가 저장돼 화면을 처음 연 사람도 진행 중인 시간대만 기다림.
@@ -357,10 +434,12 @@ def warm_cache(db: Session, now: datetime | None = None) -> None:
     today = kst_today(now)
     days = [today - timedelta(days=i) for i in range(UTILIZATION_DAYS - 1, -1, -1)]
     for target in TARGETS:
-        # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함. 서울은 구별 날짜 집계도 채움
+        # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함. 서울은 구별 날짜 집계도 채움.
+        # 충전기 목록의 오늘 합은 시간대별 저장 뒤에 더함
         jobs = [daily_log_counts]
         if target in DISTRICT_TARGETS:
             jobs.append(daily_district_counts)
+        jobs.append(warm_charger_sums)
         for job in jobs:
             try:
                 job(db, target, days, now)
@@ -459,13 +538,7 @@ def get_chargers(
         districts = station_districts(db, target)
         if district:
             states = {sid: cs for sid, cs in states.items() if districts.get(sid) == district}
-        # 충전기별 오늘 합계 = 시간대별 충전기 필드의 합
-        today: dict[str, list[int]] = defaultdict(lambda: [0, 0])
-        for fields in hourly_log_counts(db, target, kst_today(now), now, by_charger=True).values():
-            for field, (charging, observed) in fields.items():
-                if field != HOUR_TOTAL_FIELD:
-                    today[field][0] += charging
-                    today[field][1] += observed
+        today = today_charger_counts(db, target, now)
         for station_id, station_chargers in states.items():
             for c in station_chargers:
                 charger_today = today.get(charger_field(station_id, c.charger_id), (0, 0))
