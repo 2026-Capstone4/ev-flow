@@ -8,7 +8,7 @@ import { SegmentedControl } from '@/components/SegmentedControl'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { useAdminCollectionData } from '@/hooks/useAdminCollectionData'
 import { formatPeriodRange, MISSING_WARNING_RATE, toMissingRows } from '@/lib/admin/charts'
-import { IMPUTED_TOOLTIP, MISSING_RATE_TOOLTIP } from '@/lib/admin/collection'
+import { MISSING_RATE_TOOLTIP } from '@/lib/admin/collection'
 import { formatPercent } from '@/lib/admin/common'
 import type { AdminPeriod, AdminRegion } from '@/types/admin'
 
@@ -41,7 +41,7 @@ export function AdminCollectionPage() {
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
-      <AdminPageHeader title="데이터 수집" description="수집 상태와 결측률, 결측 대체 예측 확인">
+      <AdminPageHeader title="데이터 수집" description="수집 상태와 결측률 확인">
         <AdminRegionFilter
           region={region}
           district={district}
@@ -83,7 +83,7 @@ export function AdminCollectionPage() {
         <div className="grid lg:col-span-2">
           <AdminPanel
             title={
-              // 기간은 결측률 · 결측 대체 예측에만 적용돼서 이 패널 제목 옆에 둠 (수집 상태는 늘 오늘 기준)
+              // 기간은 결측률에만 적용돼서 이 패널 제목 옆에 둠 (수집 상태는 늘 오늘 기준)
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="flex items-center gap-1.5 text-[15px] font-bold">
                   결측률
@@ -122,38 +122,6 @@ export function AdminCollectionPage() {
             ) : (
               <AdminPlaceholder isError={data.isMissingError} />
             )}
-            {/* 패널이 수집 상태 높이만큼 늘어나도 문구는 맨 아래에 붙여 옆 패널과 아랫선을 맞춤 */}
-            <p
-              className={`mt-auto px-5 text-[13px] text-text-secondary ${staleClass(data.isMissingStale)}`}
-            >
-              {/* 글자와 ⓘ 아이콘을 한 덩어리로 묶어 세로 가운데를 맞춤 */}
-              <span className="inline-flex items-center gap-1 align-middle">
-                결측 대체 예측
-                <InfoTooltip text={IMPUTED_TOOLTIP} label="결측 대체 예측 설명" />
-              </span>{' '}
-              {/* 예측은 도심만 해서 휴게소에는 대체 건수가 없음 (14번 API에 지역 구분도 없음) */}
-              {region === 'service_area' ? (
-                '· 휴게소는 예측 대상이 아닙니다'
-              ) : data.imputed ? (
-                <>
-                  <strong className="text-text-primary">
-                    {data.imputed.imputedCount.toLocaleString('ko-KR')}건
-                  </strong>{' '}
-                  / 전체 {data.imputed.totalCount.toLocaleString('ko-KR')}건 (
-                  {formatPercent(
-                    data.imputed.totalCount
-                      ? data.imputed.imputedCount / data.imputed.totalCount
-                      : null,
-                    1,
-                  )}
-                  ) · 도심만
-                </>
-              ) : data.isImputedError ? (
-                '불러오지 못했습니다'
-              ) : (
-                '불러오는 중…'
-              )}
-            </p>
           </AdminPanel>
         </div>
       </div>

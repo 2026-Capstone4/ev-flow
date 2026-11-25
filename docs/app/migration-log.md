@@ -45,9 +45,9 @@
 | `GET /admin/utilization` · `chargers` · `collection-status` · `missing-stats` | 있음 | |
 | 추천 `POST /recommendations` | 있음 (#139) | IP당 분당 10회 |
 | 길찾기 `POST /routes` | 있음 (#117) | IP당 분당 10회 · Directions 하루 2,000회 |
-| 대시보드 보정 건수 | **없음 (Mock)** | 운영자 전용 |
+| 대시보드 보정 건수 | 만들지 않음 (11/25) | 결측 대체를 하기 어려워 대시보드에서 뺌 |
 
-웹은 `VITE_USE_MOCK=partial`이면 보정 건수만 MSW로, 나머지는 실제 서버로 보냄.
+웹은 `VITE_USE_MOCK=partial`이면 보정 건수만 MSW로, 나머지는 실제 서버로 보냈음. 11/25 보정 건수를 빼면서 partial 모드도 지움 (이제 `true` · `false`만).
 앱은 Mock 없이 모든 요청을 실제 서버로 보냄 (보정 건수는 운영자 전용이라 앱에 없음).
 
 ## 3. 그대로 쓰는 것 · 다시 짜는 것

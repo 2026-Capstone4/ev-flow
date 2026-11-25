@@ -40,6 +40,15 @@ export function toMissingRows(series: MissingBucket[]): RateRow[] {
   }))
 }
 
+/** 기간 전체 결측 합계. 예상 건수가 0이면(실행 없음) 결측률 null */
+export function summarizeMissing(series: MissingBucket[]) {
+  const missingCount = series.reduce((sum, s) => sum + s.missingCount, 0)
+  const expectedCount = series.reduce((sum, s) => sum + s.expectedCount, 0)
+  // 아직 수집 실행이 없으면 0%와 구분되게 결측률을 비움
+  const missingRate = expectedCount > 0 ? missingCount / expectedCount : null
+  return { missingCount, expectedCount, missingRate }
+}
+
 /** 집계 기간 문구 (예: 10/24 ~ 10/30). 같은 날이면 날짜 하나만 */
 export function formatPeriodRange(from: string, to: string) {
   const format = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`

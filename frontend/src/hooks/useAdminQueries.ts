@@ -2,7 +2,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   fetchAdminChargers,
   fetchCollectionStatus,
-  fetchImputedCount,
   fetchMissingStats,
   fetchUtilization,
 } from '@/api/admin'
@@ -40,14 +39,6 @@ export function useMissingStatsQuery(region: AdminRegion, period: AdminPeriod) {
   return useQuery({
     queryKey: [...ADMIN_QUERY_KEY, 'missing-stats', region, period],
     queryFn: () => fetchMissingStats(region, period),
-    placeholderData: keepPreviousData,
-  })
-}
-
-export function useImputedCountQuery(period: AdminPeriod) {
-  return useQuery({
-    queryKey: [...ADMIN_QUERY_KEY, 'imputed-count', period],
-    queryFn: () => fetchImputedCount(period),
     placeholderData: keepPreviousData,
   })
 }

@@ -113,7 +113,7 @@
 
 ### 배포 — ✅
 
-- Vite 정적 빌드(`frontend/dist`) → 동일 EC2의 Nginx **컨테이너**가 정적 서빙 — `dist` 전달은 **볼륨 마운트**(`INF-05`): 맥에서 빌드 후 `rsync -a --delete`로 서버 `frontend/dist`에 복사, nginx는 읽기 전용 마운트. 폴더째 지우고 다시 만들면 nginx가 옛 폴더를 계속 보므로 내용만 교체. 백엔드 배포(`deploy.sh`)와 별개로 화면만 갱신 가능. 백엔드에 없는 API가 남아 있는 동안은 `VITE_USE_MOCK=partial`로 빌드
+- Vite 정적 빌드(`frontend/dist`) → 동일 EC2의 Nginx **컨테이너**가 정적 서빙 — `dist` 전달은 **볼륨 마운트**(`INF-05`): 맥에서 빌드 후 `rsync -a --delete`로 서버 `frontend/dist`에 복사, nginx는 읽기 전용 마운트. 폴더째 지우고 다시 만들면 nginx가 옛 폴더를 계속 보므로 내용만 교체. 백엔드 배포(`deploy.sh`)와 별개로 화면만 갱신 가능. 빌드는 Mock 없이 `VITE_USE_MOCK=false` (2026-11-25부터. 그 전에는 백엔드에 없는 API를 Mock으로 채우는 `partial`로 빌드했고, 마지막 남은 결측 대체 건수를 빼면서 모드를 지움)
 - 화면 경로(`/stations/...` 등)는 없는 파일이면 `index.html`로 넘김(React Router). `index.html`은 `no-cache`, `/assets/`는 1년 캐시(해시 파일명), gzip 압축
 - `/` → 정적 파일, `/api` → FastAPI 프록시
 - 로컬 개발은 Vite dev server 프록시로 `/api` 전달 → 운영 · 개발 모두 동일 출처라 CORS 설정 불필요
