@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react-native'
 import { Pressable, Text, View } from 'react-native'
 import { COLORS } from '@ev-flow/core/lib/theme'
+import { createShadow } from '../lib/shadow'
 
 type SearchBarProps = {
   onSearchPress: () => void
@@ -12,12 +13,7 @@ type SearchBarProps = {
 }
 
 /** 웹 그림자(0 2px 8px 12%)를 RN 그림자 속성으로 옮김 */
-const SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.12,
-  shadowRadius: 4,
-  shadowOffset: { width: 0, height: 2 },
-}
+const SHADOW = createShadow(2, 8, 0.12)
 
 /** 지도 홈 상단 검색창. 왼쪽은 검색 화면으로 이동, 오른쪽 필터는 지도 위 필터 패널을 엶 */
 export function SearchBar({

@@ -59,6 +59,10 @@ const config: ExpoConfig = {
       CFBundleDisplayName: DISPLAY_NAME,
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
       LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
+      // 앱 기본 언어를 한국어로 둠. 없으면 en이 기본이라 복사 · 붙여넣기 메뉴 같은 iOS 기본 화면이 영어로 뜨고 App Store 언어도 영어로 표시됨
+      CFBundleDevelopmentRegion: 'ko',
+      // 앱이 지원하는 언어 목록. 한국어만 적어서 기기 언어와 상관없이 한국어로 맞춤
+      CFBundleLocalizations: ['ko'],
     },
   },
   android: {
@@ -97,6 +101,15 @@ const config: ExpoConfig = {
     ],
     // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)
     'expo-sqlite',
+    [
+      'expo-localization',
+      {
+        // Android 앱이 지원하는 언어를 한국어만으로 선언 (iOS는 위 infoPlist CFBundleLocalizations)
+        // locales_config.xml로 Android 13+ 설정 > 앱 언어 목록에 한국어만 나오고, 라이브러리 번역도 한국어만 남김
+        // 기기 언어가 영어여도 한국어로 바꾸지는 않음. 앱 글자는 원래 한국어로 적혀 있고, 위치 권한 같은 시스템 창은 기기 언어를 따름
+        supportedLocales: { android: ['ko'] },
+      },
+    ],
     [
       'expo-build-properties',
       {

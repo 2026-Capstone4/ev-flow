@@ -1,4 +1,8 @@
 import { Pressable, Text, View } from 'react-native'
+import { createShadow } from '../lib/shadow'
+
+/** 고른 칸만 살짝 띄움 (웹 0 1px 2px 10%) */
+const SELECTED_SHADOW = createShadow(1, 2, 0.1)
 
 type SegmentedControlProps<T extends string> = {
   options: { value: T; label: string }[]
@@ -25,17 +29,7 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="radio"
             accessibilityState={{ checked: isSelected }}
             onPress={() => onChange(option.value)}
-            // 웹 그림자(0 1px 2px 10%)를 RN 그림자 속성으로 옮김
-            style={
-              isSelected
-                ? {
-                    shadowColor: '#000',
-                    shadowOpacity: 0.1,
-                    shadowRadius: 1,
-                    shadowOffset: { width: 0, height: 1 },
-                  }
-                : undefined
-            }
+            style={isSelected ? SELECTED_SHADOW : undefined}
             className={`flex-1 items-center justify-center rounded-sm ${isSelected ? 'bg-bg-page' : ''}`}
           >
             <Text

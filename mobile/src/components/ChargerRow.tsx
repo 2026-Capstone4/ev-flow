@@ -5,6 +5,7 @@ import {
   formatChargingElapsed,
 } from '@ev-flow/core/lib/charger'
 import type { ChargerDetail, ChargerStatus } from '@ev-flow/core/types/station'
+import { KoreanText } from './KoreanText'
 
 // 웹 ChargerRow와 같은 상태 글자색
 const STATUS_CLASS: Record<ChargerStatus, string> = {
@@ -31,12 +32,9 @@ export function ChargerRow({ charger, now, isLast }: ChargerRowProps) {
       }`}
     >
       {/* 커넥터가 여럿인 충전기는 한 줄에 안 들어가서 줄바꿈. 한글 단어 중간은 끊지 않음 */}
-      <Text
-        lineBreakStrategyIOS="hangul-word"
-        className="min-w-0 flex-shrink font-medium text-sm text-text-primary"
-      >
+      <KoreanText className="min-w-0 flex-shrink font-medium text-sm text-text-primary">
         급속 {charger.chargerId} · {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
-      </Text>
+      </KoreanText>
       <Text className={`flex-shrink-0 font-bold text-[14px] ${STATUS_CLASS[charger.status]}`}>
         {CHARGER_STATUS_LABEL[charger.status]}
         {elapsed && ` · ${elapsed}`}

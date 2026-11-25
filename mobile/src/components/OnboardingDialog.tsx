@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Modal, Pressable, Text, View } from 'react-native'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import { Button } from './Button'
+import { createShadow } from '../lib/shadow'
+import { KoreanText } from './KoreanText'
 
 type Step = {
   icon: LucideIcon
@@ -56,12 +58,7 @@ const STEPS: Step[] = [
 ]
 
 /** 웹 그림자(0 8px 24px 18%)를 RN 그림자 속성으로 옮김 */
-const DIALOG_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.18,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 8 },
-}
+const DIALOG_SHADOW = createShadow(8, 24, 0.18)
 
 type OnboardingDialogProps = {
   /** 건너뛰기 · 시작하기로 안내를 닫을 때 부름 */
@@ -84,8 +81,9 @@ export function OnboardingDialog({ onClose }: OnboardingDialogProps) {
   }
 
   return (
-    // 바깥을 눌러도 닫히지 않음 (웹과 같음). onRequestClose는 iOS에서 안 불리지만 Modal 필수 값이라 닫기로 둠
-    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    // 바깥을 눌러도 닫히지 않음 (웹과 같음). Android 뒤로 가기(onRequestClose)도 아무 일 안 함
+    // 닫으면 위치 권한까지 바로 묻게 되어서, 건너뛰기 · 시작하기로만 닫음
+    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
       <View className="flex-1 items-center justify-center bg-black/40 px-6">
         <View
           accessibilityViewIsModal
@@ -184,32 +182,27 @@ function StepContent({ step, isCurrent, isFirst }: StepContentProps) {
       </View>
       {/* 첫 장은 서비스 이름이라 크게 브랜드 색으로, 나머지 장은 기본 제목 크기로 씀
           웹은 extrabold지만 앱에 넣은 Pretendard는 Bold까지라 Bold로 씀 */}
-      <Text
+      <KoreanText
         accessibilityRole="header"
-        lineBreakStrategyIOS="hangul-word"
         className={`text-center font-bold ${
           step.isIntro ? 'text-[28px] text-brand-primary' : 'text-[18px] text-text-primary'
         }`}
       >
         {step.title}
-      </Text>
+      </KoreanText>
       {/* body 안의 \n에서 줄을 바꿈. 첫 장은 부제라 조금 크게 씀 */}
-      <Text
-        lineBreakStrategyIOS="hangul-word"
+      <KoreanText
         className={`text-center leading-relaxed text-text-secondary ${
           step.isIntro ? 'font-medium text-[14px]' : 'font-sans text-[16px]'
         }`}
       >
         {step.body}
-      </Text>
+      </KoreanText>
       {/* 설명이 있는 장만 body 아래에 작은 글씨로 덧붙임. \n에서 줄을 바꿈 */}
       {step.description && (
-        <Text
-          lineBreakStrategyIOS="hangul-word"
-          className="text-center font-sans text-[14px] leading-relaxed text-text-secondary"
-        >
+        <KoreanText className="text-center font-sans text-[14px] leading-relaxed text-text-secondary">
           {step.description}
-        </Text>
+        </KoreanText>
       )}
       {/* 범례가 있는 장만 색 점과 이름을 한 줄로 보여 줌 */}
       {step.legend && (

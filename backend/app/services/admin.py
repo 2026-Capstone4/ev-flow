@@ -13,6 +13,7 @@ import redis
 from sqlalchemy import Integer, cast, extract, func, literal_column, select, tuple_
 from sqlalchemy.orm import Session
 
+from app.api.errors import ApiError
 from app.config import settings
 from app.db.models import (
     CityCharger,
@@ -27,6 +28,7 @@ from app.db.models import (
     ServiceAreaStatusLog,
 )
 from app.schemas.admin import (
+    SEOUL_DISTRICTS,
     AdminCharger,
     AdminChargersResponse,
     CollectionStatusResponse,
@@ -55,6 +57,10 @@ REGION_TARGETS = {
     "city": ["city"],
     "service_area": ["service_area"],
 }
+# 구를 나눌 수 있는 대상 - 서울 구 코드(SEOUL_DISTRICTS) 중 마포구는 city, 나머지는 live에만 있음
+DISTRICT_TARGETS = ("city", "live")
+CITY_DISTRICT = "11440"
+DISTRICT_CODES = {name: code for code, name in SEOUL_DISTRICTS.items()}
 # 수집 기록이 하나도 없을 때만 씀 - collector JOBS와 같음
 DEFAULT_ZSCODES = {"city": "11440", "live": "11", "service_area": "C0"}
 
@@ -77,6 +83,9 @@ DAY_CACHE_KEY = "admin:occ:v1:{target}:{day}"
 DAY_CACHE_TTL_SEC = 40 * 24 * 3600
 DAY_CLOSED_AFTER = timedelta(minutes=10)  # 자정을 넘겨 커밋되는 회차를 기다린 뒤 저장
 
+# 끝난 날의 구별 이용률 집계 - 해시 필드는 구 코드 + 합계 HOUR_TOTAL_FIELD(저장 표시), 값은 "충전 중,분모"
+DISTRICT_DAY_CACHE_KEY = "admin:occ-district:v1:{target}:{day}"
+
 # 오늘(안 끝난 날)은 시간대 단위로 저장 - 끝난 시간대는 한 번만 계산하고 DB에서는 진행 중인 시간대만 읽음.
 # 요청마다 오늘치 전체를 읽으면 전국 휴게소 하루 약 60만 행이라 서버에서 3~4초 (2026-11-24).
 # 시간대마다 해시 하나: 충전기별 "충전소|충전기" 필드 + 합계 HOUR_TOTAL_FIELD, 값은 "충전 중,분모"
@@ -87,8 +96,40 @@ HOUR_TOTAL_FIELD = "_"
 _redis = redis.Redis.from_url(settings.redis_url, socket_timeout=1, socket_connect_timeout=1)
 
 
-def targets_of(region: str) -> list[str]:
-    return REGION_TARGETS[region]
+def targets_of(region: str, district: str | None = None) -> list[str]:
+    """집계 대상. 구를 고르면 그 구가 있는 대상 하나 (마포구는 city, 나머지는 live)"""
+    if district is None:
+        return REGION_TARGETS[region]
+    # 구는 서울 안에서만 고름 - region=city면 마포구만 됨
+    if region == "seoul" or (region == "city" and district == CITY_DISTRICT):
+        return ["city" if district == CITY_DISTRICT else "live"]
+    raise ApiError(422, "VALIDATION_ERROR", "요청 값이 올바르지 않습니다.")
+
+
+def station_districts(db: Session, target: str) -> dict[str, str]:
+    """충전소 → 구 코드 (city · live만). gugun은 주소 두 번째 단어라 표에 없으면 빠짐"""
+    if target not in DISTRICT_TARGETS:
+        return {}
+    station = TARGETS[target][0]
+    rows = db.execute(select(station.station_id, station.gugun))
+    return {
+        station_id: DISTRICT_CODES[gugun] for station_id, gugun in rows if gugun in DISTRICT_CODES
+    }
+
+
+def by_district(fields: dict[str, tuple[int, int]], districts: dict[str, str]) -> dict:
+    """충전기 필드("충전소|충전기") 값을 구 코드로 묶어 더함 - 합계 HOUR_TOTAL_FIELD도 붙임"""
+    sums: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    for field, (charging, observed) in fields.items():
+        if field == HOUR_TOTAL_FIELD:
+            continue
+        sums[HOUR_TOTAL_FIELD][0] += charging
+        sums[HOUR_TOTAL_FIELD][1] += observed
+        district = districts.get(field.split("|", 1)[0])
+        if district:
+            sums[district][0] += charging
+            sums[district][1] += observed
+    return {key: tuple(value) for key, value in sums.items()} or {HOUR_TOTAL_FIELD: (0, 0)}
 
 
 def kst_today(now: datetime) -> date:
@@ -113,11 +154,13 @@ def ratio(part: int, whole: int) -> float | None:
 
 def log_counts(db: Session, target: str, start: datetime, end: datetime, group: str) -> dict:
     """[start, end)에 시작한 성공 회차의 상태 로그(버스전용 제외)를 group별로 셈 -
-    (충전 중 수, 이용률 분모). group: date(KST 날짜) · hour_charger((KST 시 0~23, 충전소, 충전기))"""
+    (충전 중 수, 이용률 분모). group: date(KST 날짜) · date_station((KST 날짜, 충전소)) ·
+    hour_charger((KST 시 0~23, 충전소, 충전기))"""
     _, charger, log = TARGETS[target]
     kst = func.timezone(KST_ZONE, CollectionRun.started_at)
     keys = {
         "date": [func.date(kst)],
+        "date_station": [func.date(kst), log.station_id],
         "hour_charger": [cast(extract("hour", kst), Integer), log.station_id, log.charger_id],
     }[group]
     # 버스전용은 충전기 표와 조인하지 않고 NOT IN으로 뺌 - 조인하면 플래너가 충전기마다 lookup 인덱스로
@@ -249,6 +292,63 @@ def daily_log_counts(db: Session, target: str, days: list[date], now: datetime) 
     return counts
 
 
+def daily_district_counts(
+    db: Session, target: str, days: list[date], now: datetime
+) -> dict[date, dict[str, tuple[int, int]]]:
+    """날짜별 구별 집계 {날짜: {구 코드: (충전 중, 분모)}} - daily_log_counts와 같은 규칙.
+    끝난 날은 충전소별로 세어 구로 묶은 뒤 Redis 해시에 저장, 안 끝난 날은 시간대별 충전기 값을 구로 묶음.
+    구로 바로 묶지 않는 이유: 충전소 표와 조인하면 휴게소 때처럼 흩어 읽음 (log_counts 주석)"""
+    keys = [DISTRICT_DAY_CACHE_KEY.format(target=target, day=d.isoformat()) for d in days]
+    counts: dict[date, dict[str, tuple[int, int]]] = {}
+    try:
+        pipe = _redis.pipeline()
+        for key in keys:
+            pipe.hgetall(key)
+        for day, raw in zip(days, pipe.execute(), strict=True):
+            if raw:
+                counts[day] = {
+                    field.decode(): tuple(int(v) for v in value.decode().split(","))
+                    for field, value in raw.items()
+                }
+    except redis.RedisError:
+        logger.warning("Redis 오류 - 구별 일별 집계를 DB에서 바로 계산", exc_info=True)
+
+    missing = [d for d in days if d not in counts]
+    if not missing:
+        return counts
+    districts = station_districts(db, target)
+    closed = [d for d in missing if day_start(d + timedelta(days=1)) + DAY_CLOSED_AFTER <= now]
+    for day in missing:
+        if day not in closed:
+            fields: dict[str, tuple[int, int]] = defaultdict(lambda: (0, 0))
+            for hour in hourly_log_counts(db, target, day, now, by_charger=True).values():
+                for key, (c, o) in by_district(hour, districts).items():
+                    fields[key] = (fields[key][0] + c, fields[key][1] + o)
+            counts[day] = dict(fields)
+    if closed:
+        by_day: dict[date, dict[str, tuple[int, int]]] = defaultdict(dict)
+        for (day, station_id), value in log_counts(
+            db,
+            target,
+            day_start(closed[0]),
+            day_start(closed[-1] + timedelta(days=1)),
+            "date_station",
+        ).items():
+            by_day[day][f"{station_id}|"] = value
+        for day in closed:
+            counts[day] = by_district(by_day[day], districts)
+        try:
+            pipe = _redis.pipeline()
+            for day in closed:
+                key = DISTRICT_DAY_CACHE_KEY.format(target=target, day=day.isoformat())
+                pipe.hset(key, mapping={f: f"{c},{o}" for f, (c, o) in counts[day].items()})
+                pipe.expire(key, DAY_CACHE_TTL_SEC)
+            pipe.execute()
+        except redis.RedisError:
+            logger.warning("Redis 오류 - 구별 일별 집계를 저장하지 못함", exc_info=True)
+    return counts
+
+
 def warm_cache(db: Session, now: datetime | None = None) -> None:
     """이용률 집계를 화면 요청 전에 Redis에 채움 - collector가 매시 끝난 시간대 뒤에 부름.
     끝난 날(4주)과 오늘의 끝난 시간대가 저장돼 화면을 처음 연 사람도 진행 중인 시간대만 기다림.
@@ -257,34 +357,61 @@ def warm_cache(db: Session, now: datetime | None = None) -> None:
     today = kst_today(now)
     days = [today - timedelta(days=i) for i in range(UTILIZATION_DAYS - 1, -1, -1)]
     for target in TARGETS:
-        try:
-            # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함
-            daily_log_counts(db, target, days, now)
-        except Exception:
-            db.rollback()
-            logger.exception("운영자 집계 미리 계산 실패 [%s]", target)
+        # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함. 서울은 구별 날짜 집계도 채움
+        jobs = [daily_log_counts]
+        if target in DISTRICT_TARGETS:
+            jobs.append(daily_district_counts)
+        for job in jobs:
+            try:
+                job(db, target, days, now)
+            except Exception:
+                db.rollback()
+                logger.exception("운영자 집계 미리 계산 실패 [%s · %s]", target, job.__name__)
 
 
 def get_utilization(
-    db: Session, region: str, period: str, now: datetime | None = None
+    db: Session,
+    region: str,
+    period: str,
+    now: datetime | None = None,
+    district: str | None = None,
 ) -> UtilizationResponse:
     now = now or datetime.now(UTC)
     today = kst_today(now)
+    targets = targets_of(region, district)
     totals: dict[int, list[int]] = defaultdict(lambda: [0, 0])
     if period == "day":
         start = day_start(today)
         buckets = [(hour, f"{hour}시") for hour in range(24)]
-        for target in targets_of(region):
-            for hour, fields in hourly_log_counts(db, target, today, now).items():
-                charging, observed = fields[HOUR_TOTAL_FIELD]
+        for target in targets:
+            if district:
+                # 구는 시간대별 충전기 값을 구로 묶음 - 끝난 시간대는 Redis에서 읽어 DB 부담이 없음
+                districts = station_districts(db, target)
+                hours = {
+                    hour: by_district(fields, districts)
+                    for hour, fields in hourly_log_counts(
+                        db, target, today, now, by_charger=True
+                    ).items()
+                }
+            else:
+                hours = hourly_log_counts(db, target, today, now)
+            for hour, fields in hours.items():
+                charging, observed = fields.get(district or HOUR_TOTAL_FIELD, (0, 0))
                 totals[hour][0] += charging
                 totals[hour][1] += observed
     else:
         days = [today - timedelta(days=i) for i in range(UTILIZATION_DAYS - 1, -1, -1)]
         start = day_start(days[0])
         buckets = list(enumerate(WEEKDAY_LABELS))
-        for target in targets_of(region):
-            for day, (charging, observed) in daily_log_counts(db, target, days, now).items():
+        for target in targets:
+            if district:
+                daily = {
+                    day: fields.get(district, (0, 0))
+                    for day, fields in daily_district_counts(db, target, days, now).items()
+                }
+            else:
+                daily = daily_log_counts(db, target, days, now)
+            for day, (charging, observed) in daily.items():
                 totals[day.weekday()][0] += charging
                 totals[day.weekday()][1] += observed
 
@@ -299,6 +426,7 @@ def get_utilization(
     ]
     return UtilizationResponse(
         region=region,
+        district=district,
         period=period,
         from_=start,
         to=now,
@@ -309,11 +437,13 @@ def get_utilization(
     )
 
 
-def get_chargers(db: Session, region: str, now: datetime | None = None) -> AdminChargersResponse:
+def get_chargers(
+    db: Session, region: str, now: datetime | None = None, district: str | None = None
+) -> AdminChargersResponse:
     now = now or datetime.now(UTC)
     chargers: list[AdminCharger] = []
     updated: list[datetime] = []
-    for target in targets_of(region):
+    for target in targets_of(region, district):
         station_model, charger_model, log_model = TARGETS[target]
         run = latest_success_run(db, target)  # 수집 기록이 없으면 503
         updated.append(run.started_at)
@@ -326,6 +456,9 @@ def get_chargers(db: Session, region: str, now: datetime | None = None) -> Admin
             or s.station_id
             for s in stations
         }
+        districts = station_districts(db, target)
+        if district:
+            states = {sid: cs for sid, cs in states.items() if districts.get(sid) == district}
         # 충전기별 오늘 합계 = 시간대별 충전기 필드의 합
         today: dict[str, list[int]] = defaultdict(lambda: [0, 0])
         for fields in hourly_log_counts(db, target, kst_today(now), now, by_charger=True).values():
@@ -341,6 +474,8 @@ def get_chargers(db: Session, region: str, now: datetime | None = None) -> Admin
                         region=target,
                         station_id=station_id,
                         station_name=names[station_id],
+                        district=districts.get(station_id),
+                        district_name=SEOUL_DISTRICTS.get(districts.get(station_id)),
                         charger_id=c.charger_id,
                         status=c.status,
                         stat=c.stat,

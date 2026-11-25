@@ -18,6 +18,7 @@ import { type LayoutChangeEvent, Pressable, Text, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 import { HorizonSelector } from './HorizonSelector'
 import { RECOMMEND_CARD_HEIGHT, RecommendCard, RecommendCardSkeleton } from './RecommendCard'
+import { createShadow } from '../lib/shadow'
 
 const RECOMMEND_MESSAGE = {
   error: '추천 충전소를 불러오지 못했습니다',
@@ -44,12 +45,7 @@ const GAP = 12
 const TOP_RESERVED_HEIGHT = 120
 
 /** 웹 그림자(0 -2px 12px 12%)를 RN 그림자 속성으로 옮김 */
-const SHEET_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.12,
-  shadowRadius: 6,
-  shadowOffset: { width: 0, height: -2 },
-}
+const SHEET_SHADOW = createShadow(-2, 12, 0.12)
 
 /** 지도 홈이 시트를 직접 움직일 때 쓰는 함수 */
 export type RecommendSheetHandle = {
@@ -57,6 +53,10 @@ export type RecommendSheetHandle = {
   expand: () => void
   /** 최소(헤더만)로 내림. 지도를 탭했을 때 씀 */
   minimize: () => void
+  /** 접힘(1순위 카드)으로 내림. Android 뒤로 가기로 펼친 시트를 닫을 때 씀 */
+  collapse: () => void
+  /** 펼침이거나 펼침으로 움직이는 중이면 true. 펼치는 도중 누른 Android 뒤로 가기도 시트를 접게 할 때 씀 */
+  isExpanding: () => boolean
 }
 
 type RecommendSheetProps = {
@@ -96,16 +96,29 @@ export function RecommendSheet({
   onExpandedChange,
 }: RecommendSheetProps) {
   const sheetRef = useRef<BottomSheet>(null)
+  // 시트가 가려는 단계. level(onChange)은 움직임이 끝나야 바뀌어서, 움직이기 시작할 때(onAnimate) 먼저 바꿔 둠
+  const targetLevelRef = useRef(LEVEL.collapsed)
   // 번호 없이 맨 끝 단계로 가는 expand()를 씀 (아래 toggleLevel과 같은 이유)
   useImperativeHandle(
     ref,
     () => ({
       expand: () => sheetRef.current?.expand(),
       minimize: () => sheetRef.current?.snapToIndex(LEVEL.minimized),
+      collapse: () => sheetRef.current?.snapToIndex(LEVEL.collapsed),
+      isExpanding: () => targetLevelRef.current === LEVEL.expanded,
     }),
     [],
   )
   const [level, setLevel] = useState(LEVEL.collapsed)
+  /** 움직임이 끝나 단계에 닿으면 화면이 보는 단계와 가려는 단계를 함께 맞춤 */
+  const handleChange = useCallback((index: number) => {
+    targetLevelRef.current = index
+    setLevel(index)
+  }, [])
+  /** 움직이기 시작하면 가려는 단계를 먼저 적어 둠 */
+  const handleAnimate = useCallback((_fromIndex: number, toIndex: number) => {
+    targetLevelRef.current = toIndex
+  }, [])
   // 펼침 높이는 카드 수 · "후보가 n곳뿐" 안내에 따라 달라서 그린 뒤 잰 내용 높이로 정함
   const [contentHeight, setContentHeight] = useState(0)
   // 최소 · 접힘 높이도 헤더 · 첫 칸을 그린 뒤 잰 높이로 정함. iOS 글자 크기를 키우면 칸이 커져서 고정 숫자로 두면 잘림
@@ -186,7 +199,8 @@ export function RecommendSheet({
       index={LEVEL.collapsed}
       snapPoints={snapPoints}
       enableDynamicSizing={false}
-      onChange={setLevel}
+      onChange={handleChange}
+      onAnimate={handleAnimate}
       animatedPosition={animatedPosition}
       animatedIndex={animatedIndex}
       backdropComponent={renderBackdrop}
