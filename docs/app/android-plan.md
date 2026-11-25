@@ -48,7 +48,7 @@ iOS로 만든 앱(`mobile/`)을 Android에서도 돌리는 계획 · 진행 기�
 | 패키지 이름 (`android.package`) | iOS 번들 ID와 같은 `app.evflowkr.evflow` — NCP 콘솔 · 네이버 지도 앱 `appname`을 한 값으로. Play에 올리면 못 바꿈 | ✅ 2026-11-25 |
 | Play 스토어 출시 | 개인 계정은 만든 뒤 **비공개 테스트(테스터 12명 · 14일 연속)** 를 거쳐야 프로덕션 신청 가능 + 신원 확인 며칠 + 심사. 오늘 시작해도 프로덕션은 12월 둘째 주 이후 → 발표 날짜를 보고 정함. 못 맞추면 시연은 APK 직접 설치 | ⏳ |
 | 시연 빌드 | iOS처럼 이 Mac에서 Release 빌드를 직접 설치 (`expo run:android --variant release`). 시연 위치 고정 값도 iOS와 같음 ([README 환경 변수](README.md#5-환경-변수)) | 🟡 |
-| 앱 언어 | **한국어** (2026-11-25, Android · iOS). iOS는 개발 언어가 Xcode 기본값 영어(en)라 한국어 기기에서도 시스템 문구(웹 화면 닫기 버튼 등)가 영어로 나오고 App Store 언어 칸이 영어로 보일 수 있음 → `app.config.ts` `locales`에 한국어 + 개발 언어 `ko`. Android는 시스템 문구가 기기 언어를 따라 같은 설정으로 앱 이름만 한국어 자원에 들어감. 1단계와 따로 PR, iOS는 다음 App Store 빌드부터 | ✅ 정함 · 구현 ⏳ |
+| 앱 언어 | **한국어** (2026-11-25, Android · iOS). iOS는 개발 언어가 Xcode 기본값 영어(en)라 한국어 기기에서도 시스템 문구(웹 화면 닫기 버튼 등)가 영어로 나오고 App Store 언어 칸이 영어로 보일 수 있음 → infoPlist `CFBundleDevelopmentRegion: ko` · `CFBundleLocalizations: [ko]` (#228, 다음 App Store 빌드부터). Android는 `expo-localization` `supportedLocales: { android: ['ko'] }`로 지원 언어를 한국어만 선언 → Android 13+ 설정 > 앱 언어 목록에 한국어만 나오고 라이브러리 번역도 한국어만 남음. 기기 언어가 영어면 앱을 한국어로 바꾸지는 않음(앱 글자는 원래 한국어, 위치 권한 같은 시스템 창은 기기 언어) | ✅ |
 | `android/` 폴더 | iOS처럼 git 제외(`mobile/.gitignore`에 이미 있음), `expo prebuild --platform android`로 만듦 | ✅ |
 | 그림자 | iOS `shadow*`는 그대로 두고 Android만 같은 값의 `boxShadow`(RN 0.76+ 새 구조에서 지원) — `elevation`은 방향 · 투명도를 못 맞춤 | ✅ `src/lib/shadow.ts` |
 | 뒤로 가기 (하드웨어 · 제스처) | Android 관례대로 열린 것부터 닫음: 필터 패널 → 펼친 추천 시트(접힘으로) → 화면 뒤로. 첫 방문 안내는 뒤로 가기로 안 닫힘 (웹 · iOS처럼 바깥을 눌러도 안 닫히는 것과 맞춤) | 🟡 |
