@@ -1,7 +1,9 @@
 import type { ExpoConfig } from 'expo/config'
 import {
   AndroidConfig,
+  CodeGenerator,
   withAndroidManifest,
+  withAppBuildGradle,
   withStringsXml,
   type ConfigPlugin,
 } from 'expo/config-plugins'
@@ -60,6 +62,50 @@ const withAndroidMapAppQueries: ConfigPlugin = (config) =>
     // 더할 scheme이 있을 때만 queries 묶음 하나를 추가
     if (intents.length > 0) manifest.queries = [...queries, { intent: intents }]
     return manifestConfig
+  })
+
+/** Expo 템플릿의 release 서명 줄. 디버그 키로 서명하게 되어 있어 업로드 키로 바꿈 */
+const TEMPLATE_RELEASE_SIGNING =
+  /(\/\/ see https:\/\/reactnative\.dev\/docs\/signed-apk-android\.\n\s*)signingConfig signingConfigs\.debug/
+
+/**
+ * Android release 빌드를 Play 업로드 키로 서명함 (docs/app/android-plan.md 5단계)
+ * 키 파일 경로 · 별칭 · 비밀번호는 저장소 밖 ~/.gradle/gradle.properties의 EVFLOW_UPLOAD_* 값에서 읽음
+ * 값이 없는 컴퓨터는 지금처럼 디버그 키로 서명함. 디버그 키 빌드는 Play가 받지 않아 잘못 올라갈 일은 없음
+ */
+const withAndroidReleaseSigning: ConfigPlugin = (config) =>
+  withAppBuildGradle(config, (gradleConfig) => {
+    let contents = gradleConfig.modResults.contents
+    // signingConfigs 안에 업로드 키 release 항목을 더함. prebuild를 다시 돌려도 tag로 한 번만 들어감
+    contents = CodeGenerator.mergeContents({
+      src: contents,
+      newSrc: [
+        '        release {',
+        "            if (findProperty('EVFLOW_UPLOAD_STORE_FILE')) {",
+        "                storeFile file(findProperty('EVFLOW_UPLOAD_STORE_FILE'))",
+        "                storePassword findProperty('EVFLOW_UPLOAD_STORE_PASSWORD')",
+        "                keyAlias findProperty('EVFLOW_UPLOAD_KEY_ALIAS')",
+        "                keyPassword findProperty('EVFLOW_UPLOAD_KEY_PASSWORD')",
+        '            }',
+        '        }',
+      ].join('\n'),
+      tag: 'evflow-release-signing-config',
+      anchor: /signingConfigs \{/,
+      offset: 1,
+      comment: '//',
+    }).contents
+    // 이미 바꾼 파일(prebuild 다시 돌림)이면 템플릿 줄이 없어서 그대로 둠
+    if (TEMPLATE_RELEASE_SIGNING.test(contents)) {
+      contents = contents.replace(
+        TEMPLATE_RELEASE_SIGNING,
+        "$1signingConfig findProperty('EVFLOW_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug",
+      )
+    } else if (!contents.includes('signingConfigs.release')) {
+      // Expo 템플릿이 바뀌어 release 줄을 못 찾으면 디버그 키로 조용히 넘어가지 않게 멈춤
+      throw new Error('[app.config] build.gradle에서 release signingConfig 줄을 못 찾았습니다')
+    }
+    gradleConfig.modResults.contents = contents
+    return gradleConfig
   })
 
 const config: ExpoConfig = {
@@ -194,4 +240,4 @@ const config: ExpoConfig = {
   },
 }
 
-export default withAndroidMapAppQueries(withAndroidDisplayName(config))
+export default withAndroidReleaseSigning(withAndroidMapAppQueries(withAndroidDisplayName(config)))

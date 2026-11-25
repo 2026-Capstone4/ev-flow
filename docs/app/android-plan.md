@@ -79,18 +79,18 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 - `Modal`의 `onRequestClose`는 Android 뒤로 가기에서 불림 (iOS는 안 불림) — 첫 방문 안내(`OnboardingDialog`)는 `onClose`를 넘겨서 뒤로 가기로 닫히고 위치 권한까지 물었음 → 빈 함수로 바꿔 막음
 - 길찾기에서 뒤로 가기: 닫기 버튼(`router.dismissTo('/')`)과 다르게 상세 · 추천 카드로 돌아감 (확인만, 바꾼 것 없음)
 
-### 4단계: 기기 기능 🟡
+### 4단계: 기기 기능 ✅ (#233)
 
 - 지도 앱 딥링크 — [5번 표](#5-코드에서-고칠-곳) `openMapApp.ts`. 앱이 없으면 Play 스토어
 - 위치: 권한 창, "대략적인 위치"를 고른 경우(현재 위치 · 500m 이동 판단이 흔들리는지), 위치 서비스 꺼짐 안내 문구
 - 더보기: `expo-web-browser`(Android는 Custom Tabs) · 문의 메일(`mailto:`) · 오픈소스 라이선스
 - 앱 백그라운드 → 복귀 때 폴링 멈춤 · 재개 (iOS 2단계와 같은 요청 기록 확인)
 
-### 5단계: 실기기 · 시연 빌드 ⏳
+### 5단계: 실기기 · 시연 빌드 🟡
 
 - 실기기에서 마커 1,600여 개 확대 · 축소 · 이동, 시트 끌기, 폴링 갱신 때 멈칫함
 - 지도 앱이 있을 때 · 없을 때 딥링크 (`kakaomap` 앱 Scheme은 공식 문서가 없어 특히)
-- Release 빌드 서명 키 만들기 — 키 파일 · 비밀번호는 저장소 밖에 두고 따로 백업 (잃으면 같은 앱으로 업데이트 못 함)
+- ✅ Release 빌드 서명 키 만들기 — 키 파일 · 비밀번호는 저장소 밖에 두고 따로 백업 (Play 앱 서명을 쓰면 이 키는 업로드 키라 잃어도 Play Console에서 교체 요청은 됨, 그동안 업데이트 못 올림)
 - 시연 APK 직접 설치
 - 4단계에서 에뮬레이터로 못 본 것: 지도 앱이 깔려 있을 때 `nmap://` · `kakaomap://` 길찾기, 지원 · 개인정보 페이지가 Custom Tabs에 뜨는 모양(에뮬레이터 Chrome이 첫 실행 약관 화면이라 못 넘김), Google "위치 정확도" 창(1단계에서 한 번 뜬 뒤로 안 뜸)
 - TalkBack: `KoreanText`가 넣은 WORD JOINER 때문에 글자를 하나씩 끊어 읽지 않는지
@@ -215,3 +215,16 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 - 오픈소스 라이선스 목록: Android 작업에서 더한 `expo-localization` · `expo-build-properties` · `expo-system-ui`가 빠져 있어 `pnpm --dir mobile run licenses`로 다시 만듦
 - 백그라운드 폴링: 요청마다 Metro 로그를 남기는 임시 코드로 셈 (커밋 안 함). 백그라운드 150초 동안 요청 0번, 돌아오자마자 충전소 목록을 받고 60초마다 다시 받음, 추천은 5분 규칙대로
 - iOS 시뮬레이터: Info.plist 지도 앱 목록 그대로(`nmap` · `kakaomap`), 길찾기 화면 · 지도 앱 버튼이 바꾸기 전과 같음
+
+### 2026-11-26 5단계 서명 키 · 첫 Release 빌드 (`feat/app-android-release-signing`)
+
+실기기 전에 먼저 함 — 개인 Play 계정은 비공개 테스트 14일이 업로드한 날부터 세어져서, 계정이 되는 대로 바로 올리려고
+
+- 업로드 키: PKCS12 · RSA 2048 · 약 27년, 별칭 `evflow-upload`, 인증서 이름 `CN=EV Flow, C=KR`(개인 정보 안 넣음). 키 파일 · 비밀번호는 저장소 밖에 두고 사용자가 따로 백업
+- 서명 설정: `app.config.ts` `withAndroidReleaseSigning`이 `build.gradle`에 release 서명을 넣음. 값은 저장소 밖 `~/.gradle/gradle.properties`의 `EVFLOW_UPLOAD_STORE_FILE` · `EVFLOW_UPLOAD_KEY_ALIAS` · `EVFLOW_UPLOAD_STORE_PASSWORD` · `EVFLOW_UPLOAD_KEY_PASSWORD`에서 읽음. 값이 없는 컴퓨터는 지금처럼 디버그 키로 서명(Play가 안 받아서 잘못 올라갈 일 없음). Expo 템플릿 줄을 못 찾으면 prebuild가 멈춤
+- 빌드: `mobile/android`에서 `./gradlew bundleRelease assembleRelease` (약 6분). AAB 105MB(Play 업로드용, 기기별로 나눠 받음) · APK 209MB(직접 설치용, CPU 4종이 다 들어 있음)
+- 확인
+  - AAB · APK 모두 업로드 키(`CN=EV Flow`)로 서명됨, 디버그 키 인증서와 다름
+  - Release 권한: 위치(정확 · 대략) · 인터넷 · 진동 · 네트워크 · Wi-Fi 상태뿐. 개발 빌드에만 있던 `ACCESS_LOCAL_NETWORK` · `SYSTEM_ALERT_WINDOW`는 없음 (1단계에서 넘긴 것)
+  - 에뮬레이터에 Release APK 설치: 첫 방문 안내 · 위치 권한 · 지도(네이버 인증) · 추천 정상, 개발 도구 버튼 없음. 개발 빌드와 서명이 달라 개발 앱을 지우고 설치함
+
