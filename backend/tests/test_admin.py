@@ -1,5 +1,6 @@
 import os
 from datetime import UTC, date, datetime, timedelta
+from types import SimpleNamespace
 
 # app.config가 import 시점에 필수 설정을 읽음 - .env가 없는 환경(CI)에서도 돌도록 가짜 값을 넣음
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
@@ -10,10 +11,12 @@ import redis  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.api.deps import require_admin  # noqa: E402
+from app.api.errors import ApiError  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.schemas.base import KST  # noqa: E402
 from app.services import admin  # noqa: E402
+from app.services.snapshot import ChargerState  # noqa: E402
 
 NOW = datetime(2026, 11, 16, 14, 5, tzinfo=KST)  # 월요일
 TODAY = date(2026, 11, 16)
@@ -85,10 +88,18 @@ def fake_hour_charger(start, end):
     return counts
 
 
+@pytest.fixture(autouse=True)
+def districts(monkeypatch):
+    """충전소 → 구 대역 - S1은 마포구(city) · 강남구(live), S2는 송파구(live)"""
+    table = {"city": {"S1": "11440"}, "live": {"S1": "11680", "S2": "11710"}}
+    monkeypatch.setattr(admin, "station_districts", lambda db, target: table.get(target, {}))
+    return table
+
+
 @pytest.fixture
 def db_calls(monkeypatch):
-    """log_counts 대역 - date 집계는 날짜마다 (충전 중, 분모) = (그날 일, 10), hour_charger는
-    fake_hour_charger. 호출 (group, 시작, 끝)을 남김"""
+    """log_counts 대역 - date 집계는 날짜마다 (충전 중, 분모) = (그날 일, 10), date_station은
+    같은 값을 충전소 S1로, hour_charger는 fake_hour_charger. 호출 (group, 시작, 끝)을 남김"""
     calls = []
 
     def fake_log_counts(db, target, start, end, group):
@@ -96,10 +107,13 @@ def db_calls(monkeypatch):
         if group == "hour_charger":
             return fake_hour_charger(start, end)
         days = (end - start).days
-        return {
+        counts = {
             start.date() + timedelta(days=i): ((start + timedelta(days=i)).day, 10)
             for i in range(days)
         }
+        if group == "date_station":
+            return {(day, "S1"): value for day, value in counts.items()}
+        return counts
 
     monkeypatch.setattr(admin, "log_counts", fake_log_counts)
     return calls
@@ -262,6 +276,12 @@ def test_warm_cache_fills_closed_days_and_hours_for_every_target(fake_redis, db_
     for target in admin.TARGETS:
         assert f"admin:occ:v1:{target}:2026-11-15" in fake_redis.values
         assert f"admin:occ-hour:v1:{target}:2026-11-16:12" in fake_redis.hashes
+    # 서울(city · live)은 구별 날짜 집계도 채움
+    assert fake_redis.hashes["admin:occ-district:v1:live:2026-11-15"] == {
+        b"_": b"15,10",
+        b"11680": b"15,10",
+    }
+    assert "admin:occ-district:v1:service_area:2026-11-15" not in fake_redis.hashes
     # 화면 요청은 끝난 날 · 시간대를 다시 세지 않고 진행 중인 13 · 14시만 DB에서 셈
     db_calls.clear()
     admin.get_utilization(None, "all", "week", NOW)
@@ -278,8 +298,88 @@ def test_warm_cache_continues_after_target_failure(fake_redis, monkeypatch):
         done.append(target)
 
     monkeypatch.setattr(admin, "daily_log_counts", fake_daily)
-    admin.warm_cache(type("Db", (), {"rollback": lambda self: None})(), NOW)
+    monkeypatch.setattr(admin, "daily_district_counts", lambda *args: None)
+    admin.warm_cache(SimpleNamespace(rollback=lambda: None), NOW)
     assert done == ["live", "service_area"]
+
+
+# --- 구 ---
+
+
+@pytest.mark.parametrize(
+    "region, district, targets",
+    [
+        ("seoul", "11680", ["live"]),
+        ("seoul", "11440", ["city"]),  # 마포구는 city에만 있음
+        ("city", "11440", ["city"]),
+    ],
+)
+def test_district_targets(region, district, targets):
+    assert admin.targets_of(region, district) == targets
+
+
+@pytest.mark.parametrize(
+    "region, district",
+    [("city", "11680"), ("service_area", "11680"), ("all", "11680")],
+)
+def test_district_outside_seoul_is_422(region, district):
+    with pytest.raises(ApiError) as e:
+        admin.targets_of(region, district)
+    assert e.value.status_code == 422
+
+
+def test_by_district_sums_chargers_and_keeps_total():
+    fields = {"S1|01": (1, 10), "S1|02": (0, 10), "S2|01": (2, 5), "X|01": (1, 1), "_": (4, 26)}
+    assert admin.by_district(fields, {"S1": "11680", "S2": "11710"}) == {
+        "_": (4, 26),  # 구를 모르는 충전소(X)도 합계엔 들어감
+        "11680": (1, 20),
+        "11710": (2, 5),
+    }
+    assert admin.by_district({}, {}) == {"_": (0, 0)}  # 관측이 없어도 저장 표시가 남음
+
+
+def test_district_day_uses_cached_hours(fake_redis, db_calls):
+    res = admin.get_utilization(None, "seoul", "day", NOW, district="11680")
+    assert res.district == "11680"
+    assert res.series[3].observation_count == 20 and res.series[3].occupancy_rate == 0.05
+    # 다른 구는 관측 없음
+    other = admin.get_utilization(None, "seoul", "day", NOW, district="11710")
+    assert other.series[3].observation_count == 0 and other.average_occupancy_rate is None
+    # 끝난 시간대는 첫 요청 때 저장돼 두 번째 요청은 진행 중인 시간대만 DB에서 셈
+    assert [c[1] for c in db_calls] == [kst(TODAY, 0), kst(TODAY, 13)]
+
+
+def test_district_week_caches_closed_days(fake_redis, db_calls):
+    first = admin.get_utilization(None, "seoul", "week", NOW, district="11680")
+    groups = [c[0] for c in db_calls]
+    assert sorted(groups) == ["date_station", "hour_charger"]  # 끝난 날은 충전소별, 오늘은 시간대별
+    assert "admin:occ-district:v1:live:2026-11-15" in fake_redis.hashes
+    db_calls.clear()
+    second = admin.get_utilization(None, "seoul", "week", NOW, district="11680")
+    assert second.series == first.series
+    assert [c[0] for c in db_calls] == ["hour_charger"]  # 오늘의 진행 중인 시간대만
+
+
+def test_chargers_filtered_by_district(monkeypatch, db_calls):
+    run = SimpleNamespace(started_at=NOW)
+    monkeypatch.setattr(admin, "latest_success_run", lambda db, target: run)
+    states = {
+        sid: [ChargerState(sid, "01", "available", ["dc_combo"], 100, None)] for sid in ("S1", "S2")
+    }
+    monkeypatch.setattr(admin, "load_charger_states", lambda *args: states)
+    stations = [SimpleNamespace(station_id=sid, name=f"{sid} 충전소") for sid in ("S1", "S2")]
+    db = SimpleNamespace(scalars=lambda query: stations)
+    res = admin.get_chargers(db, "seoul", NOW, district="11710")
+    assert [(c.region, c.station_id, c.district, c.district_name) for c in res.chargers] == [
+        ("live", "S2", "11710", "송파구")
+    ]
+    every = admin.get_chargers(db, "seoul", NOW)
+    assert {(c.region, c.station_id, c.district) for c in every.chargers} == {
+        ("city", "S1", "11440"),
+        ("city", "S2", None),  # 구를 모르는 충전소
+        ("live", "S1", "11680"),
+        ("live", "S2", "11710"),
+    }
 
 
 # --- 엔드포인트 ---
@@ -304,7 +404,16 @@ def test_dashboard_response_uses_camel_case_and_from(client, monkeypatch):
     monkeypatch.setattr(admin, "log_counts", lambda db, t, s, e, g: {})
     body = client.get("/api/v1/admin/utilization?region=city").json()
     assert body["from"].endswith("T00:00:00+09:00")  # 오늘 KST 0시
-    assert set(body) == {"region", "period", "from", "to", "averageOccupancyRate", "series"}
+    assert set(body) == {
+        "region",
+        "district",
+        "period",
+        "from",
+        "to",
+        "averageOccupancyRate",
+        "series",
+    }
+    assert body["district"] is None
     assert body["averageOccupancyRate"] is None
     assert body["series"][0] == {
         "bucket": 0,
@@ -312,6 +421,12 @@ def test_dashboard_response_uses_camel_case_and_from(client, monkeypatch):
         "occupancyRate": None,
         "observationCount": 0,
     }
+
+
+def test_unknown_district_is_422(client):
+    app.dependency_overrides[require_admin] = lambda: None
+    res = client.get("/api/v1/admin/chargers?region=seoul&district=26110")  # 부산 중구
+    assert res.status_code == 422
 
 
 def test_unknown_region_is_422(client):
