@@ -49,6 +49,7 @@
 | ✅ **주석 · 커밋 메시지는 한글**, 명사형 또는 `~함`체로 간결하게 끝냄, 마침표 없음 | 팀 전원이 빠르게 읽고 쓰기 쉬움, 문체 통일 | [code-common.md 주석](conventions/code-common.md#주석), [git.md 커밋](conventions/git.md#커밋) |
 | ✅ **코드 식별자는 영어** | 라이브러리 · 도구 호환, 검색 용이 | [code-common.md 이름 짓기](conventions/code-common.md#이름-짓기) |
 | ✅ **에디터 설정 공유** — `.editorconfig`(UTF-8, LF, 들여쓰기 2칸 · Python 4칸), `.gitattributes`(LF 통일) | OS · 에디터가 달라도 줄바꿈 · 들여쓰기 차이로 인한 불필요한 변경 방지 | 루트 `.editorconfig`, `.gitattributes` |
+| ✅ **비밀값은 저장소 밖, `.env.example`은 파트별** (`SEC-01` · `SEC-02` · `SEC-03`) — `frontend/` · `backend/` · `mobile/`에 각각 `.env.example`. 실제 값은 로컬 `.env.local` · `.env`, 서버는 EC2 `backend/.env`. GitHub Secrets는 쓰지 않음 | 파트마다 쓰는 변수가 다름. CI는 비밀값 없이 검사만 하고 배포는 서버에서 수동이라 Secrets가 필요 없음 | [code-common.md 비밀값](conventions/code-common.md#비밀값--환경-변수) |
 | ✅ **문서 분리 전략** — 문서 하나에 용도 하나, 300줄 넘으면 분리, 같은 내용은 한 곳에만 쓰고 링크 | 긴 단일 문서는 찾기 어렵고 중복 내용은 서로 어긋나기 쉬움 | [docs/README.md](README.md) |
 
 ---
@@ -89,6 +90,7 @@
 |---|---|
 | **NCP Maps Application `ev-flow` 등록 완료** — 사용 API: Dynamic Map, Directions 5 | 경유지 없는 "현재 위치 → 충전소" 경로라 Directions 15(경유지 15개, 단가 4배)는 불필요 |
 | **월 한도**: Dynamic Map 6,000,000회, Directions 5 60,000회 (2026-09-14 콘솔 확인) | 프로젝트 규모(개발 + 시연)에서는 한도의 수 % 수준으로 예상 |
+| **사용자 위치 기준** (`MAP-05`) — 기기 위치(웹 Geolocation · 앱 `expo-location`)를 쓰고, 꺼진 빌드 · 권한 거부면 시연 위치(합정역 근처, 앱은 `EXPO_PUBLIC_DEMO_LOCATION`으로 바꿈). 켜고 끄기는 `VITE_USE_GEOLOCATION` · `EXPO_PUBLIC_USE_GEOLOCATION` | 실사용은 내 위치, 시연은 장소와 상관없이 같은 화면. 빌드별 값은 [app/README.md 환경 변수](app/README.md#5-환경-변수) |
 | **키 사용처 제한** (`MAP-04`, 2026-11-19 완료) — 웹 개발 주소 · 배포 도메인 `https://evflowkr.app`, iOS 번들 ID `app.evflowkr.evflow`를 콘솔에 등록. Android 패키지 이름은 [app/android-plan.md](app/android-plan.md) | Client ID는 공개 값이라 등록한 도메인 · 앱에서만 쓰이게 막음 |
 | **지도 스크립트 인증은 Client ID(`ncpKeyId`)만 사용**, 프론트 환경 변수로 관리 | Client ID는 브라우저에 노출되는 값이며, 보안은 콘솔의 Web 서비스 URL 제한으로 처리 |
 | **Directions 5는 백엔드(FastAPI)에서 호출** (구 `MAP-01`) — 추천 점수의 이동시간 계산과 선택한 충전소 경로 표시 모두 서버에서 처리. 프론트는 `/api`로 받은 경로 좌표로 지도에 선만 그림 | Client Secret이 필요해 브라우저에서 호출 불가 (비밀값 노출 · CORS). 추천 점수 계산에 이동시간이 필요하고, 서버에서 캐시 · 호출 제한 가능 |
@@ -155,6 +157,7 @@
 ### API 명세 — ✅
 
 - 프론트엔드는 명세 초안을 따로 작성하지 않고, 백엔드 명세서([api/README.md](api/README.md))를 기준으로 MSW 핸들러와 타입을 작성한다.
+- 타입은 명세를 보고 `packages/core/src/types/`에 직접 쓴다 — OpenAPI 자동 생성은 넣지 않음 (`API-02`)
 - 응답은 받은 그대로 쓴다 — 필드 이름을 바꾸는 변환(axios 인터셉터 등)을 넣지 않음 (`API-05`)
 - 에러는 HTTP 상태 코드로 크게 나누고 `error.code`로 세부 분기한다. `error.code`가 없는 응답(Nginx 502 · 504 등)은 네트워크 오류와 같게 처리 (`API-04`)
 
@@ -168,6 +171,8 @@
 | 프레임워크 · 저장소 | ✅ FastAPI 0.115.0, PostgreSQL 16, Redis 7, APScheduler 3.10.4 | 장승민 |
 | ORM · 마이그레이션 | ✅ SQLAlchemy 2.0 + Alembic | 장승민 |
 | 포맷 · 린트 (`BE-05`) | ✅ Ruff 0.17.4 (포맷 · 린트 겸용, 설정 `backend/ruff.toml`) — 규칙 `E` · `F` · `I` · `UP` · `B`, 줄 길이 100(프론트 Prettier와 같음). `E501`(줄 길이)은 포매터에 맡기고 한글 주석 때문에 검사에서 뺌. `B008`은 FastAPI `Depends()` 패턴이라 뺌. AI(`ml/`)는 코드가 생기면 같은 설정을 따름 | 장승민, 김서현, 이상윤 |
+| Python 패키지 관리 (`BE-04`) | ✅ `requirements.txt` + pip — `backend/requirements.txt` · `requirements-dev.txt`, `ml/requirements.txt`(AI 패키지 서빙 버전에 맞춤) | 장승민 |
+| 로컬 개발 · 환경 분리 (`INF-07` · `INF-08`) | ✅ **local / prod 2단계** — 같은 `backend/docker-compose.yml`에 로컬은 `docker-compose.override.yml`(포트를 127.0.0.1에만 개방)을 더하고, 서버는 override를 빼고 실행. 프론트 · 앱은 파트별로 따로 실행 (Vite dev server · Expo) | 장승민 |
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 | 장승민 |
 | Docker Compose 서비스 구성 | ✅ `nginx`, `postgres`, `redis`, `api`, `collector`, `ml` 6개 — collector는 API와 같은 이미지를 쓰되 별도 컨테이너로 분리해 API 재배포 중에도 수집이 끊기지 않게 함. ml은 예측 서빙 전용 컨테이너로 분리(collector만 호출, Redis 쓰기도 collector만). 외부 공개는 nginx만, 나머지는 Compose 내부 네트워크로만 접근. 6개 컨테이너 + 모델 상주가 2GB에 들어가는지는 `AI-04`에서 확인. `docker-compose.yml`은 prod 기준(공개 포트 없음)으로 두고 로컬 개발 포트(5433 · 6379 · 8000 · 8001)는 `docker-compose.override.yml`로 분리 — Compose의 `ports`는 리스트가 병합되어 override로 제거가 불가능하므로 반대로 뒤집음. EC2는 `-f docker-compose.yml`로 override를 배제해 실행 | 장승민 |
 | EC2 인스턴스 · 스토리지 (`INF-02`) | ✅ t3.small (2GB RAM), EBS 30GiB gp3 — 수집 데이터는 12주에 약 1.7GB(행당 330B × 62,496행/일 × 84일)로 여유. 2026-11-16 서울 실시간 수집 추가로 하루 약 340MB씩 늘어남(여유 약 18GB 기준 약 50일) — 보존 기간은 디스크를 보며 정함. 실제 소비처는 OS 2.5GB + 이미지 3GB + 백업이며, 프리티어 EBS 무료 한도가 30GB라 축소할 이유 없음 | 장승민 |
@@ -175,6 +180,7 @@
 | 서버 OS | ✅ Ubuntu 24.04 LTS — 당초 22.04였으나 EC2 빠른 시작 AMI 목록에서 제외되어 24.04로 변경(2026-09-17). 일반 22.04는 커뮤니티 AMI에만 남아 있어 비공식 이미지를 고를 위험이 있고, 애플리케이션이 전부 컨테이너 안에서 돌아 호스트 OS 버전 영향이 없음. 24.04는 2029년까지 지원 | 장승민 |
 | DB 백업 | ✅ EC2 내 cron으로 `pg_dump -Fc`(커스텀 압축 포맷) 매일 1회 실행, 로컬 디스크에 최근 7일치 보관 — 평문 포맷은 덤프 1개가 DB 크기와 비슷해 7일치가 수 GB로 불어남 | 장승민 |
 | 배포 도구 · 방식 (`CI-02`) | ✅ **PR 검사는 자동, 배포는 수동** — PR 시 GitHub Actions가 검사만 수행(`CI-01`)하고, 배포는 운영자가 EC2에서 `infra/deploy.sh`로 실행(git pull → 서버에서 이미지 빌드 → `api` · `ml` 교체, collector는 `--with-collector` 옵션일 때만 교체 — `CI-04`). DB 마이그레이션은 스크립트에 넣지 않고 백업 후 수동 적용. **배포 브랜치는 `main`** — 서버는 `main`을 checkout하고, `develop` → `main` 병합 후 배포([git.md](conventions/git.md#브랜치) 규칙과 일치). 수동으로 둔 이유: 수집 데이터는 재수집이 불가능해 배포 과정을 사람이 지켜봐야 하고, 마이그레이션 · collector 교체는 어차피 수동이며, 자동 배포는 보안그룹(SSH 운영자 IP `/32` 제한)을 넓히거나 SSM을 추가 구성해야 함. **GHCR 이미지 배포로 전환하는 조건**: 서버 빌드 중 메모리 부족, 하루 여러 번 배포, 운영자 외 배포 필요. 롤백 절차는 `CI-05` | 장승민 |
+| 배포 때 collector 제외 (`CI-04`) | ✅ `infra/deploy.sh`는 기본으로 collector를 다시 띄우지 않음 — 수집 로직을 바꿨을 때만 `--with-collector` | 기능 배포가 수집을 끊지 않게 함 | 장승민 |
 | 롤백 · 배포 후 확인 (`CI-05`) | ✅ 기본은 main 병합 PR을 GitHub **Revert**로 되돌린 뒤 `deploy.sh`, 급하면 서버만 직전 main 커밋으로 checkout 후 재빌드. 배포 후 확인은 컨테이너 상태 · api `/health` · 외부 `/api/v1/stations` · 오류 로그 · 예측 저장 로그 · 추천 화면 — 절차는 [setup/operations.md](setup/operations.md) (2026-11-23) | 장승민 |
 | 도메인 · HTTPS (`CI-06`) | ✅ **`evflowkr.app` + Let's Encrypt** — 도메인은 Name.com(GitHub 학생 팩 1년 무료, 2027-11-14 만료), A 레코드로 탄력적 IP 연결. 인증서는 **서버에 설치한 certbot(apt)이 발급 · 갱신**하고 nginx는 `/etc/letsencrypt` · `/var/www/certbot`을 읽기 전용으로 마운트 — certbot 컨테이너를 따로 두지 않아 갱신 타이머(`certbot.timer`)를 OS가 관리. 갱신 확인은 webroot 방식(80번 `/.well-known/acme-challenge/`)이라 갱신 중 중단이 없고, 갱신 후 deploy hook으로 `nginx -s reload`. 최초 발급만 standalone(nginx 약 30초 정지 — 조회 API만 멈추고 수집은 무관). 80번은 확인 경로 외 전부 `https://evflowkr.app`으로 301 — IP 접속도 도메인으로 보냄. `.app`은 브라우저가 HTTPS로만 접속하는 TLD(HSTS preload)라 HSTS 헤더는 따로 두지 않음. 로컬은 인증서가 없어 override에서 nginx를 `profiles: ["server"]`로 제외 | 장승민 |
 | 컨테이너 로그 (`INF-10`) | ✅ Compose `x-logging` 앵커로 전 서비스에 json-file 드라이버 적용, `max-size: 10m` × `max-file: 3` = 서비스당 30MB 상한 | 장승민 |
@@ -182,6 +188,7 @@
 | 키 유출 대응 (`SEC-05`) | ✅ 재발급(옛 키 폐기) → 서버 `.env` 교체 → 컨테이너 재생성(`--force-recreate`) → 동작 확인 → 노출 위치 정리. 키별 재발급처 · 쓰는 컨테이너는 [setup/operations.md](setup/operations.md) (2026-11-23) | 장승민, 김무겸 |
 | 수집 로그 보안 | ✅ `httpx` 로거를 WARNING으로 낮춤 — INFO에서 요청 URL 전체를 찍어 공공데이터포털 `serviceKey`가 컨테이너 로그에 평문으로 남았음. 수집 성공 · 실패 로그는 자체 로거로 INFO 유지. API 오류 시 httpx 예외 메시지에도 URL(키 포함)이 들어가 `logger.exception`으로 남던 경로를 차단 — 엔드포인트 이름 · 상태 코드만 남김 | 장승민 |
 | 공공데이터포털 일일 호출 한도 | ✅ 운영계정(2026-11-15 승인) 기능별 100,000건 (`getChargerStatus` · `getChargerInfo` 각각). 그 전 개발계정은 1,000건 | 장승민 |
+| 수집 실패 · 결측 기록 (`BE-07`) | ✅ 수집 실행 이력 `collection_runs`에 회차마다 결과(`SUCCESS` · `PARTIAL` · `FAILED`)를 남기고, 실패 회차는 직전 상태로 채우지 않음. 공공데이터포털 타임아웃 30초 · 타임아웃 · 504면 1회 재시도 (변경 이력 2026-11-01 · 11-10) | 장승민 |
 | 실시간 상태 수집 API | ✅ **`getChargerStatus`(5분) + `getChargerInfo`(30분 보정)** — `getChargerInfo`의 상태값은 원천이 약 30분 배치로 갱신돼(2026-10-02 실측: 상태 변화의 98%가 수집 시각 :09 · :39에 몰림, 지역 전체 최신 `statUpdDt`가 30분 단위로 멈춤) 5분 수집이 실제로는 30분 해상도였음. `getChargerStatus`는 공식 문서상 "최근 변경 상태 조회" API로 최근 `period`분 안에 바뀐 충전기만 반환함 — 2026-09-13 "실시간 데이터가 있는 충전소가 극소수라 실사용 불가" 판단은 이 증분 동작을 오해한 것. 65분 비교 시뮬레이션에서 같은 변화를 평균 8~11분(최대 30분) 먼저 잡음. `statUpdDt`는 운영사에 따라 상태가 그대로여도 갱신되는 하트비트라 상태 변경 시각으로 쓰지 말 것 — 충전 구간은 `lastTsdt` · `lastTedt` · `nowTsdt` 기준 | 장승민 |
 | 수집 호출 설계 | ✅ collector가 대상 217기의 현재 상태를 메모리에 유지하며 5분마다 스냅샷 저장(테이블 · 컬럼 형식은 기존과 동일). 5분마다 `getChargerStatus`(`period=10` — 한 회차 실패해도 다음 회차가 덮음), 30분마다 `getChargerInfo`(Status가 놓친 변화 · 장애 구간 보정)를 `zscode=11440` · `44130`으로 호출하고, `statUpdDt`가 더 최신인 값만 반영함. 재시작 시 DB의 충전기별 마지막 행으로 먼저 채움. 하루 Status 2콜×288 + Info 2콜×48 = **672건**. 2026-11-16 서울 잡 추가(`zcode=11`, Status 1콜×288 + Info 약 8콜×48 ≈ 672건, Info는 페이지당 재시도 2회 · 3분 상한). 재시작 시에는 마지막 성공 회차의 행으로 채움(서울은 로그가 커서 충전기별 마지막 행 검색이 느림) | 장승민 |
 | 테이블 구조 | ✅ 도심(예측 · 추천 대상)은 `city_stations` · `city_chargers` · `city_status_log`, 휴게소(대조군)는 `service_area_stations` · `service_area_chargers` · `service_area_status_log`로 분리 — 대조군이 학습 데이터에 섞이지 않게 함. 컬럼은 공통이고 `service_area_stations`에만 `service_area_name` · `route` · `direction`이 더 있음. 테이블명에 지역명을 넣지 않은 건 수집 지역이 바뀌어도 스키마를 유지하기 위함. 서울 실시간 표시용은 `live_stations` · `live_chargers` · `live_status_log`(같은 컬럼, 용도 기준 이름) | 장승민 |
@@ -195,8 +202,9 @@
 | 네이버 지도 호출 위치 (`MAP-01`) | ✅ Directions(길찾기)는 서버(api)에서 호출 — 추천 점수 계산에 이동시간이 필요함. 지도 JavaScript API v3는 브라우저가 직접 로드. 호출량 · 캐싱은 `MAP-02` | 장승민, 이상윤, 김무겸 |
 | 주 예측 모델 | ✅ XGBoost (기준선: 현재 점유율 유지 모델, 요일 · 시간대 평균 모델) | 김서현 |
 | 모델 파일 형식 (`AI-01`) | ✅ XGBoost 공식 저장 형식 `.ubj`(UBJSON, `save_model`) — pickle · joblib은 XGBoost · Python 버전이 바뀌면 로드가 깨질 수 있고, 로드 시 임의 코드 실행 위험이 있음. 파일 이름 규칙은 미정(`AI-01` 잔여) | 김서현, 이상윤 |
-| `ml` 컨테이너 운영 | ✅ 포트 `8001`(Compose 내부 전용, 외부 미공개), `mem_limit: 512m`(OOM이 서버 전체를 죽이지 않도록), **워커 1개 고정** — 워커 2개면 라이브러리 175MB가 복제돼 512m 초과. 6모델 구성 예상 RSS ≈275MB(2026-09-14 실측: 라이브러리 175MB + 모델 개당 ≈17MB). 로드 · 특징 생성 시 실제 최대 메모리는 `AI-04`에서 실측 | 장승민, 김서현 |
+| `ml` 컨테이너 운영 (`AI-04`) | ✅ 포트 `8001`(Compose 내부 전용, 외부 미공개), `mem_limit: 512m`(OOM이 서버 전체를 죽이지 않도록), **워커 1개 고정** — 워커 2개면 라이브러리 175MB가 복제돼 512m 초과. 6모델 구성 예상 RSS ≈275MB(2026-09-14 실측: 라이브러리 175MB + 모델 개당 ≈17MB). 로드 · 특징 생성 시 실제 최대 메모리는 `AI-04`에서 실측 | 장승민, 김서현 |
 | 검증 방식 | ✅ Walk-forward validation | 김서현, 이상윤 |
+| AI 패키지 전달 · 학습 · 서빙 코드 공유 (`AI-02` · `AI-03`) | ✅ AI 팀이 모델 · 추론 · 추천 채점 코드를 **패키지 zip 하나**로 전달 → 서버 `ml/package/`에 풀고(저장소 · 이미지에 없음) ml · producer · api가 같은 폴더를 마운트. 이전 패키지는 `ml/package_<배포 이름>`으로 옆에 보관. 공통 모듈을 저장소에 복사하지 않음 — [prediction.md](prediction.md) | 김서현, 이상윤, 장승민 |
 
 ---
 
@@ -252,3 +260,4 @@
 | 2026-11-24 | App Store **1.0.0 (5) 제출** | 김무겸 |
 | 2026-11-25 | 상태 이상 충전기 화면(앱 #152 · 웹 #153)을 **서울 전체로 시작** (#213) — 이전에는 현재 위치에서 가까운 구, 못 잡으면 마포구. 위치로 구를 찾는 코드는 지움 | 김무겸 |
 | 2026-11-25 | 앱 **Android 추가** — 2026-11-19 "iOS로 결정"에 더함. 같은 코드로 다른 곳만 나눔, iOS 동작은 그대로. 계획은 [app/android-plan.md](app/android-plan.md) | 김무겸 |
+| 2026-11-25 | 미확정 사항 정리 — 이미 구현 · 운영 중인 15개를 결정으로 옮김: `INF-07` · `INF-08`(local / prod 2단계) · `BE-04`(requirements.txt) · `BE-07`(수집 이력 · 재시도) · `SEC-01` ~ `SEC-03`(파트별 `.env.example`, 서버 `.env`, Secrets 안 씀) · `CI-04`(배포 때 collector 제외) · `API-02`(타입 수동) · `MAP-02` · `MAP-04` · `MAP-05`(위치 기준) · `AI-02` · `AI-03`(AI 패키지 전달 · 공유) · `AI-04`(ml 컨테이너). 내용은 구현 · 운영 그대로 | 김무겸 |
