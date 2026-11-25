@@ -102,6 +102,23 @@ const config: ExpoConfig = {
     // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)
     'expo-sqlite',
     [
+      'expo-splash-screen',
+      {
+        // 앱을 켤 때 JS가 뜨기 전까지 보이는 실행 화면. 앱 아이콘과 같은 파랑 바탕에 흰 E + 노란 번개
+        backgroundColor: '#3B63E4',
+        ios: {
+          // 로고 아래 앱 이름까지 넣은 정사각형 그림 (원본 assets/splash-ios.svg). 화면 가운데에 가로세로 240pt로 그림
+          image: './assets/splash-ios.png',
+          imageWidth: 240,
+        },
+        android: {
+          // Android 12+ 실행 화면은 가운데 원 안에 그림 하나만 보여서 앱 이름 없이 로고만 (원본 assets/splash-android.svg)
+          image: './assets/splash-android.png',
+          imageWidth: 288,
+        },
+      },
+    ],
+    [
       'expo-localization',
       {
         // Android 앱이 지원하는 언어를 한국어만으로 선언 (iOS는 위 infoPlist CFBundleLocalizations)

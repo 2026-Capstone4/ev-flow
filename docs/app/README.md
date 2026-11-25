@@ -55,7 +55,7 @@ mobile/
 ├── app.config.ts        # Expo 설정 (app.json 대신). 번들 ID · 빌드 번호 · 권한 설명 · plugin
 ├── metro.config.js      # react · react-native · TanStack Query를 앱 기준으로 한 벌만 찾게 함 (필수)
 ├── tailwind.config.js   # content에 core lib/도 넣음 — 바꾸면 Metro 다시 시작
-├── assets/              # icon.png(+ 원본 icon.svg) · licenses.json
+├── assets/              # icon.png(+ 원본 icon.svg) · splash-ios/android.png(+ 원본 svg) · licenses.json
 ├── scripts/             # generate-licenses.mjs
 └── src/
     ├── app/             # 화면 (Expo Router)
@@ -145,6 +145,7 @@ App Store 빌드
 그 밖
 - 패키지를 추가 · 업데이트하면 `pnpm --dir mobile run licenses`로 오픈소스 라이선스 목록(`assets/licenses.json`)을 다시 만듦
 - 아이콘을 바꾸면 `assets/icon.svg`를 고친 뒤 `qlmanage -t -s 1024 -o <폴더> mobile/assets/icon.svg`로 PNG를 만듦 (1024px, 투명 없음)
+- 스플래시(실행 화면)도 같은 방법으로 `assets/splash-ios.svg` · `splash-android.svg`를 PNG로 만듦. iOS는 로고 + 앱 이름(Pretendard SemiBold, Mac에 설치돼 있어야 그 글꼴로 그려짐), Android 12+는 가운데 원 안에 그림 하나만 보여서 로고만. 바꾼 뒤 `expo prebuild`를 다시 해야 들어감
 
 ## 7. NCP 콘솔 등록
 
