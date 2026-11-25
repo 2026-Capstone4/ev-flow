@@ -81,8 +81,9 @@ export function OnboardingDialog({ onClose }: OnboardingDialogProps) {
   }
 
   return (
-    // 바깥을 눌러도 닫히지 않음 (웹과 같음). onRequestClose는 iOS에서 안 불리지만 Modal 필수 값이라 닫기로 둠
-    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    // 바깥을 눌러도 닫히지 않음 (웹과 같음). Android 뒤로 가기(onRequestClose)도 아무 일 안 함
+    // 닫으면 위치 권한까지 바로 묻게 되어서, 건너뛰기 · 시작하기로만 닫음
+    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
       <View className="flex-1 items-center justify-center bg-black/40 px-6">
         <View
           accessibilityViewIsModal
