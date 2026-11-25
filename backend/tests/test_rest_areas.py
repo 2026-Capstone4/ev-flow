@@ -260,6 +260,53 @@ def test_nationwide_groups_station_ids_by_rest_area():
     assert (unknown.region_code, unknown.region_name) == ("44", "충청남도")
 
 
+def capacity_states(station_id, capacities):
+    return [
+        ChargerState(station_id, f"{i:02d}", "unknown", ["dc_combo"], kw, None)
+        for i, kw in enumerate(capacities, 1)
+    ]
+
+
+def test_duplicate_registration_needs_hd_twin_at_same_place():
+    # 실제 서버 값 - HY는 좌표가 소수 6자리 반올림만 다름
+    hd = db_station("HD000042", lat=37.7004138, lng=127.5437702)
+    hy = db_station("HY002005", lat=37.700414, lng=127.54377)
+    # 짝이 없는 HY - 양평 용문처럼 상태가 정상으로 들어옴
+    alone = db_station("HY000160", lat=37.5, lng=127.6)
+    # 같은 자리지만 충전기 구성이 다른 HY는 별도 충전소로 봄
+    different = db_station("HY000999", lat=37.7004138, lng=127.5437702)
+    states = {
+        "HD000042": capacity_states("HD000042", [260] * 6),
+        "HY002005": capacity_states("HY002005", [260] * 6),
+        "HY000160": capacity_states("HY000160", [100, 100]),
+        "HY000999": capacity_states("HY000999", [100, 100]),
+    }
+    stations = [hd, hy, alone, different]
+    assert service_areas.duplicate_registrations(stations, stations, states) == {"HY002005"}
+
+
+def test_duplicate_registration_twin_must_be_hd():
+    other = db_station("ME000001")
+    hy = db_station("HY000001")
+    states = {
+        "ME000001": capacity_states("ME000001", [100]),
+        "HY000001": capacity_states("HY000001", [100]),
+    }
+    assert service_areas.duplicate_registrations([other, hy], [other, hy], states) == set()
+
+
+def test_without_duplicates_reads_hd_twins_from_db():
+    hy = db_station("HY002005")
+    hd = db_station("HD000042")
+    states = {
+        "HY002005": capacity_states("HY002005", [260] * 6),
+        "HD000042": capacity_states("HD000042", [260] * 6),
+    }
+    # 노선 미확인 휴게소의 충전기 조회처럼 HY 하나만 넘어와도 DB의 HD 짝으로 판정함
+    db = SimpleNamespace(scalars=lambda query: SimpleNamespace(all=lambda: [hd]))
+    assert service_areas.without_duplicates(db, [hy], states) == []
+
+
 @pytest.mark.parametrize(
     "zcode, name",
     [
