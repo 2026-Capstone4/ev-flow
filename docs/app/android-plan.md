@@ -57,7 +57,7 @@ iOS로 만든 앱(`mobile/`)을 Android에서도 돌리는 계획 · 진행 기�
 
 PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 고치면 `feat/fe-*`)
 
-### 1단계: 에뮬레이터에서 개발 빌드 띄우기 🟡 (iOS 확인 · PR 남음)
+### 1단계: 에뮬레이터에서 개발 빌드 띄우기 🟡 (PR 남음)
 
 - `app.config.ts`: `android` 설정(`package` · `versionCode: 1` · adaptive icon), 머리 주석 · 경고 문구의 "iOS만" 고치기
 - adaptive icon 앞 그림(`assets/adaptive-icon.png`, 가운데 66% 안에 흰 E + 노란 번개, 투명 바탕) · 뒤 색(파랑) — 원본 `assets/icon.svg`
@@ -171,3 +171,4 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
   - 위치 권한 뒤 Google "위치 정확도" 켜기 창이 한 번 더 뜸 (`Accuracy.High` 요청). iOS에는 없는 창 → 4단계에서 볼 것
   - 개발 빌드에만 들어가는 권한: 주변 기기(`ACCESS_LOCAL_NETWORK` 등, 개발 메뉴의 Metro 찾기) · 다른 앱 위에 그리기 — 5단계 Release 빌드 manifest에서 빠졌는지 확인
   - 그림자가 안 그려지는 것 확인 (2단계)
+- iOS 확인 (iPhone 17 Pro 시뮬레이터 · iOS 26.4, 개발 빌드): `expo-system-ui`가 들어간 뒤에도 prebuild · 빌드 성공, 지도 홈 · 추천 시트 · 그림자 · 하단 탭 · 더보기가 제출 빌드와 같음. 기기를 다크 모드로 바꿔도 앱은 밝은 화면 그대로
