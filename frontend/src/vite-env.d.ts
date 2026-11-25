@@ -3,7 +3,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_NAVER_MAP_CLIENT_ID?: string
-  /** MSW Mock 방식 - true: 전체 Mock / partial: 백엔드에 없는 API만 Mock(지금은 없어서 false와 같음) / false: 사용 안 함 */
+  /** MSW Mock 사용 - true: 전체 Mock / false: 사용 안 함 */
   readonly VITE_USE_MOCK?: 'true' | 'false'
   readonly VITE_API_BASE_URL?: string
   readonly VITE_PROXY_TARGET?: string
