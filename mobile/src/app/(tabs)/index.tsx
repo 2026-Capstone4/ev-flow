@@ -8,7 +8,7 @@ import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, View, type GestureResponderEvent } from 'react-native'
+import { BackHandler, Pressable, View, type GestureResponderEvent } from 'react-native'
 import Animated, {
   Extrapolation,
   interpolate,
@@ -267,6 +267,27 @@ export default function MapHomeScreen() {
     // 한 번 펼친 뒤 값을 지워서 탭을 오가도 다시 펼치지 않게 함
     router.setParams({ expandSheet: undefined })
   }, [expandSheet])
+
+  // Android 뒤로 가기는 열린 것부터 닫음: 필터 패널 → 펼친 추천 시트(접힘으로) → 기본 동작(앱 나가기)
+  // 이 화면이 보일 때만 듣고, 첫 방문 안내(Modal)가 열려 있으면 Modal이 먼저 받아서 여기까지 안 옴
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        // 필터 패널이 열려 있으면 고른 값을 버리고 닫음 (바깥을 누른 것과 같음)
+        if (isFilterOpen) {
+          setIsFilterOpen(false)
+          return true
+        }
+        // 시트가 펼쳐져 있으면 접힘으로 내림
+        if (isSheetExpanded) {
+          sheetRef.current?.collapse()
+          return true
+        }
+        return false
+      })
+      return () => subscription.remove()
+    }, [isFilterOpen, isSheetExpanded]),
+  )
 
   // memo 마커가 다시 그려지지 않도록 함수 하나를 계속 씀
   const handleMarkerTap = useCallback(

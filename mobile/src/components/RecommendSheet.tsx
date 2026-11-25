@@ -53,6 +53,8 @@ export type RecommendSheetHandle = {
   expand: () => void
   /** 최소(헤더만)로 내림. 지도를 탭했을 때 씀 */
   minimize: () => void
+  /** 접힘(1순위 카드)으로 내림. Android 뒤로 가기로 펼친 시트를 닫을 때 씀 */
+  collapse: () => void
 }
 
 type RecommendSheetProps = {
@@ -98,6 +100,7 @@ export function RecommendSheet({
     () => ({
       expand: () => sheetRef.current?.expand(),
       minimize: () => sheetRef.current?.snapToIndex(LEVEL.minimized),
+      collapse: () => sheetRef.current?.snapToIndex(LEVEL.collapsed),
     }),
     [],
   )
