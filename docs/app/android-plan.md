@@ -1,4 +1,4 @@
-# EV-flow 앱 안드로이드 계획 (7단계, 2026-11-25 시작)
+# EV Flow 앱 안드로이드 계획 (7단계, 2026-11-25 시작)
 
 iOS로 만든 앱(`mobile/`)을 Android에서도 돌리는 계획 · 진행 기록. 앱의 지금 상태는 [README.md](README.md), iOS 0~6단계는 [migration-log.md](migration-log.md), 화면 · 서버 흐름은 [diagrams_new](../diagrams_new/README.md).
 

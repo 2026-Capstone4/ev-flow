@@ -1,4 +1,4 @@
-# EV-flow 앱 전환 기록 — iOS (2026-11-19 ~ 11-24)
+# EV Flow 앱 전환 기록 — iOS (2026-11-19 ~ 11-24)
 
 웹 사용자 화면을 RN(Expo) iOS 앱으로 옮긴 0~6단계 기록. 앱의 지금 상태는 [README.md](README.md), 안드로이드는 [android-plan.md](android-plan.md).
 
