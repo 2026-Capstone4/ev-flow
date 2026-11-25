@@ -227,4 +227,3 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
   - AAB · APK 모두 업로드 키(`CN=EV Flow`)로 서명됨, 디버그 키 인증서와 다름
   - Release 권한: 위치(정확 · 대략) · 인터넷 · 진동 · 네트워크 · Wi-Fi 상태뿐. 개발 빌드에만 있던 `ACCESS_LOCAL_NETWORK` · `SYSTEM_ALERT_WINDOW`는 없음 (1단계에서 넘긴 것)
   - 에뮬레이터에 Release APK 설치: 첫 방문 안내 · 위치 권한 · 지도(네이버 인증) · 추천 정상, 개발 도구 버튼 없음. 개발 빌드와 서명이 달라 개발 앱을 지우고 설치함
-

@@ -82,6 +82,11 @@ const withAndroidReleaseSigning: ConfigPlugin = (config) =>
       newSrc: [
         '        release {',
         "            if (findProperty('EVFLOW_UPLOAD_STORE_FILE')) {",
+        // 키 파일 경로만 있고 별칭 · 비밀번호가 빠지면 Gradle이 원인을 알기 어려운 오류를 냄 → 빠진 이름을 알려 주고 멈춤
+        "                def missing = ['EVFLOW_UPLOAD_KEY_ALIAS', 'EVFLOW_UPLOAD_STORE_PASSWORD', 'EVFLOW_UPLOAD_KEY_PASSWORD'].findAll { !findProperty(it) }",
+        '                if (!missing.isEmpty()) {',
+        '                    throw new GradleException("~/.gradle/gradle.properties에 업로드 키 값이 비어 있음: ${missing.join(\', \')}")',
+        '                }',
         "                storeFile file(findProperty('EVFLOW_UPLOAD_STORE_FILE'))",
         "                storePassword findProperty('EVFLOW_UPLOAD_STORE_PASSWORD')",
         "                keyAlias findProperty('EVFLOW_UPLOAD_KEY_ALIAS')",
