@@ -37,7 +37,8 @@ docs/
 ├── setup/               # 환경 · 저장소 세팅 가이드
 ├── conventions/         # 코드 · 협업 규칙
 ├── api/                 # API 명세 — 공통 규약 · 사용자 · 운영자
-├── diagrams/            # 시퀀스 다이어그램 (draw.io)
+├── diagrams/            # 시퀀스 다이어그램 초기 설계본 (draw.io, 10/27)
+├── diagrams_new/        # 지금 기준 구성도 · 시퀀스 다이어그램 (draw.io, 11/25)
 └── meetings/            # (필요 시) 회의록
 ```
 
