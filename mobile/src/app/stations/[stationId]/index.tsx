@@ -13,8 +13,9 @@ import { CongestionBadge } from '../../../components/CongestionBadge'
 import { HorizonSummary } from '../../../components/HorizonSummary'
 import { PredictionTile } from '../../../components/PredictionTile'
 import { UpdateStatus } from '../../../components/UpdateStatus'
+import { getFooterPaddingBottom } from '../../../lib/footerPadding'
 
-/** 아래 버튼 영역의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(12px, safe-area)) */
+/** 아래 버튼 영역의 최소 여백 (웹 max(12px, safe-area)). 플랫폼별 계산은 lib/footerPadding.ts getFooterPaddingBottom */
 const FOOTER_MIN_PADDING = 12
 
 // 충전소 상세 화면. 데이터는 웹과 같은 core useStationDetailData, 예측 시점은 ?horizon= 값으로 받음
@@ -127,7 +128,7 @@ export default function StationDetailScreen() {
 
           <View
             className="border-t border-border-default px-4 pt-3"
-            style={{ paddingBottom: Math.max(FOOTER_MIN_PADDING, insets.bottom) }}
+            style={{ paddingBottom: getFooterPaddingBottom(insets.bottom, FOOTER_MIN_PADDING) }}
           >
             {/* 고른 시점을 그대로 넘겨 길찾기 화면에서도 같은 시점의 예상 대기를 보여 줌 */}
             <Button className="w-full" onPress={openRoute}>
