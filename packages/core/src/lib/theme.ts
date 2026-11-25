@@ -38,6 +38,17 @@ export const COLORS = {
   ai: '#7c3aed',
 } as const
 
+/**
+ * 라운드 토큰 (px). 작은 요소(태그 · 작은 버튼) sm · 입력창 · 큰 버튼 md · 화면을 덮는 면(시트 · 다이얼로그) lg
+ * 웹은 styles/index.css의 --radius-이름에 같은 값을 둠 (theme.test.ts가 확인)
+ * RN 앱은 tailwind.config.js가 이 값으로 rounded-* 클래스를 만들고, 클래스를 못 쓰는 곳(바텀 시트 배경)은 숫자를 바로 씀
+ */
+export const RADIUS = {
+  sm: 6,
+  md: 12,
+  lg: 20,
+} as const
+
 /** 현재 혼잡도별 색. 클래스를 못 쓰는 곳(캔버스 · 지도 SDK 마커 아이콘)에서 씀 */
 export const CONGESTION_COLOR: Record<CurrentCongestion, string> = {
   low: COLORS['congestion-free'],

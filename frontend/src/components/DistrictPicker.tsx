@@ -59,7 +59,7 @@ export function DistrictPicker({ value, districts, onChange }: DistrictPickerPro
             role="dialog"
             aria-modal="true"
             aria-labelledby="district-picker-title"
-            className="relative flex max-h-[70%] animate-sheet-up flex-col rounded-t-[20px] bg-bg-page pt-4 pb-[env(safe-area-inset-bottom)]"
+            className="relative flex max-h-[70%] animate-sheet-up flex-col rounded-t-lg bg-bg-page pt-4 pb-[env(safe-area-inset-bottom)]"
           >
             <h2 id="district-picker-title" className="px-5 pb-2 text-base font-bold">
               지역 선택

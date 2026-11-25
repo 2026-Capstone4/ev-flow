@@ -91,7 +91,7 @@ export function RoutePage() {
           <X aria-hidden size={22} strokeWidth={2} />
         </button>
 
-        <section className="absolute inset-x-0 bottom-0 flex flex-col gap-3.5 rounded-t-[20px] bg-bg-page px-4 pt-5 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-2px_12px_rgba(0,0,0,0.12)]">
+        <section className="absolute inset-x-0 bottom-0 flex flex-col gap-3.5 rounded-t-lg bg-bg-page px-4 pt-5 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-2px_12px_rgba(0,0,0,0.12)]">
           {station ? (
             <div className="flex flex-col gap-1">
               <h1 className="text-lg font-bold">{station.name}</h1>
