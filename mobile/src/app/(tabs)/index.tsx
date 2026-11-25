@@ -278,15 +278,15 @@ export default function MapHomeScreen() {
           setIsFilterOpen(false)
           return true
         }
-        // 시트가 펼쳐져 있으면 접힘으로 내림
-        if (isSheetExpanded) {
-          sheetRef.current?.collapse()
+        // 시트가 펼쳐져 있거나 펼쳐지는 중이면 접힘으로 내림
+        if (sheetRef.current?.isExpanding()) {
+          sheetRef.current.collapse()
           return true
         }
         return false
       })
       return () => subscription.remove()
-    }, [isFilterOpen, isSheetExpanded]),
+    }, [isFilterOpen]),
   )
 
   // memo 마커가 다시 그려지지 않도록 함수 하나를 계속 씀
