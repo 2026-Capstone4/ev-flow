@@ -18,7 +18,7 @@ export function ChargerIssuesButton({ onPress }: ChargerIssuesButtonProps) {
       style={FLOATING_BUTTON_SHADOW}
       className="flex-row items-center gap-1 rounded-full bg-bg-page px-3 py-1.5 active:opacity-80"
     >
-      <TriangleAlert size={14} strokeWidth={2.2} color={COLORS['status-warning']} />
+      <TriangleAlert size={16} strokeWidth={2.2} color={COLORS['status-warning']} />
       <Text className="font-medium text-xs text-text-primary">상태 이상</Text>
     </Pressable>
   )

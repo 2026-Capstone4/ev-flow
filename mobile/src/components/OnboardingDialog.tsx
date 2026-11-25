@@ -93,13 +93,13 @@ export function OnboardingDialog({ onClose }: OnboardingDialogProps) {
           className="w-full max-w-[360px] gap-5 rounded-lg bg-bg-page p-6"
         >
           <View className="min-h-[20px] flex-row items-center justify-between">
-            <Text className="font-medium text-[13px] text-text-secondary">
+            <Text className="font-medium text-[14px] text-text-secondary">
               {stepIndex + 1} / {STEPS.length}
             </Text>
             {/* 마지막 장에서는 시작하기 버튼과 같은 일이라 건너뛰기를 숨김 */}
             {!isLastStep && (
               <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
-                <Text className="font-medium text-[13px] text-text-secondary">건너뛰기</Text>
+                <Text className="font-medium text-[14px] text-text-secondary">건너뛰기</Text>
               </Pressable>
             )}
           </View>
@@ -197,7 +197,7 @@ function StepContent({ step, isCurrent, isFirst }: StepContentProps) {
       <Text
         lineBreakStrategyIOS="hangul-word"
         className={`text-center leading-relaxed text-text-secondary ${
-          step.isIntro ? 'font-medium text-[16px]' : 'font-sans text-[14px]'
+          step.isIntro ? 'font-medium text-[14px]' : 'font-sans text-[16px]'
         }`}
       >
         {step.body}
@@ -217,7 +217,7 @@ function StepContent({ step, isCurrent, isFirst }: StepContentProps) {
           {step.legend.map(({ label, className }) => (
             <View key={label} className="flex-row items-center gap-2">
               <View className={`size-3.5 rounded-full ${className}`} />
-              <Text className="font-semibold text-[15px] text-text-primary">{label}</Text>
+              <Text className="font-semibold text-[16px] text-text-primary">{label}</Text>
             </View>
           ))}
         </View>

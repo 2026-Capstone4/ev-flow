@@ -43,7 +43,7 @@ export default function StationDetailScreen() {
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">충전소 상세</Text>
+        <Text className="font-bold text-[18px] text-text-primary">충전소 상세</Text>
       </View>
 
       {station ? (

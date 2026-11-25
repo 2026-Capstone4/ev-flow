@@ -46,7 +46,7 @@ export default function MoreScreen() {
       </MenuSection>
 
       <View className="items-center">
-        <Text className="font-sans text-[13px] text-text-secondary">
+        <Text className="font-sans text-[14px] text-text-secondary">
           대학생 팀 flow가 캡스톤 프로젝트로 만든 앱이에요
         </Text>
       </View>

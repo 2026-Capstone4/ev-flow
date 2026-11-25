@@ -37,7 +37,7 @@ function Section({ title, count, description, children }: SectionProps) {
         <h2 className="text-base font-bold">
           {title} <span className="text-text-secondary">{count}기</span>
         </h2>
-        <p className="text-[13px] break-keep text-text-secondary">{description}</p>
+        <p className="text-[14px] break-keep text-text-secondary">{description}</p>
       </div>
       {children}
     </section>
@@ -73,11 +73,11 @@ function StationIssueCard({ station, statusLabel, onClick }: StationIssueCardPro
             key={charger.chargerId}
             className="flex items-center justify-between gap-2 border-b border-border-default px-4 py-2.5 last:border-b-0"
           >
-            <span className="min-w-0 text-[13px] font-medium break-keep">
+            <span className="min-w-0 text-[14px] font-medium break-keep">
               급속 {charger.chargerId} ·{' '}
               {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
             </span>
-            <span className="shrink-0 text-[13px] font-bold text-congestion-unknown">
+            <span className="shrink-0 text-[14px] font-bold text-congestion-unknown">
               {statusLabel}
             </span>
           </li>
@@ -224,7 +224,7 @@ export function ChargerIssuesPage() {
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <BackButton />
-        <h1 className="text-[17px] font-bold">상태 이상 충전기</h1>
+        <h1 className="text-[18px] font-bold">상태 이상 충전기</h1>
       </header>
       <main className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 pt-2 pb-6">
         {/* 갱신 시각 알약을 구 버튼 높이에 맞춤 */}

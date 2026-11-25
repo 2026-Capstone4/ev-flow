@@ -12,16 +12,18 @@ type HorizonSelectorProps = {
 // RN은 글자색이 View에서 Text로 물려지지 않아 칸 · 글자를 나눠 둠
 const VARIANT_CLASS = {
   floating: {
-    // 기본 글자 크기에서 묶음 높이 40 (웹 h-10). 높이를 고정하지 않아 글자 크기를 키우면 함께 커짐
-    group: 'self-start',
-    option: 'px-4 py-2',
+    // 네이버 지도 패널 탭처럼 묶음 높이 약 45 · 글자 15.5. 높이를 고정하지 않아 글자 크기를 키우면 함께 커짐
+    group: 'self-start p-1.5',
+    option: 'px-4 py-2.5',
+    text: 'text-[15.5px]',
     selectedBox: 'bg-bg-page',
     selectedText: 'text-text-primary',
   },
   inline: {
     // 묶음 높이를 정하지 않아서 칸 위아래 여백으로 높이를 냄 (h-full을 쓰면 화면 끝까지 늘어남)
-    group: 'w-full',
-    option: 'flex-1 py-1.5',
+    group: 'w-full p-1',
+    option: 'flex-1 py-2',
+    text: 'text-[15px]',
     selectedBox: 'bg-brand-primary',
     selectedText: 'text-text-on-brand',
   },
@@ -42,7 +44,7 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel="예측 시점"
-      className={`flex-row items-center gap-1 rounded-md bg-bg-subtle p-1 ${style.group}`}
+      className={`flex-row items-center gap-1 rounded-md bg-bg-subtle ${style.group}`}
     >
       {HORIZONS.map((option) => {
         const isSelected = option === value
@@ -58,7 +60,7 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
             }`}
           >
             <Text
-              className={`text-[13px] ${
+              className={`${style.text} ${
                 isSelected ? `font-bold ${style.selectedText}` : 'font-medium text-text-secondary'
               }`}
             >

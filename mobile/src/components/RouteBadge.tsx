@@ -16,8 +16,8 @@ const EXTRA_WIDTH_THREE_DIGITS = 16
 
 /** 크기별 배지 높이와 숫자 크기 */
 const SIZES = {
-  md: { height: 32, fontSize: 13 },
-  lg: { height: 44, fontSize: 19 },
+  md: { height: 36, fontSize: 15 },
+  lg: { height: 48, fontSize: 21 },
 } as const
 
 /**

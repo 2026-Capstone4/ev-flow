@@ -16,12 +16,12 @@ export function FilterChip({ label, isSelected, onPress, disabled = false }: Fil
       accessibilityState={{ selected: isSelected, disabled }}
       onPress={onPress}
       disabled={disabled}
-      className={`flex-shrink-0 rounded-full border px-3 py-1.5 ${
+      className={`flex-shrink-0 rounded-full border px-3 py-2 ${
         isSelected ? 'border-brand-primary bg-brand-primary' : 'border-border-default bg-bg-page'
       } ${disabled ? 'opacity-40' : ''}`}
     >
       <Text
-        className={`text-[13px] ${
+        className={`text-[14px] ${
           isSelected ? 'font-bold text-text-on-brand' : 'font-medium text-text-primary'
         }`}
       >

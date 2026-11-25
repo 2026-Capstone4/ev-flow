@@ -76,7 +76,7 @@ export function DistrictPicker({ value, districts, onChange }: DistrictPickerPro
                       className="flex w-full items-center gap-2 px-5 py-3 text-left active:bg-bg-subtle"
                     >
                       <span
-                        className={`flex-1 text-[15px] ${
+                        className={`flex-1 text-[16px] ${
                           isSelected ? 'font-bold text-brand-primary' : 'font-medium'
                         }`}
                       >
@@ -84,7 +84,7 @@ export function DistrictPicker({ value, districts, onChange }: DistrictPickerPro
                       </span>
                       {/* 확인 불가 충전기가 있는 구만 대수를 보여 줌 */}
                       {item.count > 0 && (
-                        <span className="text-[13px] text-text-secondary">
+                        <span className="text-[14px] text-text-secondary">
                           확인 불가 {item.count}기
                         </span>
                       )}

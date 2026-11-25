@@ -26,7 +26,7 @@ type HorizonSummaryProps = {
 /** 설명 줄 배열을 문장마다 줄을 나눠 그림 */
 function NoteLines({ lines }: { lines: string[] }) {
   return (
-    <p className="text-[13px] text-text-secondary">
+    <p className="text-[14px] text-text-secondary">
       {lines.map((line, i) => (
         <span key={line}>
           {i > 0 && <br />}

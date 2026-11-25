@@ -64,9 +64,10 @@
 
 | 파라미터 | 값 | 기본값 |
 |---|---|---|
-| `region` | `all` · `city`(도심, 현재 마포구) · `service_area`(휴게소) | `all` |
+| `region` | `all` · `seoul`(서울 전체) · `city`(도심, 현재 마포구) · `service_area`(휴게소) | `all` |
 | `period` | `day` · `week` | `day` |
 
+- `seoul`은 `city`(마포구)와 수집 대상 `live`(마포구를 뺀 서울)를 합친 것 — 겹치는 충전기 없음. `all`은 `city` · `live` · `service_area` 셋 모두 (2026-11-25)
 - 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지. 시연 스냅샷에서는 "지금" = 스냅샷 시각 ([README 시연 기준 시각](README.md#기본))
 - 응답의 `from` · `to`는 실제 집계 기간 — `week`가 이용률(최근 4주)과 결측(최근 7일)에서 기간이 달라 화면에 함께 표시
 - 버스전용 충전기는 모든 집계에서 뺀다 — 결측(13번)은 `collection_runs`의 서비스 대상 기준 수(`eligible_expected_count` · `eligible_matched_count`)를 쓴다
@@ -100,6 +101,8 @@
 | `occupancyRate` | number \| null | 0~1. 관측이 없으면 `null` (아직 오지 않은 시간 포함) |
 | `observationCount` | number | 분모에 들어간 관측 수 — 표본이 적은 칸 구분용 |
 
+끝난 날 · 끝난 시간대는 Redis에 저장해 두고 쓴다. collector가 매시 12분(과 시작 2분 뒤)에 미리 채워 화면 요청은 진행 중인 시간대만 DB에서 센다
+
 ---
 
 ## 11. 충전기 목록 — `GET /admin/chargers`
@@ -129,7 +132,8 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `stationName` | string | 도심은 충전소명, 휴게소는 휴게소명 |
+| `region` | string | 수집 대상 `city` · `live` · `service_area` — `region=seoul`이면 `city` · `live`가 섞여 온다 |
+| `stationName` | string | 도심 · 서울은 충전소명, 휴게소는 휴게소명 |
 | `status` | string | 화면 상태 (README) |
 | `updatedAt` | string | 대상별 마지막 성공 수집 시각 중 오래된 쪽 (`region=all`) |
 | `stat` | string \| null | API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 등 이상 충전기 구분용. 마지막 성공 회차에 그 충전기 행이 없으면 `null` |
@@ -164,7 +168,7 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `target` | string | `city` · `service_area`. `region=all`이면 둘 다 |
+| `target` | string | `city` · `live` · `service_area`. `region=seoul`이면 `city` · `live`, `all`이면 셋 다 |
 | `lastStatus` | string | `running` · `success` · `partial` · `failed` (CollectionRun.status) |
 | `lastSuccessAt` | string \| null | 마지막 `success` 실행 시각 (`partial` 제외) |
 | `failedRunsToday` | number | 오늘 `failed` · `partial` 실행 수 |

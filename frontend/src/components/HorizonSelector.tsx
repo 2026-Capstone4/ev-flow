@@ -10,14 +10,14 @@ type HorizonSelectorProps = {
 
 const VARIANT_CLASS = {
   floating: {
-    // 누르기 쉽게 묶음 높이 40 (칸은 묶음 높이를 채움)
-    group: 'h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
-    option: 'h-full px-4',
+    // 네이버 지도 패널 탭처럼 묶음 높이 46 · 글자 15.5 (칸은 묶음 높이를 채움)
+    group: 'h-[46px] p-1.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
+    option: 'h-full px-4 text-[15.5px]',
     selected: 'bg-bg-page text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.1)]',
   },
   inline: {
-    group: 'w-full',
-    option: 'flex-1',
+    group: 'w-full p-1',
+    option: 'flex-1 text-[15px]',
     selected: 'bg-brand-primary text-text-on-brand',
   },
 }
@@ -28,7 +28,7 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
     <div
       role="radiogroup"
       aria-label="예측 시점"
-      className={`flex items-center gap-1 rounded-md bg-bg-subtle p-1 ${style.group}`}
+      className={`flex items-center gap-1 rounded-md bg-bg-subtle ${style.group}`}
     >
       {HORIZONS.map((option) => {
         const isSelected = option === value
@@ -39,7 +39,7 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
             role="radio"
             aria-checked={isSelected}
             onClick={() => onChange(option)}
-            className={`rounded-sm py-1.5 text-[13px] ${style.option} ${
+            className={`rounded-sm py-2 ${style.option} ${
               isSelected ? `font-bold ${style.selected}` : 'font-medium text-text-secondary'
             }`}
           >

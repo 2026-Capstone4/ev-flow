@@ -23,7 +23,7 @@ export function FilterChip({
       aria-pressed={isSelected}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] ${
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[14px] admin:text-[13px] ${
         isSelected
           ? 'border-brand-primary bg-brand-primary font-bold text-text-on-brand'
           : 'border-border-default bg-bg-page font-medium text-text-primary'

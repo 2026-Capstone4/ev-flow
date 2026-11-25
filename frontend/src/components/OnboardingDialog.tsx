@@ -90,7 +90,7 @@ export function OnboardingDialog({ onClose }: OnboardingDialogProps) {
         className="flex w-full max-w-[360px] flex-col gap-5 rounded-lg bg-bg-page p-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-text-secondary">
+          <span className="text-[14px] font-medium text-text-secondary">
             {stepIndex + 1} / {STEPS.length}
           </span>
           {/* 마지막 장에서는 시작하기 버튼과 같은 일이라 건너뛰기를 숨김 */}
@@ -98,7 +98,7 @@ export function OnboardingDialog({ onClose }: OnboardingDialogProps) {
             <button
               type="button"
               onClick={onClose}
-              className="text-[13px] font-medium text-text-secondary"
+              className="text-[14px] font-medium text-text-secondary"
             >
               건너뛰기
             </button>
@@ -199,7 +199,7 @@ function StepContent({ step, isCurrent }: StepContentProps) {
       {step.legend && (
         <ul className="mt-1 flex flex-wrap justify-center gap-4">
           {step.legend.map(({ label, className }) => (
-            <li key={label} className="flex items-center gap-2 text-[15px] font-semibold">
+            <li key={label} className="flex items-center gap-2 text-[16px] font-semibold">
               <span aria-hidden className={`size-3.5 rounded-full ${className}`} />
               {label}
             </li>

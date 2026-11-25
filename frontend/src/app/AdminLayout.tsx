@@ -37,7 +37,7 @@ export function AdminLayout() {
   // 처음 로그인 상태를 확인하는 중
   if (me.isPending) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-bg-subtle text-sm text-text-secondary">
+      <div className="admin flex min-h-dvh items-center justify-center bg-bg-subtle text-sm text-text-secondary">
         로그인 상태 확인 중…
       </div>
     )
@@ -46,7 +46,7 @@ export function AdminLayout() {
   // 401이 아닌 오류(서버 · 네트워크)는 로그인 여부를 알 수 없어 다시 시도만 안내
   if (me.isError) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-bg-subtle">
+      <div className="admin flex min-h-dvh flex-col items-center justify-center gap-3 bg-bg-subtle">
         <p className="text-sm text-text-secondary">로그인 상태를 확인하지 못했습니다</p>
         <Button variant="secondary" onClick={() => me.refetch()}>
           다시 시도
@@ -63,7 +63,7 @@ export function AdminLayout() {
     })
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg-subtle lg:flex-row">
+    <div className="admin flex min-h-dvh flex-col bg-bg-subtle lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-4 bg-text-primary px-4 py-4 text-text-on-brand lg:sticky lg:top-0 lg:h-dvh lg:w-[232px] lg:gap-8 lg:py-8">
         <div className="flex items-center justify-between lg:block">
           <p className="text-lg font-bold">EV Flow 운영자</p>

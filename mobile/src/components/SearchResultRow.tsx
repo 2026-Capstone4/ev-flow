@@ -31,10 +31,10 @@ export function SearchResultRow({ result, onPress }: SearchResultRowProps) {
       className="min-h-[60px] w-full flex-row items-center gap-3 border-b border-border-default px-4 py-3 active:bg-bg-subtle"
     >
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text numberOfLines={1} className="font-bold text-[15px] text-text-primary">
+        <Text numberOfLines={1} className="font-bold text-[16px] text-text-primary">
           {station.name}
         </Text>
-        <Text numberOfLines={1} className="font-sans text-[13px] text-text-secondary">
+        <Text numberOfLines={1} className="font-sans text-[14px] text-text-secondary">
           {summary}
         </Text>
       </View>

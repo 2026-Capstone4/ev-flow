@@ -11,7 +11,7 @@ export function LicensesPage() {
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <BackButton />
-        <h1 className="text-[17px] font-bold text-text-primary">오픈소스 라이선스</h1>
+        <h1 className="text-[18px] font-bold text-text-primary">오픈소스 라이선스</h1>
       </header>
       <main className="flex-1 overflow-y-auto pb-[calc(24px+env(safe-area-inset-bottom))]">
         <p className="px-4 pt-2 pb-3 text-sm leading-[21px] text-text-secondary">
@@ -28,8 +28,8 @@ export function LicensesPage() {
                 rel="noreferrer"
                 className="flex flex-col gap-0.5 border-t border-border-default px-4 py-3 active:bg-bg-subtle"
               >
-                <span className="text-[15px] font-medium text-text-primary">{item.name}</span>
-                <span className="text-[13px] text-text-secondary">
+                <span className="text-[16px] font-medium text-text-primary">{item.name}</span>
+                <span className="text-[14px] text-text-secondary">
                   {item.version} · {item.license}
                 </span>
               </a>

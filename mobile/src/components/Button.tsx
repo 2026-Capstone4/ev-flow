@@ -32,7 +32,7 @@ export function Button({
         disabled ? 'opacity-50' : ''
       } ${variantClass.box} ${className}`}
     >
-      <Text className={`font-bold text-[15px] ${variantClass.text}`}>{children}</Text>
+      <Text className={`font-bold text-[16px] ${variantClass.text}`}>{children}</Text>
     </Pressable>
   )
 }

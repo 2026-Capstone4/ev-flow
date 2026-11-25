@@ -48,7 +48,7 @@ export function AdminLoginPage() {
     : null
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg-subtle px-4">
+    <div className="admin flex min-h-dvh items-center justify-center bg-bg-subtle px-4">
       <form
         onSubmit={submit}
         className="flex w-full max-w-[360px] flex-col gap-4 rounded-lg border border-border-default bg-bg-page p-6"

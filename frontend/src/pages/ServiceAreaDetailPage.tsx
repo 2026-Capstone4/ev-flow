@@ -44,7 +44,7 @@ export function ServiceAreaDetailPage() {
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <BackButton />
-        <h1 className="text-[17px] font-bold">휴게소 상세</h1>
+        <h1 className="text-[18px] font-bold">휴게소 상세</h1>
       </header>
 
       {serviceArea && chargerGroups ? (
@@ -61,7 +61,7 @@ export function ServiceAreaDetailPage() {
               <UpdateStatus updatedAt={updatedAt} isError={isError} />
             </section>
 
-            <p className="flex gap-2 rounded-sm bg-bg-subtle px-3 py-2.5 text-[13px] text-text-secondary">
+            <p className="flex gap-2 rounded-sm bg-bg-subtle px-3 py-2.5 text-[14px] text-text-secondary">
               <Info aria-hidden size={16} strokeWidth={2} className="mt-px shrink-0" />
               휴게소는 현재 충전기 현황만 보여줘요. 혼잡 예측과 예상 대기는 도심 충전소에서만
               제공해요.
@@ -95,7 +95,7 @@ export function ServiceAreaDetailPage() {
                 <div key={operator} className="flex flex-col gap-2">
                   {/* 운영기관이 하나면 묶음 제목은 생략 */}
                   {chargerGroups.length > 1 && (
-                    <h4 className="text-[13px] font-medium text-text-secondary">{operator}</h4>
+                    <h4 className="text-[14px] font-medium text-text-secondary">{operator}</h4>
                   )}
                   {/* 충전기 번호가 충전소마다 01부터라 충전소별로 상자를 나눠 번호 중복을 구분 */}
                   {stations.map(({ stationId, chargers }) => (

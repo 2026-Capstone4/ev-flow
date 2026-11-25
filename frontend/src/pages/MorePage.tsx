@@ -36,7 +36,7 @@ export function MorePage() {
           <MenuRow label="오픈소스 라이선스" to="/more/licenses" />
         </MenuSection>
 
-        <p className="text-center text-[13px] text-text-secondary">
+        <p className="text-center text-[14px] text-text-secondary">
           대학생 팀 flow가 캡스톤 프로젝트로 만든 서비스예요
         </p>
       </main>

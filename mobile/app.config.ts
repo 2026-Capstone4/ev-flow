@@ -1,8 +1,9 @@
 import type { ExpoConfig } from 'expo/config'
+import { AndroidConfig, withStringsXml, type ConfigPlugin } from 'expo/config-plugins'
 
 /**
  * Expo 앱 설정. app.json 대신 TS로 둬서 나중에 환경 변수(네이버 지도 Client ID 등)를 읽어 넣음
- * 지금은 iOS만 설정함, Android는 docs/app/android-plan.md. 네이티브 폴더(ios/)는 이 설정으로 만들어지므로 직접 고치지 않음
+ * iOS · Android 공용 (Android 진행은 docs/app/android-plan.md). 네이티브 폴더(ios/ · android/)는 이 설정으로 만들어지므로 직접 고치지 않음
  */
 
 /** 네이버 지도 Client ID (mobile/.env.local). 비어 있어도 빌드는 되지만 지도가 회색 격자로만 나옴 */
@@ -12,9 +13,25 @@ const naverMapClientId = process.env.NAVER_MAP_CLIENT_ID ?? ''
 if (!naverMapClientId) {
   console.warn(
     '[app.config] NAVER_MAP_CLIENT_ID가 비어 있어 지도가 뜨지 않습니다. ' +
-      'mobile/.env.local에 넣은 뒤 `expo prebuild --platform ios`부터 다시 빌드하세요',
+      'mobile/.env.local에 넣은 뒤 `expo prebuild`부터 다시 빌드하세요',
   )
 }
+
+/** 홈 화면 아이콘 아래 이름. iOS infoPlist CFBundleDisplayName과 같은 값 */
+const DISPLAY_NAME = 'EV Flow'
+
+/**
+ * Android 홈 화면 이름(strings.xml app_name)을 DISPLAY_NAME으로 바꿈
+ * Expo는 name(EV-flow)을 그대로 넣는데, name은 네이티브 프로젝트 이름에도 쓰여서 그대로 두고 표시 이름만 바꿈
+ */
+const withAndroidDisplayName: ConfigPlugin = (config) =>
+  withStringsXml(config, (stringsConfig) => {
+    stringsConfig.modResults = AndroidConfig.Strings.setStringItem(
+      [{ $: { name: 'app_name' }, _: DISPLAY_NAME }],
+      stringsConfig.modResults,
+    )
+    return stringsConfig
+  })
 
 const config: ExpoConfig = {
   name: 'EV-flow',
@@ -39,10 +56,27 @@ const config: ExpoConfig = {
     supportsTablet: false,
     infoPlist: {
       // 설치했을 때 홈 화면 아이콘 아래 이름. name(EV-flow)은 ios 폴더 · 프로젝트 이름(EVflow)에 쓰여서 그대로 두고 표시 이름만 바꿈
-      CFBundleDisplayName: 'EV Flow',
+      CFBundleDisplayName: DISPLAY_NAME,
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
       LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
     },
+  },
+  android: {
+    // iOS 번들 ID와 같은 값. NCP 콘솔에 등록한 패키지 이름과 같아야 지도 인증이 되고, Play에 올리면 못 바꿈
+    package: 'app.evflowkr.evflow',
+    // Play에 올리는 빌드 번호. iOS buildNumber처럼 올릴 때마다 1씩 올림
+    versionCode: 1,
+    // 런처마다 원 · 둥근 사각형으로 잘라 그리는 아이콘. 앞 그림 원본은 assets/adaptive-icon.svg, 바탕은 icon.svg와 같은 파랑
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#3B63E4',
+    },
+    // Expo 템플릿이 기본으로 넣는 권한 중 쓰지 않는 것. 저장소 · 다른 앱 위에 그리기 권한은 Play 데이터 보안 양식 · 심사에서 이유를 물음
+    blockedPermissions: [
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+    ],
   },
   plugins: [
     'expo-router',
@@ -64,9 +98,18 @@ const config: ExpoConfig = {
     // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)
     'expo-sqlite',
     [
+      'expo-build-properties',
+      {
+        android: {
+          // 네이버 지도 Android SDK(com.naver.maps:map-sdk)는 Maven Central에 없어 네이버 저장소를 더함 (없으면 Gradle이 못 받아 빌드 실패)
+          extraMavenRepos: ['https://repository.map.naver.com/archive/maven'],
+        },
+      },
+    ],
+    [
       '@mj-studio/react-native-naver-map',
       {
-        // 웹과 같은 NCP Client ID (docs/app/README.md 7번). 앱 Info.plist의 NMFNcpKeyId로 들어감
+        // 웹과 같은 NCP Client ID (docs/app/README.md 7번). iOS는 Info.plist NMFNcpKeyId, Android는 manifest com.naver.maps.map.NCP_KEY_ID로 들어감
         // 공개 값이지만 저장소에 적지 않고 mobile/.env.local에서 읽음. 바꾸면 네이티브 빌드를 다시 해야 함
         client_id: naverMapClientId,
       },
@@ -92,4 +135,4 @@ const config: ExpoConfig = {
   },
 }
 
-export default config
+export default withAndroidDisplayName(config)

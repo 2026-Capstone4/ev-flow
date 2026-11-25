@@ -14,7 +14,7 @@ export function DirectionSelector({ value, onChange }: DirectionSelectorProps) {
     <div
       role="radiogroup"
       aria-label="방향"
-      className="flex h-10 w-full gap-1 rounded-md bg-bg-subtle p-1"
+      className="flex h-11 w-full gap-1 rounded-md bg-bg-subtle p-1"
     >
       {OPTIONS.map((option) => {
         const isSelected = option === value
@@ -25,7 +25,7 @@ export function DirectionSelector({ value, onChange }: DirectionSelectorProps) {
             role="radio"
             aria-checked={isSelected}
             onClick={() => onChange(option)}
-            className={`flex-1 rounded-sm text-sm ${
+            className={`flex-1 rounded-sm text-[16px] ${
               isSelected
                 ? 'bg-bg-page font-bold text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.1)]'
                 : 'font-medium text-text-secondary'

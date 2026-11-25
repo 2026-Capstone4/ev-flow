@@ -37,7 +37,7 @@ export default function ServiceAreaRouteScreen() {
     <View className="flex-1 bg-bg-subtle" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">고속도로 휴게소</Text>
+        <Text className="font-bold text-[18px] text-text-primary">고속도로 휴게소</Text>
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pt-1 pb-6">
@@ -50,7 +50,7 @@ export default function ServiceAreaRouteScreen() {
           </View>
           {/* 노선 전체(두 방향 합계) 숫자는 목록을 받은 뒤에만 */}
           {areaCount !== undefined && (
-            <Text className="font-sans text-[13px] text-text-secondary">
+            <Text className="font-sans text-[14px] text-text-secondary">
               휴게소 {areaCount}곳 · 사용 가능 {availableChargers}기
             </Text>
           )}
@@ -71,7 +71,7 @@ export default function ServiceAreaRouteScreen() {
           </Text>
         </View>
         {heading && origin && (
-          <Text className="px-1 font-sans text-[13px] text-text-secondary">
+          <Text className="px-1 font-sans text-[14px] text-text-secondary">
             {origin} → {heading} 순서
           </Text>
         )}

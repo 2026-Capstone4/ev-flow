@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Android adaptive icon 앞 그림. 바탕은 app.config.ts backgroundColor(#3B63E4)라 투명으로 둠 -->
+  <!-- 기기마다 원 · 둥근 사각형으로 잘려서 가운데 지름 61%(108dp 중 66dp) 원 안에 들어가게 icon.svg 그림을 0.75배로 줄임 -->
+  <g transform="translate(512,512) scale(0.75) translate(-512,-512)">
+    <g transform="translate(-10,0)">
+      <path d="M240 322V702M240 322H470M240 512H420M240 702H470" stroke="#FFFFFF" stroke-width="88" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path transform="translate(383,213) scale(5)" d="M70 16L36 66H60L52 106L90 50H64Z" fill="#FFD43B" stroke="#FFD43B" stroke-width="10" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

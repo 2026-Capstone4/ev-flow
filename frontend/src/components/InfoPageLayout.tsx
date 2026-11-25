@@ -35,11 +35,11 @@ export function InfoPageLayout({ title, description, children }: InfoPageLayoutP
           <p className="text-sm font-bold text-brand-primary">{SERVICE_NAME}</p>
           <h1 className="text-[24px] leading-tight font-bold">{title}</h1>
           {description && (
-            <p className="text-[15px] leading-relaxed text-text-secondary">{description}</p>
+            <p className="text-[16px] leading-relaxed text-text-secondary">{description}</p>
           )}
         </header>
         <main className="flex flex-col gap-8">{children}</main>
-        <footer className="flex flex-col gap-2 border-t border-border-default pt-6 text-[13px] text-text-secondary">
+        <footer className="flex flex-col gap-2 border-t border-border-default pt-6 text-[14px] text-text-secondary">
           <nav aria-label="안내 페이지" className="flex gap-4">
             <Link to={SUPPORT_PATH} className="font-medium text-text-primary underline">
               지원
@@ -70,7 +70,7 @@ export function InfoSection({ title, children }: InfoSectionProps) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-[18px] font-bold">{title}</h2>
-      <div className="flex flex-col gap-3 text-[15px] leading-relaxed">{children}</div>
+      <div className="flex flex-col gap-3 text-[16px] leading-relaxed">{children}</div>
     </section>
   )
 }
