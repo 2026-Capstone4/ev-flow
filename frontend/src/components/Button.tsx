@@ -18,7 +18,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center rounded-md px-4 py-3 text-[15px] font-bold disabled:opacity-50 ${VARIANT_CLASS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-md px-4 py-3 text-[16px] font-bold admin:text-[15px] disabled:opacity-50 ${VARIANT_CLASS[variant]} ${className}`}
       {...props}
     />
   )

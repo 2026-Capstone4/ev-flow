@@ -80,7 +80,7 @@ export function StationFilterOptions({ filters, onChange }: StationFilterOptions
 export function FilterRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex w-full items-start gap-2">
-      <span className="w-14 shrink-0 py-1.5 text-[13px] font-medium text-text-secondary">
+      <span className="w-[62px] shrink-0 py-1.5 text-[14px] font-medium text-text-secondary">
         {label}
       </span>
       <div className="flex flex-wrap gap-2">{children}</div>

@@ -38,6 +38,11 @@
   /* 상세 예측 칸의 'AI 예측' 글자. 혼잡도 · 브랜드 파랑 · 충전 중 남색과 겹치지 않는 보라 */
   --color-ai: #7c3aed;
 
+  /* 사용자 화면 글자 크기는 앱과 같이 네이버 지도 앱과 비슷하게 맞춤 (검색창 17 · 칩 14 · 목록 제목 16 · 보조 글 14 · 작은 정보 13)
+     sm · base · lg는 Tailwind 기본값 그대로, 작은 정보에 쓰는 xs만 12 → 13으로 키움. 운영자 화면은 아래 .admin에서 되돌림 */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: calc(1.125 / 0.8125);
+
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -64,6 +69,15 @@
       transform: translateY(100%);
     }
   }
+}
+
+/* 운영자 화면(AdminLayout · AdminLoginPage 맨 바깥에 admin 클래스)은 글자 크기를 키우기 전 그대로 둠
+   같이 쓰는 컴포넌트(FilterChip · Button)는 admin: 변형으로 예전 크기를 지정함 */
+@custom-variant admin (&:where(.admin, .admin *));
+
+.admin {
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
 }
 
 html,

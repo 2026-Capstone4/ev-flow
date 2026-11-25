@@ -68,16 +68,16 @@ export function SearchPage() {
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex shrink-0 items-center gap-2 px-4 py-2">
         <BackButton />
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-bg-subtle px-3.5 py-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-bg-subtle px-3.5 py-3">
           <input
             // 검색창을 눌러 들어온 화면이라 바로 입력할 수 있게 함
             autoFocus
             type="search"
             value={query}
             onChange={(event) => changeQuery(event.target.value)}
-            placeholder="충전소 이름·주소 검색"
+            placeholder="충전소 이름 · 주소 검색"
             aria-label="충전소 검색"
-            className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:font-normal placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
+            className="min-w-0 flex-1 bg-transparent text-[17px] font-medium outline-none placeholder:font-normal placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
             <button
@@ -114,7 +114,7 @@ export function SearchPage() {
       <main className="flex-1 overflow-y-auto">
         {results && visibleResults ? (
           <>
-            <p className="px-4 pt-4 pb-1 text-[13px] font-medium text-text-secondary">
+            <p className="px-4 pt-4 pb-1 text-[14px] font-medium text-text-secondary">
               검색 결과 {results.length}곳 ·{' '}
               {horizon === 0 ? '지금 기준' : `${horizon}분 후 예측 기준`}
             </p>
@@ -147,7 +147,7 @@ export function SearchPage() {
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 pt-12 pb-6 text-center">
                 <p className="text-base font-bold">조건에 맞는 충전소가 없어요</p>
-                <p className="text-[13px] text-text-secondary">
+                <p className="text-[14px] text-text-secondary">
                   필터를 줄이거나 다른 지역 이름으로 검색해 보세요.
                 </p>
                 {!isDefaultFilters(filters) && (

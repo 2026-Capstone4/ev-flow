@@ -50,10 +50,10 @@ export function RecommendCard({
         className="flex size-full flex-col gap-2 rounded-lg border border-border-default bg-bg-page p-4 text-left"
       >
         <div className="flex w-full items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary text-[13px] font-bold text-text-on-brand">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary text-[15px] font-bold text-text-on-brand">
             {rank}
           </span>
-          <h3 className="min-w-0 flex-1 truncate text-base font-bold">{station.name}</h3>
+          <h3 className="min-w-0 flex-1 truncate text-[16.5px] font-bold">{station.name}</h3>
           {/* 옆 길찾기 버튼과 같은 높이(36px)로 키움 */}
           <CongestionBadge congestion={congestion} size="large" className="h-9" />
           {/* 길찾기 버튼이 올라갈 자리. 혼잡도 태그가 버튼 바로 왼쪽에 오게 비워 둠 */}
@@ -61,7 +61,7 @@ export function RecommendCard({
         </div>
         {/* 아래 추천 이유 글과 시작 위치를 맞추려고 같은 좌우 여백(px-3)을 줌 */}
         <p className="w-full truncate px-3 text-sm text-text-primary">{summary}</p>
-        <p className="w-full truncate rounded-sm bg-brand-primary-bg px-3 py-2 text-[13px] font-medium text-brand-primary">
+        <p className="w-full truncate rounded-sm bg-brand-primary-bg px-3 py-2 text-[14px] font-medium text-brand-primary">
           {reason}
         </p>
       </button>
@@ -73,7 +73,7 @@ export function RecommendCard({
           aria-label={`${station.name} 길찾기`}
           // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함
           // 첫 줄과 위치를 맞춤. 카드 테두리 1px + 안쪽 여백 16px
-          className={`absolute top-[17px] right-[17px] flex h-9 items-center justify-center rounded-sm bg-brand-primary text-[13px] font-bold text-text-on-brand ${ROUTE_BUTTON_WIDTH_CLASS}`}
+          className={`absolute top-[17px] right-[17px] flex h-9 items-center justify-center rounded-sm bg-brand-primary text-[15px] font-bold text-text-on-brand ${ROUTE_BUTTON_WIDTH_CLASS}`}
         >
           길찾기
         </button>

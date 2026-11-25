@@ -30,8 +30,8 @@ export function SearchResultRow({ result, onClick }: SearchResultRowProps) {
       className="flex min-h-[60px] w-full items-center gap-3 border-b border-border-default px-4 py-3 text-left"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-[15px] font-bold">{station.name}</span>
-        <span className="truncate text-[13px] text-text-secondary">{summary}</span>
+        <span className="truncate text-[16px] font-bold">{station.name}</span>
+        <span className="truncate text-[14px] text-text-secondary">{summary}</span>
       </div>
       <CongestionBadge congestion={prediction?.congestion ?? null} />
     </button>

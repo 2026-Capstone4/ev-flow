@@ -33,7 +33,7 @@ export function ServiceAreaCard({ serviceArea, onClick }: ServiceAreaCardProps) 
         </span>
         <span className="text-sm text-text-secondary">/ 급속 {totalChargers}기</span>
       </p>
-      {summary && <p className="text-[13px] text-text-secondary">{summary}</p>}
+      {summary && <p className="text-[14px] text-text-secondary">{summary}</p>}
     </button>
   )
 }

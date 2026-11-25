@@ -11,7 +11,7 @@ type MenuSectionProps = {
 export function MenuSection({ title, children }: MenuSectionProps) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-[13px] font-semibold text-text-secondary">{title}</h2>
+      <h2 className="px-1 text-[14px] font-semibold text-text-secondary">{title}</h2>
       <div className="overflow-hidden rounded-lg bg-bg-page">{children}</div>
     </section>
   )
@@ -50,7 +50,7 @@ export function MenuRow({
     <>
       {/* 강조할 줄은 파란 굵은 글자, 나머지는 기본 글자 */}
       <span
-        className={`flex-1 text-[15px] ${
+        className={`flex-1 text-[16px] ${
           isHighlighted ? 'font-bold text-brand-primary' : 'font-medium text-text-primary'
         }`}
       >
@@ -58,7 +58,7 @@ export function MenuRow({
       </span>
       {/* 값이 있으면 값만, 누를 수 있는 줄이면 화살표를 붙임 */}
       {value !== undefined ? (
-        <span className="text-[15px] text-text-secondary">{value}</span>
+        <span className="text-[16px] text-text-secondary">{value}</span>
       ) : (
         <ChevronRight aria-hidden size={20} strokeWidth={2} className="text-text-secondary" />
       )}

@@ -100,7 +100,7 @@ export function WaitRangeBar({ p50, p90 }: WaitRangeBarProps) {
         })}
       </div>
       {/* 눈금과 대기 시작 · 끝 글자를 한 줄에 두어 글자 높이를 맞춤 */}
-      <div className="relative h-4 text-[11px] text-text-secondary" aria-hidden>
+      <div className="relative h-4 text-[12px] text-text-secondary" aria-hidden>
         {TICKS.map((tick) =>
           // 대기 시작 · 끝 글자와 가까운 눈금은 그리지 않음
           labelPositions.some(

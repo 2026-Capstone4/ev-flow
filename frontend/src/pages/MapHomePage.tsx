@@ -325,7 +325,7 @@ export function MapHomePage() {
             </button>
             <div ref={setSheetHeader} className="flex w-full items-center justify-between">
               {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
-              <h2 className="flex items-center gap-1.5 text-[17px] font-bold">
+              <h2 className="flex items-center gap-1.5 text-[18px] font-bold">
                 <span aria-hidden className="size-2.5 rounded-full bg-marker-recommended" />
                 추천 충전소
               </h2>
@@ -381,7 +381,7 @@ export function MapHomePage() {
                   ))}
               {/* 후보가 3곳 미만이면 짧은 배열로 옴 (UC-U06 E1) */}
               {recommendations && recommendations.length < 3 && (
-                <li className="text-center text-[13px] text-text-secondary">
+                <li className="text-center text-[14px] text-text-secondary">
                   조건에 맞는 후보가 {recommendations.length}곳뿐이에요
                 </li>
               )}
