@@ -5,6 +5,7 @@
 - 브랜치 · 커밋 · PR 규칙: [docs/conventions/git.md](docs/conventions/git.md)
 - 주석 · 이름 짓기 · 에디터 공통 규칙: [docs/conventions/code-common.md](docs/conventions/code-common.md)
 - 파트별 코드 규칙: [frontend](docs/conventions/frontend.md) · [backend](docs/conventions/backend.md) · [ml](docs/conventions/ml.md)
+- 앱(`mobile/`) 실행 · 빌드 · 환경 변수: [docs/app/README.md](docs/app/README.md)
 
 ## 작업 순서
 
@@ -63,6 +64,7 @@ git merge origin/develop
 ## PR 올리기 전 확인
 
 - [ ] 로컬에서 동작 확인 (파트별 린트 · 빌드 · 테스트)
+  - 웹 · 앱 · 공용 코드는 저장소 루트에서 `pnpm install` 후 `pnpm lint` · `pnpm format:check` · `pnpm typecheck` · `pnpm test` (웹 · 앱 · core를 모두 검사)
 - [ ] `.env` · API 키 · 데이터 · 모델 파일 미포함
 - [ ] PR 제목이 커밋 형식을 따름
 - [ ] 결정이나 규칙을 바꿨다면 `docs/` 반영

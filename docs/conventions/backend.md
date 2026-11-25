@@ -17,7 +17,7 @@
 | 항목 | 설정 |
 |---|---|
 | Python | ✅ 3.11 |
-| 패키지 관리 | ⏳ `BE-04` |
+| 패키지 관리 | ✅ `requirements.txt` + pip (`BE-04`) — 개발용은 `requirements-dev.txt` |
 | 포맷 · 린트 | ✅ Ruff — 설정 `ruff.toml` (`BE-05`) |
 | ASGI 서버 | ✅ Uvicorn 단독 (워커 1개) — EC2 RAM 2GB 제약 고려 |
 | ORM · 마이그레이션 | ✅ SQLAlchemy 2.0 + Alembic |
