@@ -62,12 +62,12 @@ export function RecommendCard({ recommendation, onPress, onRoutePress }: Recomme
             // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함 (웹 w-16)
             className="h-9 w-16 items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
           >
-            <Text className="font-bold text-[15px] text-text-on-brand">길찾기</Text>
+            <Text className="font-bold text-[14px] text-text-on-brand">길찾기</Text>
           </Pressable>
         )}
       </View>
       {/* 아래 추천 이유 글과 시작 위치를 맞추려고 같은 좌우 여백(px-3)을 줌 */}
-      <Text numberOfLines={1} className="w-full px-3 font-sans text-sm text-text-primary">
+      <Text numberOfLines={1} className="w-full px-3 font-sans text-[15px] text-text-primary">
         {summary}
       </Text>
       <View className="w-full rounded-sm bg-brand-primary-bg px-3 py-2">

@@ -60,7 +60,7 @@ export function RecommendCard({
           {onRouteClick && <span aria-hidden className={`shrink-0 ${ROUTE_BUTTON_WIDTH_CLASS}`} />}
         </div>
         {/* 아래 추천 이유 글과 시작 위치를 맞추려고 같은 좌우 여백(px-3)을 줌 */}
-        <p className="w-full truncate px-3 text-sm text-text-primary">{summary}</p>
+        <p className="w-full truncate px-3 text-[15px] text-text-primary">{summary}</p>
         <p className="w-full truncate rounded-sm bg-brand-primary-bg px-3 py-2 text-[14px] font-medium text-brand-primary">
           {reason}
         </p>
@@ -73,7 +73,7 @@ export function RecommendCard({
           aria-label={`${station.name} 길찾기`}
           // 혼잡도 태그와 높이 · 모서리 · 글자 크기를 맞추고 색만 채워 버튼임을 구분함
           // 첫 줄과 위치를 맞춤. 카드 테두리 1px + 안쪽 여백 16px
-          className={`absolute top-[17px] right-[17px] flex h-9 items-center justify-center rounded-sm bg-brand-primary text-[15px] font-bold text-text-on-brand ${ROUTE_BUTTON_WIDTH_CLASS}`}
+          className={`absolute top-[17px] right-[17px] flex h-9 items-center justify-center rounded-sm bg-brand-primary text-[14px] font-bold text-text-on-brand ${ROUTE_BUTTON_WIDTH_CLASS}`}
         >
           길찾기
         </button>
