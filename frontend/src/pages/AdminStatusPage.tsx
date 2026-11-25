@@ -248,8 +248,8 @@ export function AdminStatusPage() {
           label="데이터 수집"
           value={data.collectionHealth && <CollectionHealthLabel health={data.collectionHealth} />}
           caption={
-            data.imputed
-              ? `오늘 결측 대체 예측 ${data.imputed.imputedCount.toLocaleString('ko-KR')}건`
+            data.missingToday
+              ? `오늘 결측 ${data.missingToday.missingCount.toLocaleString('ko-KR')}건 · 결측률 ${formatPercent(data.missingToday.missingRate, 1)}`
               : undefined
           }
         />

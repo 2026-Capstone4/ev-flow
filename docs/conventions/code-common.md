@@ -114,8 +114,8 @@
 저장소는 **public**이므로 코드와 커밋 이력이 모두 공개된다.
 
 - **API 키 · 비밀번호 · 토큰 · 인증서 · `.env`를 커밋하지 않는다.**
-- 실제 값은 로컬 `.env`(커밋 금지)와 GitHub Secrets에만 둔다.
-- 저장소에는 변수 이름과 설명만 담은 `.env.example`을 커밋한다.
+- 실제 값은 로컬 `.env` · `.env.local`(커밋 금지)과 서버 `backend/.env`에만 둔다. GitHub Secrets는 쓰지 않는다 (CI는 비밀값 없이 검사).
+- 저장소에는 변수 이름과 설명만 담은 `.env.example`을 파트별로 커밋한다 (`frontend/` · `backend/` · `mobile/`).
 
   ```bash
   # 네이버 지도 JavaScript API Client ID (NCP 콘솔 > Maps > Application)

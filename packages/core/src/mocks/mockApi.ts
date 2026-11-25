@@ -18,7 +18,7 @@ export type MockResponse<T = unknown> = {
 
 /**
  * 추천에 쓸 충전소 목록을 넘겨주는 함수 모양
- * 전체 Mock은 Mock 충전소를, 혼합 모드는 실제 서버 충전소를 돌려줌. 못 가져오면 null
+ * 웹 Mock은 Mock 충전소를 돌려줌. 못 가져오면 null
  */
 export type StationSource = () => Promise<Station[] | null>
 
@@ -63,7 +63,7 @@ export function createMockRateLimit(limit = MOCK_RATE_LIMIT) {
 }
 
 /**
- * 추천 API(POST /recommendations) Mock 응답을 만든다. 백엔드에 아직 없어 혼합 모드에서도 씀
+ * 추천 API(POST /recommendations) Mock 응답을 만든다
  * 충전소 목록을 어디서 가져올지(getStations)와 호출 제한 검사만 바꿔 끼움
  */
 export async function respondRecommendations(

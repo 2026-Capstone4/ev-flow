@@ -95,11 +95,3 @@ export type MissingStatsResponse = {
   to: string
   series: MissingBucket[]
 }
-
-export type ImputedCountResponse = {
-  period: AdminPeriod
-  from: string
-  to: string
-  imputedCount: number
-  totalCount: number
-}

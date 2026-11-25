@@ -11,7 +11,7 @@
 - [11. 충전기 목록 — `GET /admin/chargers`](#11-충전기-목록--get-adminchargers)
 - [12. 수집 상태 — `GET /admin/collection-status`](#12-수집-상태--get-admincollection-status)
 - [13. 결측 현황 — `GET /admin/missing-stats`](#13-결측-현황--get-adminmissing-stats)
-- [14. 결측 대체 예측 건수 — `GET /admin/imputed-count`](#14-결측-대체-예측-건수--get-adminimputed-count)
+- [14. 결측 대체 예측 건수 — `GET /admin/imputed-count`](#14-결측-대체-예측-건수--get-adminimputed-count) (만들지 않음)
 
 ---
 
@@ -200,6 +200,8 @@
 ---
 
 ## 14. 결측 대체 예측 건수 — `GET /admin/imputed-count`
+
+> **만들지 않음 (2026-11-25)** — 결측 대체를 사실상 하기 어려워 대시보드에 나타내지 않기로 함. 운영 현황 카드는 13번 결측 현황의 오늘 결측 건수 · 결측률을 보여 주고, 데이터 수집 화면의 결측 대체 칸은 지움. 아래는 처음 설계 기록.
 
 결측 대체가 적용된 예측 건수 (ADM-006). 예측은 도심만이라 `region`이 없다. ⏳ `prediction_log` 테이블 추가 후. 결측 구간은 ml이 대체값을 채워 예측한다 (UC-S02 2a).
 

@@ -8,6 +8,10 @@
 |---|---|---|
 | [decisions.md](decisions.md) | 확정된 결정과 이유, 결정 변경 이력 | 김무겸 (각 파트 결정은 담당자 추가) |
 | [open-questions.md](open-questions.md) | 미확정 사항 — 우선순위 · 담당 · 선택지 | 전원 |
+| [prediction.md](prediction.md) | 예측 파이프라인 — 수집 직후 예측 요청 · Redis 저장 · 읽기 | 장승민 |
+| [app/README.md](app/README.md) | 사용자 앱(`mobile/`) 지금 상태 · 실행 · 빌드 | 김무겸 |
+| [app/android-plan.md](app/android-plan.md) | 앱 안드로이드 계획 · 진행 기록 | 김무겸 |
+| [app/migration-log.md](app/migration-log.md) | 웹 → iOS 앱 전환 0~6단계 기록 (보관용) | 김무겸 |
 | [database.md](database.md) | DB 테이블 · 컬럼 · 코드표 · 데이터 사용 시 주의 | 장승민 |
 | [api/README.md](api/README.md) | API 명세 — 공통 규약 · 엔드포인트 (사용자 · 운영자) | 장승민 |
 | [setup/repository.md](setup/repository.md) | 저장소 초기 세팅 순서 | 장승민 |
@@ -28,9 +32,13 @@ docs/
 ├── decisions.md         # 무엇을 왜 정했는지
 ├── open-questions.md    # 아직 정해야 할 것
 ├── database.md          # DB 구조 · 코드표
+├── prediction.md        # 예측 파이프라인
+├── app/                 # 사용자 앱 — 지금 상태 · 안드로이드 계획 · 전환 기록
 ├── setup/               # 환경 · 저장소 세팅 가이드
 ├── conventions/         # 코드 · 협업 규칙
 ├── api/                 # API 명세 — 공통 규약 · 사용자 · 운영자
+├── diagrams/            # 시퀀스 다이어그램 초기 설계본 (draw.io, 10/27)
+├── diagrams_new/        # 지금 기준 구성도 · 시퀀스 다이어그램 (draw.io, 11/25)
 └── meetings/            # (필요 시) 회의록
 ```
 

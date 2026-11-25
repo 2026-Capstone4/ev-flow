@@ -14,7 +14,7 @@ from app.schemas.admin import (
 from app.services import admin as admin_service
 
 # 운영자 대시보드 10~13번 (docs/api/admin.md) - 전부 로그인 필요, 쿠키가 없거나 만료면 401 UNAUTHORIZED.
-# region · period가 목록에 없는 값이면 422 VALIDATION_ERROR. 14번 imputed-count는 모델 연동(prediction_log) 뒤
+# region · period가 목록에 없는 값이면 422 VALIDATION_ERROR. 14번 imputed-count는 만들지 않기로 함 (2026-11-25)
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 

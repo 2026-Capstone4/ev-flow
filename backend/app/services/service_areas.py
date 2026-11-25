@@ -28,6 +28,54 @@ DIRECTIONS = {"상행": "up", "하행": "down"}
 DB_DIRECTIONS = {v: k for k, v in DIRECTIONS.items()}
 
 
+# 이중 등록 판정 거리 - 짝은 좌표가 소수 6자리 반올림만 달라(약 0.1m) 약 10m 안이면 같은 곳으로 봄
+TWIN_DEGREES = 1e-4
+
+
+def duplicate_registrations(
+    stations: list[ServiceAreaStation],
+    twins: list[ServiceAreaStation],
+    states: dict[str, list[ChargerState]],
+) -> set[str]:
+    """현대엔지니어링(HY)이 현대자동차(HD) 충전기를 한 번 더 등록한 statId.
+    E-pit 19곳은 같은 좌표에 충전기 수 · 용량이 HD 짝과 똑같고 상태가 늘 확인 불가(stat 9)라 빼야 함 - 실제 상태는 HD로 들어옴.
+    짝이 없는 HY(양평 용문 HY000160)는 상태가 정상으로 들어오므로 남김"""
+
+    def capacities(station_id: str) -> list[int | float]:
+        return sorted(c.capacity_kw for c in states.get(station_id, []))
+
+    def is_twin(s: ServiceAreaStation, t: ServiceAreaStation) -> bool:
+        if None in (s.lat, s.lng, t.lat, t.lng):
+            return False
+        return (
+            abs(s.lat - t.lat) < TWIN_DEGREES
+            and abs(s.lng - t.lng) < TWIN_DEGREES
+            and capacities(s.station_id) == capacities(t.station_id)
+        )
+
+    hd = [t for t in twins if t.station_id.startswith("HD")]
+    return {
+        s.station_id
+        for s in stations
+        if s.station_id.startswith("HY")
+        and states.get(s.station_id)
+        and any(is_twin(s, t) for t in hd)
+    }
+
+
+def without_duplicates(
+    db: Session, stations: list[ServiceAreaStation], states: dict[str, list[ChargerState]]
+) -> list[ServiceAreaStation]:
+    """이중 등록(duplicate_registrations)을 뺀 충전소 - 짝(HD)이 stations에 없을 수 있어 HD는 따로 읽음"""
+    if not any(s.station_id.startswith("HY") for s in stations):
+        return stations
+    twins = db.scalars(
+        select(ServiceAreaStation).where(ServiceAreaStation.station_id.startswith("HD"))
+    ).all()
+    duplicates = duplicate_registrations(stations, twins, states)
+    return [s for s in stations if s.station_id not in duplicates]
+
+
 def representative(
     stations: list[ServiceAreaStation], states: dict[str, list[ChargerState]]
 ) -> ServiceAreaStation:
@@ -246,6 +294,7 @@ def get_nationwide_service_areas(db: Session) -> NationwideServiceAreasResponse:
     stations = db.scalars(
         select(ServiceAreaStation).where(ServiceAreaStation.station_id.in_(list(states)))
     ).all()
+    stations = without_duplicates(db, stations, states)
     return NationwideServiceAreasResponse(
         updated_at=run.started_at,
         data_quality=elapsed_quality(run.started_at, now),
@@ -270,7 +319,7 @@ def get_nationwide_service_area_chargers(
     run = latest_success_run(db, "service_area")
     now = datetime.now(UTC)
     states = load_charger_states(db, ServiceAreaCharger, ServiceAreaStatusLog, run, now)
-    stations = [s for s in stations if states.get(s.station_id)]
+    stations = without_duplicates(db, [s for s in stations if states.get(s.station_id)], states)
     if not stations:
         raise ApiError(404, "SERVICE_AREA_NOT_FOUND", "휴게소를 찾을 수 없습니다.")
     chargers = [
