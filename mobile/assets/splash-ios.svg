@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- iOS 스플래시 그림. 바탕은 app.config.ts 스플래시 backgroundColor(#3B63E4)와 같은 파랑 -->
+  <!-- icon.svg의 흰 E + 노란 번개를 위쪽에 두고 아래에 앱 이름을 적음 -->
+  <!-- 앱 이름 글꼴은 앱 화면과 같은 Pretendard SemiBold (mobile/node_modules/pretendard) -->
+  <style>@font-face { font-family: 'Pretendard'; font-weight: 600; src: url('../node_modules/pretendard/dist/public/static/Pretendard-SemiBold.otf'); }</style>
+  <rect width="1024" height="1024" fill="#3B63E4"/>
+  <g transform="translate(512,430) scale(0.62) translate(-510,-518)">
+    <g transform="translate(-10,0)">
+      <path d="M240 322V702M240 322H470M240 512H420M240 702H470" stroke="#FFFFFF" stroke-width="88" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path transform="translate(383,213) scale(5)" d="M70 16L36 66H60L52 106L90 50H64Z" fill="#FFD43B" stroke="#FFD43B" stroke-width="10" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="512" y="820" text-anchor="middle" font-family="Pretendard" font-size="128" font-weight="600" letter-spacing="2" fill="#FFFFFF">EV Flow</text>
+</svg>
