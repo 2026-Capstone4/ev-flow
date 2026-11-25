@@ -1,5 +1,12 @@
 import type { ExpoConfig } from 'expo/config'
-import { AndroidConfig, withStringsXml, type ConfigPlugin } from 'expo/config-plugins'
+import {
+  AndroidConfig,
+  CodeGenerator,
+  withAndroidManifest,
+  withAppBuildGradle,
+  withStringsXml,
+  type ConfigPlugin,
+} from 'expo/config-plugins'
 
 /**
  * Expo 앱 설정. app.json 대신 TS로 둬서 나중에 환경 변수(네이버 지도 Client ID 등)를 읽어 넣음
@@ -33,6 +40,79 @@ const withAndroidDisplayName: ConfigPlugin = (config) =>
     return stringsConfig
   })
 
+/** 길찾기 안내에 쓰는 지도 앱 URL Scheme (네이버 지도 · 카카오맵). src/lib/openMapApp.ts가 설치 여부를 확인함 */
+const MAP_APP_SCHEMES = ['nmap', 'kakaomap']
+
+/**
+ * Android manifest queries에 지도 앱 scheme을 적음. iOS LSApplicationQueriesSchemes와 같은 역할
+ * Android 11+는 여기 없는 앱을 볼 수 없어서 지도 앱이 깔려 있어도 canOpenURL이 false. Expo 설정에 칸이 없어 직접 넣음
+ */
+const withAndroidMapAppQueries: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (manifestConfig) => {
+    const { manifest } = manifestConfig.modResults
+    const queries = manifest.queries ?? []
+    const listed = JSON.stringify(queries)
+    // prebuild를 다시 돌려도 같은 scheme이 두 번 들어가지 않게 없는 것만 더함
+    const intents = MAP_APP_SCHEMES.filter(
+      (scheme) => !listed.includes(`"android:scheme":"${scheme}"`),
+    ).map((scheme) => ({
+      action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+      data: [{ $: { 'android:scheme': scheme } }],
+    }))
+    // 더할 scheme이 있을 때만 queries 묶음 하나를 추가
+    if (intents.length > 0) manifest.queries = [...queries, { intent: intents }]
+    return manifestConfig
+  })
+
+/** Expo 템플릿의 release 서명 줄. 디버그 키로 서명하게 되어 있어 업로드 키로 바꿈 */
+const TEMPLATE_RELEASE_SIGNING =
+  /(\/\/ see https:\/\/reactnative\.dev\/docs\/signed-apk-android\.\n\s*)signingConfig signingConfigs\.debug/
+
+/**
+ * Android release 빌드를 Play 업로드 키로 서명함 (docs/app/android-plan.md 5단계)
+ * 키 파일 경로 · 별칭 · 비밀번호는 저장소 밖 ~/.gradle/gradle.properties의 EVFLOW_UPLOAD_* 값에서 읽음
+ * 값이 없는 컴퓨터는 지금처럼 디버그 키로 서명함. 디버그 키 빌드는 Play가 받지 않아 잘못 올라갈 일은 없음
+ */
+const withAndroidReleaseSigning: ConfigPlugin = (config) =>
+  withAppBuildGradle(config, (gradleConfig) => {
+    let contents = gradleConfig.modResults.contents
+    // signingConfigs 안에 업로드 키 release 항목을 더함. prebuild를 다시 돌려도 tag로 한 번만 들어감
+    contents = CodeGenerator.mergeContents({
+      src: contents,
+      newSrc: [
+        '        release {',
+        "            if (findProperty('EVFLOW_UPLOAD_STORE_FILE')) {",
+        // 키 파일 경로만 있고 별칭 · 비밀번호가 빠지면 Gradle이 원인을 알기 어려운 오류를 냄 → 빠진 이름을 알려 주고 멈춤
+        "                def missing = ['EVFLOW_UPLOAD_KEY_ALIAS', 'EVFLOW_UPLOAD_STORE_PASSWORD', 'EVFLOW_UPLOAD_KEY_PASSWORD'].findAll { !findProperty(it) }",
+        '                if (!missing.isEmpty()) {',
+        '                    throw new GradleException("~/.gradle/gradle.properties에 업로드 키 값이 비어 있음: ${missing.join(\', \')}")',
+        '                }',
+        "                storeFile file(findProperty('EVFLOW_UPLOAD_STORE_FILE'))",
+        "                storePassword findProperty('EVFLOW_UPLOAD_STORE_PASSWORD')",
+        "                keyAlias findProperty('EVFLOW_UPLOAD_KEY_ALIAS')",
+        "                keyPassword findProperty('EVFLOW_UPLOAD_KEY_PASSWORD')",
+        '            }',
+        '        }',
+      ].join('\n'),
+      tag: 'evflow-release-signing-config',
+      anchor: /signingConfigs \{/,
+      offset: 1,
+      comment: '//',
+    }).contents
+    // 이미 바꾼 파일(prebuild 다시 돌림)이면 템플릿 줄이 없어서 그대로 둠
+    if (TEMPLATE_RELEASE_SIGNING.test(contents)) {
+      contents = contents.replace(
+        TEMPLATE_RELEASE_SIGNING,
+        "$1signingConfig findProperty('EVFLOW_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug",
+      )
+    } else if (!contents.includes('signingConfigs.release')) {
+      // Expo 템플릿이 바뀌어 release 줄을 못 찾으면 디버그 키로 조용히 넘어가지 않게 멈춤
+      throw new Error('[app.config] build.gradle에서 release signingConfig 줄을 못 찾았습니다')
+    }
+    gradleConfig.modResults.contents = contents
+    return gradleConfig
+  })
+
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
@@ -58,7 +138,7 @@ const config: ExpoConfig = {
       // 설치했을 때 홈 화면 아이콘 아래 이름. name(EV-flow)은 ios 폴더 · 프로젝트 이름(EVflow)에 쓰여서 그대로 두고 표시 이름만 바꿈
       CFBundleDisplayName: DISPLAY_NAME,
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
-      LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
+      LSApplicationQueriesSchemes: MAP_APP_SCHEMES,
       // 앱 기본 언어를 한국어로 둠. 없으면 en이 기본이라 복사 · 붙여넣기 메뉴 같은 iOS 기본 화면이 영어로 뜨고 App Store 언어도 영어로 표시됨
       CFBundleDevelopmentRegion: 'ko',
       // 앱이 지원하는 언어 목록. 한국어만 적어서 기기 언어와 상관없이 한국어로 맞춤
@@ -101,6 +181,23 @@ const config: ExpoConfig = {
     ],
     // 첫 방문 안내를 봤는지 기기에 남기는 저장소 (src/lib/storage.ts)
     'expo-sqlite',
+    [
+      'expo-splash-screen',
+      {
+        // 앱을 켤 때 JS가 뜨기 전까지 보이는 실행 화면. 앱 아이콘과 같은 파랑 바탕에 흰 E + 노란 번개
+        backgroundColor: '#3B63E4',
+        ios: {
+          // 로고 아래 앱 이름까지 넣은 정사각형 그림 (원본 assets/splash-ios.svg). 화면 가운데에 가로세로 240pt로 그림
+          image: './assets/splash-ios.png',
+          imageWidth: 240,
+        },
+        android: {
+          // Android 12+ 실행 화면은 가운데 원 안에 그림 하나만 보여서 앱 이름 없이 로고만 (원본 assets/splash-android.svg)
+          image: './assets/splash-android.png',
+          imageWidth: 288,
+        },
+      },
+    ],
     [
       'expo-localization',
       {
@@ -148,4 +245,4 @@ const config: ExpoConfig = {
   },
 }
 
-export default withAndroidDisplayName(config)
+export default withAndroidReleaseSigning(withAndroidMapAppQueries(withAndroidDisplayName(config)))

@@ -1,4 +1,4 @@
-# EV-flow 앱 안드로이드 계획 (7단계, 2026-11-25 시작)
+# EV Flow 앱 안드로이드 계획 (7단계, 2026-11-25 시작)
 
 iOS로 만든 앱(`mobile/`)을 Android에서도 돌리는 계획 · 진행 기록. 앱의 지금 상태는 [README.md](README.md), iOS 0~6단계는 [migration-log.md](migration-log.md), 화면 · 서버 흐름은 [diagrams_new](../diagrams_new/README.md).
 
@@ -79,19 +79,20 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 - `Modal`의 `onRequestClose`는 Android 뒤로 가기에서 불림 (iOS는 안 불림) — 첫 방문 안내(`OnboardingDialog`)는 `onClose`를 넘겨서 뒤로 가기로 닫히고 위치 권한까지 물었음 → 빈 함수로 바꿔 막음
 - 길찾기에서 뒤로 가기: 닫기 버튼(`router.dismissTo('/')`)과 다르게 상세 · 추천 카드로 돌아감 (확인만, 바꾼 것 없음)
 
-### 4단계: 기기 기능 ⏳
+### 4단계: 기기 기능 ✅ (#233)
 
 - 지도 앱 딥링크 — [5번 표](#5-코드에서-고칠-곳) `openMapApp.ts`. 앱이 없으면 Play 스토어
 - 위치: 권한 창, "대략적인 위치"를 고른 경우(현재 위치 · 500m 이동 판단이 흔들리는지), 위치 서비스 꺼짐 안내 문구
 - 더보기: `expo-web-browser`(Android는 Custom Tabs) · 문의 메일(`mailto:`) · 오픈소스 라이선스
 - 앱 백그라운드 → 복귀 때 폴링 멈춤 · 재개 (iOS 2단계와 같은 요청 기록 확인)
 
-### 5단계: 실기기 · 시연 빌드 ⏳
+### 5단계: 실기기 · 시연 빌드 🟡
 
 - 실기기에서 마커 1,600여 개 확대 · 축소 · 이동, 시트 끌기, 폴링 갱신 때 멈칫함
 - 지도 앱이 있을 때 · 없을 때 딥링크 (`kakaomap` 앱 Scheme은 공식 문서가 없어 특히)
-- Release 빌드 서명 키 만들기 — 키 파일 · 비밀번호는 저장소 밖에 두고 따로 백업 (잃으면 같은 앱으로 업데이트 못 함)
+- ✅ Release 빌드 서명 키 만들기 — 키 파일 · 비밀번호는 저장소 밖에 두고 따로 백업 (Play 앱 서명을 쓰면 이 키는 업로드 키라 잃어도 Play Console에서 교체 요청은 됨, 그동안 업데이트 못 올림)
 - 시연 APK 직접 설치
+- 4단계에서 에뮬레이터로 못 본 것: 지도 앱이 깔려 있을 때 `nmap://` · `kakaomap://` 길찾기, 지원 · 개인정보 페이지가 Custom Tabs에 뜨는 모양(에뮬레이터 Chrome이 첫 실행 약관 화면이라 못 넘김), Google "위치 정확도" 창(1단계에서 한 번 뜬 뒤로 안 뜸)
 - TalkBack: `KoreanText`가 넣은 WORD JOINER 때문에 글자를 하나씩 끊어 읽지 않는지
 
 ### 6단계: Play 출시 (계정이 되면) ⏳
@@ -114,8 +115,8 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 | `app.config.ts` | `ios` 설정만 (번들 ID · 빌드 번호 · Info.plist · 팀 ID) | `android.package` · `versionCode` · adaptive icon. 빌드 번호처럼 Play에 올릴 때마다 `versionCode` +1 |
 | 네이버 지도 plugin | `client_id` → Info.plist `NMFNcpKeyId` | 같은 plugin이 manifest `com.naver.maps.map.NCP_KEY_ID`도 넣음 (라이브러리 코드 확인) — 추가 설정 없음 |
 | `expo-location` plugin | iOS 설명 문구만 | Android 정확 · 대략 위치 권한은 plugin이 넣음, 백그라운드 위치는 안 씀 — prebuild 뒤 확인 |
-| `src/lib/openMapApp.ts` | 플랫폼 `'ios'` 고정, 없으면 `itms-apps://` | core는 Android면 브라우저용 `intent://` URL을 줌 — RN `Linking.openURL`은 `intent://`를 못 여는 것으로 보임 → 앱에서도 `nmap://` · `kakaomap://`를 쓰고, 없으면 `market://details?id=com.nhn.android.nmap` · `net.daum.android.map`. 실제로 열어 보고 정함 |
-| 지도 앱 설치 확인 | Info.plist `LSApplicationQueriesSchemes` | Android 11+는 manifest `<queries>`에 두 앱(패키지 또는 scheme)을 적어야 `canOpenURL`이 true — Expo 설정에 칸이 없어 작은 config plugin(`withAndroidManifest`)으로 넣음 |
+| `src/lib/openMapApp.ts` | 플랫폼 `'ios'` 고정, 없으면 `itms-apps://` | core는 Android면 브라우저용 `intent://` URL을 줌 — RN `Linking.openURL`은 `intent://`를 못 여는 것으로 보임 → ✅ 앱은 Android도 `nmap://` · `kakaomap://`를 쓰고, 없으면 `market://details?id=com.nhn.android.nmap` · `net.daum.android.map` (Play 스토어 앱이 없으면 Play 웹 페이지) (4단계) |
+| 지도 앱 설치 확인 | Info.plist `LSApplicationQueriesSchemes` | Android 11+는 manifest `<queries>`에 두 앱(패키지 또는 scheme)을 적어야 `canOpenURL`이 true — Expo 설정에 칸이 없어 작은 config plugin(`withAndroidManifest`)으로 넣음 → ✅ `app.config.ts` `withAndroidMapAppQueries`, scheme 목록은 iOS와 같은 `MAP_APP_SCHEMES` (4단계) |
 | 그림자 9곳 | `shadow*` — `BackButton` · `FilterPanel` · `OnboardingDialog` · `LocateButton` · `SearchBar` · `HorizonSelector` · `SegmentedControl` · `RecommendSheet` · 길찾기 시트 | ✅ Android는 `shadow*`가 안 그려짐 → `src/lib/shadow.ts` `createShadow`로 플랫폼별 (2단계) |
 | 한글 줄바꿈 10곳 | `lineBreakStrategyIOS="hangul-word"` | ✅ Android는 무시됨 → `KoreanText`가 단어 안 글자 사이에 WORD JOINER (2단계) |
 | 글꼴 | Pretendard otf를 PostScript 이름으로 (`Pretendard-Regular` 등) | Android는 글꼴을 파일 이름으로 찾음 — 파일 이름과 PostScript 이름이 같아 그대로 잡힐 것으로 보이나 확인 |
@@ -199,3 +200,30 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
   - 휴게소 탭: 뒤로 가기에 지도 홈 탭으로 (탭 기본 동작). 노선별 · 지역별 전환은 기록을 안 남겨서 한 번에 홈으로 → 휴게소 탭에는 `BackHandler`를 안 둠
   - 상태 이상 화면 지역 선택(`DistrictPicker`): 뒤로 가기에 선택 창만 닫히고, 한 번 더 누르면 이전 화면
 - iOS 시뮬레이터: 첫 방문 안내 건너뛰기 · 추천 시트 펼치기가 바꾸기 전과 같음 (`BackHandler`는 iOS에서 안 불림)
+
+### 2026-11-25 4단계 기기 기능 (`feat/app-android-device`)
+
+- 지도 앱 열기: Android도 iOS와 같은 `nmap://` · `kakaomap://`로 엶(core의 `intent://`는 브라우저용). 앱이 없으면 `market://details?id=…`, Play 스토어 앱도 없으면 Play 웹 페이지. 에뮬레이터(두 앱 없음)에서 두 버튼 모두 Play 스토어가 열림
+- 지도 앱 설치 확인: `app.config.ts` `withAndroidMapAppQueries`가 manifest `<queries>`에 `nmap` · `kakaomap`을 넣음. prebuild를 다시 돌려도 한 번만 들어감
+- 위치
+  - 권한 창: 첫 방문 안내를 본 뒤 앱을 열면 뜸 (iOS와 같음). 정확 · 대략 고르는 창
+  - 대략적인 위치만 허용: 위치 점이 합정역에서 한강 쪽으로 약 500m 떨어진 곳에 찍히고 추천은 정상. 500m 이동 규칙은 대략 위치가 바뀔 때만 움직일 것으로 보임 — 실기기에서 다시 봄
+  - 위치 서비스 꺼짐: 앱 안내 "기기의 위치 서비스가 꺼져 있어요. 설정 앱에서 켜 주세요"가 뜸
+  - Google "위치 정확도" 창: 이번에는 안 뜸 (1단계에서 한 번 뜬 뒤로)
+  - 권한 거부 안내의 앱 이름을 EV-flow → EV Flow로 (설정 앱에 보이는 이름과 맞춤)
+- 더보기: 개인정보 처리방침은 Chrome Custom Tab으로 열림(에뮬레이터 Chrome 첫 실행 약관 화면이라 페이지는 못 봄), 문의하기는 Gmail이 열림, 오픈소스 라이선스 화면 정상
+- 오픈소스 라이선스 목록: Android 작업에서 더한 `expo-localization` · `expo-build-properties` · `expo-system-ui`가 빠져 있어 `pnpm --dir mobile run licenses`로 다시 만듦
+- 백그라운드 폴링: 요청마다 Metro 로그를 남기는 임시 코드로 셈 (커밋 안 함). 백그라운드 150초 동안 요청 0번, 돌아오자마자 충전소 목록을 받고 60초마다 다시 받음, 추천은 5분 규칙대로
+- iOS 시뮬레이터: Info.plist 지도 앱 목록 그대로(`nmap` · `kakaomap`), 길찾기 화면 · 지도 앱 버튼이 바꾸기 전과 같음
+
+### 2026-11-26 5단계 서명 키 · 첫 Release 빌드 (`feat/app-android-release-signing`)
+
+실기기 전에 먼저 함 — 개인 Play 계정은 비공개 테스트 14일이 업로드한 날부터 세어져서, 계정이 되는 대로 바로 올리려고
+
+- 업로드 키: PKCS12 · RSA 2048 · 약 27년, 별칭 `evflow-upload`, 인증서 이름 `CN=EV Flow, C=KR`(개인 정보 안 넣음). 키 파일 · 비밀번호는 저장소 밖에 두고 사용자가 따로 백업
+- 서명 설정: `app.config.ts` `withAndroidReleaseSigning`이 `build.gradle`에 release 서명을 넣음. 값은 저장소 밖 `~/.gradle/gradle.properties`의 `EVFLOW_UPLOAD_STORE_FILE` · `EVFLOW_UPLOAD_KEY_ALIAS` · `EVFLOW_UPLOAD_STORE_PASSWORD` · `EVFLOW_UPLOAD_KEY_PASSWORD`에서 읽음. 값이 없는 컴퓨터는 지금처럼 디버그 키로 서명(Play가 안 받아서 잘못 올라갈 일 없음). Expo 템플릿 줄을 못 찾으면 prebuild가 멈춤
+- 빌드: `mobile/android`에서 `./gradlew bundleRelease assembleRelease` (약 6분). AAB 105MB(Play 업로드용, 기기별로 나눠 받음) · APK 209MB(직접 설치용, CPU 4종이 다 들어 있음)
+- 확인
+  - AAB · APK 모두 업로드 키(`CN=EV Flow`)로 서명됨, 디버그 키 인증서와 다름
+  - Release 권한: 위치(정확 · 대략) · 인터넷 · 진동 · 네트워크 · Wi-Fi 상태뿐. 개발 빌드에만 있던 `ACCESS_LOCAL_NETWORK` · `SYSTEM_ALERT_WINDOW`는 없음 (1단계에서 넘긴 것)
+  - 에뮬레이터에 Release APK 설치: 첫 방문 안내 · 위치 권한 · 지도(네이버 인증) · 추천 정상, 개발 도구 버튼 없음. 개발 빌드와 서명이 달라 개발 앱을 지우고 설치함

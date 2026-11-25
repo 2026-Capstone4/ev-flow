@@ -18,7 +18,7 @@ const STEPS: Step[] = [
   {
     // 로고가 정해지면 아이콘 자리를 로고 이미지로 바꿈
     icon: Zap,
-    title: 'EV-flow',
+    title: 'EV Flow',
     body: '충전소 혼잡 예측',
     description:
       '가기 전에 충전소가 얼마나 붐빌지 미리 확인하세요.\n도착할 때 덜 붐비는 곳을 골라 드릴게요.',

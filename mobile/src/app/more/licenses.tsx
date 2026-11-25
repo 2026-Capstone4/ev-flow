@@ -20,7 +20,7 @@ export default function LicensesScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         ListHeaderComponent={
           <Text className="px-4 pb-3 pt-2 font-sans text-sm leading-[21px] text-text-secondary">
-            EV-flow는 아래 오픈소스 소프트웨어를 사용해요.{'\n'}
+            EV Flow는 아래 오픈소스 소프트웨어를 사용해요.{'\n'}
             항목을 누르면 각 프로젝트 페이지로 이동해요.
           </Text>
         }

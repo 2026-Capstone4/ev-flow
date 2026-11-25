@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import select, true
+from sqlalchemy import and_, select, true
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
@@ -63,22 +63,43 @@ def load_charger_states(
 ) -> dict[str, list[ChargerState]]:
     """충전소별 충전기 현재 상태. 버스전용은 빼므로 버스전용만 있는 충전소는 결과에 없음"""
     charger, log = charger_model, log_model
-    # 충전기마다 마지막 성공 회차의 행 하나만 인덱스(station_id, charger_id, collected_at)로 찾음 -
-    # 상태 로그 전체를 DISTINCT ON으로 훑으면 행 수만큼 느려짐.
     # collection_runs 도입 이전에는 FAILED 회차도 행을 남겼으므로 실행 id로 그 회차 행만 고름.
     # 시각 조건은 인덱스 범위를 좁히는 용도 - 행이 없으면 상태를 모르는 충전기
-    latest = (
-        select(log.stat, log.stat_upd_dt, log.current_charge_start_dt, log.collected_at)
-        .where(
-            log.station_id == charger.station_id,
-            log.charger_id == charger.charger_id,
-            log.collected_at >= run.started_at,
-            log.collection_run_id == run.id,
+    if station_id is not None:
+        # 충전소 하나 - 충전기마다 마지막 성공 회차의 행 하나만 인덱스(station_id, charger_id, collected_at)로 찾음
+        latest = (
+            select(log.stat, log.stat_upd_dt, log.current_charge_start_dt, log.collected_at)
+            .where(
+                log.station_id == charger.station_id,
+                log.charger_id == charger.charger_id,
+                log.collected_at >= run.started_at,
+                log.collection_run_id == run.id,
+            )
+            .order_by(log.collected_at.desc())
+            .limit(1)
+            .lateral()
         )
-        .order_by(log.collected_at.desc())
-        .limit(1)
-        .lateral()
-    )
+        on = true()
+    else:
+        # 전체 - 그 회차의 행을 회차 · 수집 시각 인덱스로 한 번에 읽어 충전기 표와 맞춤.
+        # 충전기마다 찾으면 서울 · 휴게소 약 6천 기를 흩어 읽어 서버에서 3초 걸림 (2026-11-25)
+        latest = (
+            select(
+                log.station_id,
+                log.charger_id,
+                log.stat,
+                log.stat_upd_dt,
+                log.current_charge_start_dt,
+                log.collected_at,
+            )
+            .where(log.collected_at >= run.started_at, log.collection_run_id == run.id)
+            .distinct(log.station_id, log.charger_id)
+            .order_by(log.station_id, log.charger_id, log.collected_at.desc())
+            .subquery()
+        )
+        on = and_(
+            latest.c.station_id == charger.station_id, latest.c.charger_id == charger.charger_id
+        )
     query = (
         select(
             charger.station_id,
@@ -90,7 +111,7 @@ def load_charger_states(
             latest.c.current_charge_start_dt,
             latest.c.collected_at,
         )
-        .outerjoin(latest, true())
+        .outerjoin(latest, on)
         .where(charger.charger_type != BUS_CHARGER_TYPE)
         .order_by(charger.station_id, charger.charger_id)
     )

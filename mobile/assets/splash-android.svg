@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Android 스플래시 그림. Android 12+ 실행 화면은 가운데 원 안에 그림 하나만 보여서 앱 이름 없이 로고만 둠 -->
+  <!-- 원 바깥이 잘려도 안 보이게 로고를 가운데 0.55배로 줄이고, 바탕은 스플래시 backgroundColor와 같은 파랑 -->
+  <rect width="1024" height="1024" fill="#3B63E4"/>
+  <g transform="translate(512,512) scale(0.55) translate(-510,-518)">
+    <g transform="translate(-10,0)">
+      <path d="M240 322V702M240 322H470M240 512H420M240 702H470" stroke="#FFFFFF" stroke-width="88" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path transform="translate(383,213) scale(5)" d="M70 16L36 66H60L52 106L90 50H64Z" fill="#FFD43B" stroke="#FFD43B" stroke-width="10" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>
