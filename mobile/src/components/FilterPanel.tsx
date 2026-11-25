@@ -42,7 +42,8 @@ export function FilterPanel({ filters, allStations, onApply }: FilterPanelProps)
       <StationFilterOptions filters={draft} onChange={setDraft} />
       {/* 지도는 실시간만 보여 주고(추천 충전소는 예외로 항상 형광 파랑으로 표시), 15 · 30분 후 예측으로 거르는 건 검색 화면에서 함 */}
       <Text className="font-sans text-xs text-text-secondary">
-        지도는 실시간 기준이고, 추천 충전소는 파란색 마커로 확인해요.{'\n'}
+        지도는 실시간 기준이고,{'\n'}
+        추천 충전소는 파란색 마커로 확인해요.{'\n'}
         15·30분 후 예측으로 찾으려면 검색을 이용해 주세요.
       </Text>
       <View className="mt-1 flex-row gap-2">

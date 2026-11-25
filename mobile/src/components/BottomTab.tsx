@@ -21,13 +21,21 @@ const TAB_ICON: Partial<Record<string, LucideIcon>> = {
   more: Menu,
 }
 
-/** 웹 BottomTab과 같은 글자 하단 탭 + 오른쪽 끝 더보기 아이콘. 아래 여백은 홈 표시줄 높이만큼 둠 */
+/** 홈 표시줄 칸을 이만큼 덜 비워서 탭 영역 전체(윗선 · 글자)를 그만큼 아래로 내림 */
+const BOTTOM_INSET_TRIM = 8
+
+/** 웹 BottomTab과 같은 글자 하단 탭 + 오른쪽 끝 더보기 아이콘. 아래 여백은 홈 표시줄 높이에서 조금 덜어 둠 */
 export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
+  const bottomInset = Math.max(insets.bottom - BOTTOM_INSET_TRIM, 0)
   return (
     // 왼쪽에도 아이콘 탭 폭(w-16)만큼 여백을 둬서, 글자 탭 두 개가 화면 가운데를 기준으로 좌우 대칭이 되게 함
+    // 글자 칸 높이(52)는 그대로 두고 아래 여백만 줄임. 홈 표시줄이 없는 기기(아래 여백 0)는 줄일 여백이 없어 그대로
     <View
       className="flex-row border-t border-border-default bg-bg-page pl-16"
-      style={{ height: 48 + insets.bottom, paddingBottom: insets.bottom }}
+      style={{
+        height: 52 + bottomInset,
+        paddingBottom: bottomInset,
+      }}
     >
       {state.routes.map((route, index) => {
         const isActive = index === state.index
@@ -53,7 +61,7 @@ export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
             ) : (
               <Text
                 style={{ transform: [{ translateX: TAB_LABEL_SHIFT_X[route.name] ?? 0 }] }}
-                className={`text-[13px] ${
+                className={`text-[15px] ${
                   isActive ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'
                 }`}
               >

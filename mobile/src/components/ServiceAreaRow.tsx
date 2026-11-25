@@ -34,7 +34,7 @@ export function ServiceAreaRow({
         isFirst ? '' : 'border-t border-border-default'
       }`}
     >
-      <Text numberOfLines={1} className="min-w-0 flex-1 text-[15px]">
+      <Text numberOfLines={1} className="min-w-0 flex-1 text-[16px]">
         <Text className="font-medium text-text-primary">{title}</Text>
         {note && <Text className="font-sans text-xs text-text-secondary"> {note}</Text>}
       </Text>

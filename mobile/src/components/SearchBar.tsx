@@ -31,11 +31,11 @@ export function SearchBar({
       <Pressable
         accessibilityRole="search"
         onPress={onSearchPress}
-        className="min-w-0 flex-1 flex-row items-center gap-2 py-3 pl-4"
+        className="min-w-0 flex-1 flex-row items-center gap-2 py-4 pl-4"
       >
         <Search size={20} strokeWidth={2} color={COLORS['text-secondary']} />
-        <Text numberOfLines={1} className="flex-1 font-sans text-[15px] text-text-secondary">
-          충전소 이름·주소 검색
+        <Text numberOfLines={1} className="flex-1 font-sans text-[17px] text-text-secondary">
+          충전소 이름 · 주소 검색
         </Text>
       </Pressable>
       <Pressable
@@ -43,9 +43,9 @@ export function SearchBar({
         accessibilityState={{ expanded: isFilterOpen }}
         onPress={onFilterPress}
         hitSlop={4}
-        className={`mx-2 rounded-sm px-2 py-1.5 ${isFilterOpen ? 'bg-brand-primary-bg' : ''}`}
+        className={`mx-2 rounded-sm px-2.5 py-2 ${isFilterOpen ? 'bg-brand-primary-bg' : ''}`}
       >
-        <Text className="font-bold text-sm text-brand-primary">
+        <Text className="font-bold text-[16px] text-brand-primary">
           필터{activeFilterCount > 0 && ` ${activeFilterCount}`}
         </Text>
       </Pressable>

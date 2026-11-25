@@ -12,7 +12,7 @@ type MenuSectionProps = {
 export function MenuSection({ title, children }: MenuSectionProps) {
   return (
     <View className="gap-2">
-      <Text className="px-1 font-semibold text-[13px] text-text-secondary">{title}</Text>
+      <Text className="px-1 font-semibold text-[14px] text-text-secondary">{title}</Text>
       <View className="overflow-hidden rounded-lg bg-bg-page">{children}</View>
     </View>
   )
@@ -39,10 +39,10 @@ export function MenuRow({ label, value, onPress, isFirst = false }: MenuRowProps
         isFirst ? '' : 'border-t border-border-default'
       }`}
     >
-      <Text className="flex-1 font-medium text-[15px] text-text-primary">{label}</Text>
+      <Text className="flex-1 font-medium text-[16px] text-text-primary">{label}</Text>
       {/* 값이 있으면 값만, 누를 수 있는 줄이면 화살표를 붙임 */}
       {value !== undefined ? (
-        <Text className="font-sans text-[15px] text-text-secondary">{value}</Text>
+        <Text className="font-sans text-[16px] text-text-secondary">{value}</Text>
       ) : (
         onPress && <ChevronRight size={20} strokeWidth={2} color={COLORS['text-secondary']} />
       )}

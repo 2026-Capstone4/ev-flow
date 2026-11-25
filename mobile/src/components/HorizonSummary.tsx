@@ -26,7 +26,7 @@ type HorizonSummaryProps = {
 
 /** 설명 줄 배열을 문장마다 줄을 나눠 그림 */
 function NoteLines({ lines }: { lines: string[] }) {
-  return <Text className="font-sans text-[13px] text-text-secondary">{lines.join('\n')}</Text>
+  return <Text className="font-sans text-[14px] text-text-secondary">{lines.join('\n')}</Text>
 }
 
 /** 상세 화면 혼잡 예측 칸 아래 설명. 지금은 사용 가능 대수, 15 · 30분 후는 예상 대기나 예상 혼잡 (웹 HorizonSummary와 같음) */
@@ -48,7 +48,8 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
         {/* 빈 충전기가 있으면 대수를 크게, 모두 확인 불가면 상태를 못 받았다고 안내, 그 밖에는 15 · 30분 예측을 보도록 안내 */}
         {station.availableChargers > 0 ? (
           <View className="gap-1">
-            <Text className="font-bold text-text-primary">
+            {/* Android는 안쪽 작은 글자의 줄 높이로 줄 전체를 그려 큰 숫자가 잘려서, 큰 숫자에 맞춘 줄 높이를 바깥에 둠 */}
+            <Text className="font-bold leading-[36px] text-text-primary">
               <Text className="text-[28px]">{station.availableChargers}대</Text>
               <Text className="text-sm text-text-secondary"> / 전체 {station.totalChargers}대</Text>
             </Text>

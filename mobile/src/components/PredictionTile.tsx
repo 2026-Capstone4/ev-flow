@@ -35,7 +35,7 @@ export function PredictionTile({ prediction, isSelected, onSelect, caption }: Pr
       }`}
     >
       <Text
-        className={`text-[13px] ${
+        className={`text-[15px] ${
           isSelected ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'
         }`}
       >
@@ -50,7 +50,7 @@ export function PredictionTile({ prediction, isSelected, onSelect, caption }: Pr
         <View className="items-center gap-0.5">
           {/* 대기시간이 아직 없으면 이 줄은 빼고 'AI 예측'만 보여 줌 */}
           {waitText && <Text className="font-semibold text-xs text-text-primary">{waitText}</Text>}
-          {isForecast && <Text className="font-semibold text-[11px] text-ai">✦ AI 예측</Text>}
+          {isForecast && <Text className="font-semibold text-[12px] text-ai">✦ AI 예측</Text>}
         </View>
       )}
     </Pressable>

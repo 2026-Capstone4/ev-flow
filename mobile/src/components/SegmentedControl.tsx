@@ -15,7 +15,7 @@ export function SegmentedControl<T extends string>({
   return (
     <View
       accessibilityRole="radiogroup"
-      className="h-10 w-full flex-row gap-1 rounded-md bg-bg-subtle p-1"
+      className="h-11 w-full flex-row gap-1 rounded-md bg-bg-subtle p-1"
     >
       {options.map((option) => {
         const isSelected = option.value === value
@@ -39,7 +39,7 @@ export function SegmentedControl<T extends string>({
             className={`flex-1 items-center justify-center rounded-sm ${isSelected ? 'bg-bg-page' : ''}`}
           >
             <Text
-              className={`text-sm ${
+              className={`text-[16px] ${
                 isSelected ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'
               }`}
             >

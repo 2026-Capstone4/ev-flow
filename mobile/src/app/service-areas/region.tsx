@@ -21,7 +21,7 @@ export default function ServiceAreaRegionScreen() {
     <View className="flex-1 bg-bg-subtle" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">고속도로 휴게소</Text>
+        <Text className="font-bold text-[18px] text-text-primary">고속도로 휴게소</Text>
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pt-1 pb-6">
@@ -29,7 +29,7 @@ export default function ServiceAreaRegionScreen() {
           <Text className="font-bold text-[22px] text-text-primary">{title}</Text>
           {/* 휴게소 수 · 사용 가능 수는 목록을 받은 뒤에만 */}
           {areaCount !== undefined && (
-            <Text className="font-sans text-[13px] text-text-secondary">
+            <Text className="font-sans text-[14px] text-text-secondary">
               휴게소 {areaCount}곳 · 사용 가능 {availableChargers}기
             </Text>
           )}
@@ -47,8 +47,8 @@ export default function ServiceAreaRegionScreen() {
             <View key={section.title} className="gap-2">
               <View className="flex-row items-center gap-2 px-1 pt-2">
                 <RouteBadge routeNo={section.routeNo} />
-                <Text className="font-bold text-[15px] text-text-primary">{section.title}</Text>
-                <Text className="font-sans text-[13px] text-text-secondary">
+                <Text className="font-bold text-[16px] text-text-primary">{section.title}</Text>
+                <Text className="font-sans text-[14px] text-text-secondary">
                   {section.areas.length}곳
                 </Text>
               </View>

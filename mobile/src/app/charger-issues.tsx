@@ -34,7 +34,7 @@ function Section({ title, count, description, children }: SectionProps) {
         </Text>
         <Text
           lineBreakStrategyIOS="hangul-word"
-          className="font-sans text-[13px] text-text-secondary"
+          className="font-sans text-[14px] text-text-secondary"
         >
           {description}
         </Text>
@@ -80,12 +80,12 @@ function StationIssueCard({ station, statusLabel, onPress }: StationIssueCardPro
         >
           <Text
             lineBreakStrategyIOS="hangul-word"
-            className="min-w-0 flex-shrink font-medium text-[13px] text-text-primary"
+            className="min-w-0 flex-shrink font-medium text-[14px] text-text-primary"
           >
             급속 {charger.chargerId} ·{' '}
             {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
           </Text>
-          <Text className="flex-shrink-0 font-bold text-[13px] text-congestion-unknown">
+          <Text className="flex-shrink-0 font-bold text-[14px] text-congestion-unknown">
             {statusLabel}
           </Text>
         </View>
@@ -246,7 +246,7 @@ export default function ChargerIssuesScreen() {
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">상태 이상 충전기</Text>
+        <Text className="font-bold text-[18px] text-text-primary">상태 이상 충전기</Text>
       </View>
       <ScrollView
         className="flex-1"

@@ -29,7 +29,7 @@ export default function ServiceAreaDetailScreen() {
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">휴게소 상세</Text>
+        <Text className="font-bold text-[18px] text-text-primary">휴게소 상세</Text>
       </View>
 
       {serviceArea && chargerGroups ? (
@@ -49,7 +49,7 @@ export default function ServiceAreaDetailScreen() {
               </View>
               <Text
                 lineBreakStrategyIOS="hangul-word"
-                className="flex-1 font-sans text-[13px] text-text-secondary"
+                className="flex-1 font-sans text-[14px] text-text-secondary"
               >
                 휴게소는 현재 충전기 현황만 보여줘요. 혼잡 예측과 예상 대기는 도심 충전소에서만
                 제공해요.
@@ -59,7 +59,8 @@ export default function ServiceAreaDetailScreen() {
             <View className="gap-1.5">
               <Text className="font-bold text-base text-text-primary">지금 사용 가능</Text>
               {/* 큰 숫자와 작은 글자의 바닥선을 맞추려고 한 Text 안에 넣음 */}
-              <Text>
+              {/* Android는 안쪽 작은 글자의 줄 높이로 줄 전체를 그려 큰 숫자가 잘려서, 큰 숫자에 맞춘 줄 높이를 바깥에 둠 */}
+              <Text className="leading-[40px]">
                 <Text
                   className={`font-bold text-[32px] ${
                     AVAILABILITY_TONE_CLASS[
@@ -86,7 +87,7 @@ export default function ServiceAreaDetailScreen() {
                 <View key={operator} className="gap-2">
                   {/* 운영기관이 하나면 묶음 제목은 생략 */}
                   {chargerGroups.length > 1 && (
-                    <Text className="font-medium text-[13px] text-text-secondary">{operator}</Text>
+                    <Text className="font-medium text-[14px] text-text-secondary">{operator}</Text>
                   )}
                   {/* 충전기 번호가 충전소마다 01부터라 충전소별로 상자를 나눠 번호 중복을 구분 */}
                   {stations.map(({ stationId, chargers }) => (
