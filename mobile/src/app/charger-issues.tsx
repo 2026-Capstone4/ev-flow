@@ -117,13 +117,12 @@ export default function ChargerIssuesScreen() {
   const insets = useSafeAreaInsets()
   const { horizon } = useMapView()
 
-  // 사용자가 고른 구. 처음에는 서울 전체('전체')로 시작함
-  const [pickedDistrict, setPickedDistrict] = useState<string>(ALL_DISTRICTS)
+  // 보여 줄 구. 처음에는 서울 전체('전체')로 시작함
+  const [district, setDistrict] = useState<string>(ALL_DISTRICTS)
   const [filter, setFilter] = useState<ChargerIssueFilter>('all')
 
-  // 고른 구의 목록을 받음. 늘 고른 구가 있어서 기기 위치는 넘기지 않음 (위치 권한 창도 띄우지 않음)
-  const { district, isLocatedDistrict, issues, districts, updatedAt, isError, isAllUnknown } =
-    useChargerIssuesData(pickedDistrict, null)
+  // 고른 구의 목록을 받음
+  const { issues, districts, updatedAt, isError, isAllUnknown } = useChargerIssuesData(district)
 
   // 충전소 상세로. 지도 홈에서 보던 시점을 그대로 넘김
   const openStation = (stationId: string) =>
@@ -256,12 +255,7 @@ export default function ChargerIssuesScreen() {
       >
         {/* 갱신 시각 알약을 구 버튼 높이에 맞춤 */}
         <View className="flex-row flex-wrap items-stretch gap-2">
-          <DistrictPicker
-            value={district}
-            districts={districts}
-            isCurrentLocation={isLocatedDistrict}
-            onChange={setPickedDistrict}
-          />
+          <DistrictPicker value={district} districts={districts} onChange={setDistrict} />
           <UpdateStatus updatedAt={updatedAt} isError={isError} isStretched />
         </View>
         {renderBody()}

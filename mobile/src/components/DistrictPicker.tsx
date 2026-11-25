@@ -10,18 +10,11 @@ type DistrictPickerProps = {
   value: string
   /** 구마다 확인 불가 대수. 아직 못 받았으면 버튼을 눌러도 목록을 열지 않음 */
   districts: DistrictIssueCount[] | undefined
-  /** 현재 위치로 자동으로 고른 구인지. 맞으면 버튼 옆에 '현재 위치'를 붙임 */
-  isCurrentLocation: boolean
   onChange: (district: string) => void
 }
 
 /** 상태 이상 충전기 화면의 구 선택. 버튼을 누르면 아래에서 구 목록이 올라옴 */
-export function DistrictPicker({
-  value,
-  districts,
-  isCurrentLocation,
-  onChange,
-}: DistrictPickerProps) {
+export function DistrictPicker({ value, districts, onChange }: DistrictPickerProps) {
   const insets = useSafeAreaInsets()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -42,10 +35,6 @@ export function DistrictPicker({
         className="flex-row items-center gap-1 rounded-full border border-border-default bg-bg-page py-1.5 pr-2.5 pl-3 active:opacity-70"
       >
         <Text className="font-bold text-sm text-text-primary">{value}</Text>
-        {/* 위치로 자동으로 골랐으면 그렇다고 알려 줌. 사용자가 직접 고르면 사라짐 */}
-        {isCurrentLocation && (
-          <Text className="font-medium text-xs text-brand-primary">현재 위치</Text>
-        )}
         <ChevronDown size={16} color={COLORS['text-secondary']} />
       </Pressable>
 

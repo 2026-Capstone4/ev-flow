@@ -3,7 +3,6 @@ import {
   ALL_DISTRICTS,
   countIssuesByDistrict,
   filterStationsByDistrict,
-  findNearestDistrict,
   getDistrict,
   groupChargerIssues,
   isUnstableCharger,
@@ -97,17 +96,6 @@ describe('countIssuesByDistrict', () => {
       { district: '마포구', count: 2 },
       { district: '송파구', count: 1 },
     ])
-  })
-})
-
-describe('findNearestDistrict', () => {
-  it('가장 가까운 충전소의 구를 돌려줌', () => {
-    const stations = [
-      station('A', '가', [], { lat: 37.556, lng: 126.91 }),
-      station('B', '나', [], { address: '서울특별시 송파구 올림픽로 1', lat: 37.51, lng: 127.1 }),
-    ]
-    expect(findNearestDistrict(stations, { lat: 37.5, lng: 127.09 })).toBe('송파구')
-    expect(findNearestDistrict([], { lat: 37.5, lng: 127.09 })).toBeNull()
   })
 })
 
