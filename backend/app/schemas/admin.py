@@ -6,9 +6,10 @@ from app.schemas.base import CamelModel, KstDatetime
 from app.schemas.common import ChargerStatus
 
 # 값 목록은 docs/api/admin.md - 프론트 src/types/admin.ts와 같아야 함
-AdminRegion = Literal["all", "city", "service_area"]
+# seoul = city(마포) + live(마포를 뺀 서울), all = 셋 모두 (2026-11-25 서울 추가)
+AdminRegion = Literal["all", "seoul", "city", "service_area"]
 AdminPeriod = Literal["day", "week"]  # day = 오늘 · week = 이용률 최근 4주, 결측 최근 7일
-CollectionTargetName = Literal["city", "service_area"]
+CollectionTargetName = Literal["city", "live", "service_area"]
 CollectionRunStatus = Literal["running", "success", "partial", "failed"]
 
 
@@ -37,7 +38,7 @@ class UtilizationResponse(PeriodRange):
 class AdminCharger(CamelModel):
     region: CollectionTargetName
     station_id: str
-    station_name: str  # 도심은 충전소명, 휴게소는 휴게소명
+    station_name: str  # 도심 · 서울은 충전소명, 휴게소는 휴게소명
     charger_id: str
     status: ChargerStatus
     stat: str | None  # API 원본 상태 코드. 마지막 성공 회차에 행이 없으면 null

@@ -22,6 +22,7 @@ from app.db.models import (
     ServiceAreaStatusLog,
 )
 from app.db.session import SessionLocal
+from app.services import admin as admin_service
 from app.services.status import BUS_CHARGER_TYPE
 
 logger = logging.getLogger(__name__)
@@ -344,6 +345,14 @@ def close_orphaned_runs(db) -> int:
     return len(closed)
 
 
+def warm_admin_cache():
+    """운영자 이용률 집계를 미리 Redis에 채움 - 화면을 처음 연 사람이 끝난 시간대 · 날짜 계산을 기다리지 않게"""
+    started = time.monotonic()
+    with SessionLocal() as db:
+        admin_service.warm_cache(db)
+    logger.info("운영자 집계 미리 계산 - %.1f초", time.monotonic() - started)
+
+
 def main():
     # 정리에 실패해도 수집은 시작함 - DB가 잠깐 안 되는 경우 재시작을 반복하지 않게
     try:
@@ -363,6 +372,15 @@ def main():
     # 요일 · 시간대 기준선 - 시작 시 1회 + 매일 04:00 KST (이용이 가장 적은 시간, DB 백업 04:30 전에 끝남)
     scheduler.add_job(
         refresh_baseline, "cron", hour=4, minute=0, timezone=KST, next_run_time=datetime.now()
+    )
+    # 운영자 이용률 집계 - 매시 12분(끝난 시간대를 저장하는 10분 여유 뒤). 시작 2분 뒤에도 한 번 -
+    # 배포 직후 4주치를 채움(서울은 약 1,000만 행이라 수십 초). 첫 수집 · 기준선 계산과 겹치지 않게 미룸
+    scheduler.add_job(
+        warm_admin_cache,
+        "cron",
+        minute=12,
+        timezone=KST,
+        next_run_time=datetime.now() + timedelta(minutes=2),
     )
     # 운영 알림 (INF-09) - 수집과 따로 5분마다 회차 기록을 봄. 수집 잡이 멈춰도 검사는 돎.
     # 첫 검사는 시작 6분 뒤 - 배포 · 재시작으로 비었던 구간에 첫 회차가 쌓일 틈을 줌.
