@@ -21,7 +21,7 @@ type CongestionBadgeProps = {
 
 const SIZE_CLASS = {
   default: 'px-2 text-xs',
-  large: 'px-3 text-[13px]',
+  large: 'px-3 text-[15px]',
 }
 
 export function CongestionBadge({

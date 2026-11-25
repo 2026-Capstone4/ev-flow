@@ -95,7 +95,7 @@ export function RoutePage() {
           {station ? (
             <div className="flex flex-col gap-1">
               <h1 className="text-lg font-bold">{station.name}</h1>
-              <p className="text-[13px] text-text-secondary">{station.address}</p>
+              <p className="text-[14px] text-text-secondary">{station.address}</p>
             </div>
           ) : isStationError ? (
             <p className="text-sm text-text-secondary">충전소 정보를 불러오지 못했습니다</p>
@@ -109,7 +109,7 @@ export function RoutePage() {
 
           {isRouteError ? (
             <>
-              <p className="flex gap-2 rounded-sm bg-status-warning-bg px-3 py-2.5 text-[13px] text-status-warning">
+              <p className="flex gap-2 rounded-sm bg-status-warning-bg px-3 py-2.5 text-[14px] text-status-warning">
                 <TriangleAlert aria-hidden size={16} strokeWidth={2} className="mt-px shrink-0" />
                 {/* 경로 없음 · 호출 제한 · 그 밖의 오류 순으로 안내를 고름 */}
                 {isRouteUnavailable ? (
@@ -165,7 +165,7 @@ export function RoutePage() {
                   )}
                 </div>
                 {/* 경로 출처. 받기 전에도 한 줄 자리를 잡아 다 받았을 때 시트 높이가 튀지 않게 함 */}
-                <p className="text-right text-[11px] text-text-secondary">
+                <p className="text-right text-[12px] text-text-secondary">
                   {route && ROUTE_PROVIDER_LABEL[route.provider]
                     ? `경로 정보: ${ROUTE_PROVIDER_LABEL[route.provider]}`
                     : ' '}

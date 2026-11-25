@@ -24,8 +24,8 @@ export function SearchBar({
         className="flex min-w-0 flex-1 items-center gap-2 py-3 pl-4 text-left"
       >
         <Search aria-hidden size={20} strokeWidth={2} className="shrink-0 text-text-secondary" />
-        <span className="flex-1 truncate text-[15px] text-text-secondary">
-          충전소 이름·주소 검색
+        <span className="flex-1 truncate text-[17px] text-text-secondary">
+          충전소 이름 · 주소 검색
         </span>
       </button>
       <button
@@ -33,7 +33,7 @@ export function SearchBar({
         aria-expanded={isFilterOpen}
         aria-controls="map-filter-panel"
         onClick={onFilterClick}
-        className={`mx-2 shrink-0 rounded-sm px-2 py-1.5 text-sm font-bold text-brand-primary ${
+        className={`mx-2 shrink-0 rounded-sm px-2.5 py-2 text-[16px] font-bold text-brand-primary ${
           isFilterOpen ? 'bg-brand-primary-bg' : ''
         }`}
       >

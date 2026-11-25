@@ -27,7 +27,7 @@ export function ChargerRow({ charger, now }: ChargerRowProps) {
       <span className="min-w-0 text-sm font-medium break-keep">
         급속 {charger.chargerId} · {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
       </span>
-      <span className={`shrink-0 text-[13px] font-bold ${STATUS_CLASS[charger.status]}`}>
+      <span className={`shrink-0 text-[14px] font-bold ${STATUS_CLASS[charger.status]}`}>
         {CHARGER_STATUS_LABEL[charger.status]}
         {elapsed && ` · ${elapsed}`}
       </span>

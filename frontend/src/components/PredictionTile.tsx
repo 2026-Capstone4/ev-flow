@@ -37,7 +37,7 @@ export function PredictionTile({ prediction, isSelected, onSelect, caption }: Pr
       }`}
     >
       <span
-        className={`text-[13px] ${isSelected ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'}`}
+        className={`text-[15px] ${isSelected ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'}`}
       >
         {getHorizonLabel(prediction.horizonMinutes)}
       </span>
@@ -48,7 +48,7 @@ export function PredictionTile({ prediction, isSelected, onSelect, caption }: Pr
           {/* 대기시간이 아직 없으면 이 줄은 빼고 'AI 예측'만 보여 줌 */}
           {waitText && <span className="text-xs font-semibold">{waitText}</span>}
           {isForecast && (
-            <span className="text-[11px] font-semibold text-ai">
+            <span className="text-[12px] font-semibold text-ai">
               <span aria-hidden="true">✦ </span>AI 예측
             </span>
           )}

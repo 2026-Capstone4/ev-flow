@@ -30,7 +30,7 @@ export function StationDetailPage() {
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <BackButton />
-        <h1 className="text-[17px] font-bold">충전소 상세</h1>
+        <h1 className="text-[18px] font-bold">충전소 상세</h1>
       </header>
 
       {station ? (

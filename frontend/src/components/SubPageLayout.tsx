@@ -15,7 +15,7 @@ export function SubPageLayout({ title, children }: SubPageLayoutProps) {
     <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-page">
       <header className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <BackButton />
-        <h1 className="text-[17px] font-bold text-text-primary">{title}</h1>
+        <h1 className="text-[18px] font-bold text-text-primary">{title}</h1>
       </header>
       <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-2 pb-[calc(24px+env(safe-area-inset-bottom))]">
         {children}

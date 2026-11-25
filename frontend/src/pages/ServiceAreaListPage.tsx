@@ -25,7 +25,7 @@ export function ServiceAreaListPage() {
       <main className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 pt-[56px] pb-6">
         <header className="flex flex-col gap-0.5">
           <h1 className="text-[22px] font-bold">고속도로 휴게소</h1>
-          <p className="text-[13px] text-text-secondary">
+          <p className="text-[14px] text-text-secondary">
             천안 구간{totalCount !== undefined && ` ${totalCount}곳`} · 현재 충전기 현황
           </p>
         </header>
