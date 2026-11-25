@@ -11,6 +11,7 @@ import { Button } from '../../components/Button'
 import { ChargerRow } from '../../components/ChargerRow'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { openNaverMapCarRoute } from '../../lib/openMapApp'
+import { KoreanText } from '../../components/KoreanText'
 
 /** 아래 버튼 영역의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(12px, safe-area)) */
 const FOOTER_MIN_PADDING = 12
@@ -47,13 +48,10 @@ export default function ServiceAreaDetailScreen() {
               <View className="pt-px">
                 <Info size={16} strokeWidth={2} color={COLORS['text-secondary']} />
               </View>
-              <Text
-                lineBreakStrategyIOS="hangul-word"
-                className="flex-1 font-sans text-[14px] text-text-secondary"
-              >
+              <KoreanText className="flex-1 font-sans text-[14px] text-text-secondary">
                 휴게소는 현재 충전기 현황만 보여줘요. 혼잡 예측과 예상 대기는 도심 충전소에서만
                 제공해요.
-              </Text>
+              </KoreanText>
             </View>
 
             <View className="gap-1.5">

@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
 import { getHorizonLabel, HORIZONS } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
+import { createShadow } from '../lib/shadow'
 
 type HorizonSelectorProps = {
   value: HorizonMinutes
@@ -30,12 +31,7 @@ const VARIANT_CLASS = {
 }
 
 /** 웹 그림자(0 1px 2px 10%)를 RN 그림자 속성으로 옮김. floating에서 고른 칸만 띄움 */
-const FLOATING_SELECTED_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.1,
-  shadowRadius: 1,
-  shadowOffset: { width: 0, height: 1 },
-}
+const FLOATING_SELECTED_SHADOW = createShadow(1, 2, 0.1)
 
 /** 예측 시점(지금 · 15분 후 · 30분 후) 선택 */
 export function HorizonSelector({ value, onChange, variant = 'floating' }: HorizonSelectorProps) {

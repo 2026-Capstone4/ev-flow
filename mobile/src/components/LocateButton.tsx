@@ -1,14 +1,10 @@
 import { LocateFixed } from 'lucide-react-native'
 import { ActivityIndicator, Pressable } from 'react-native'
 import { COLORS } from '@ev-flow/core/lib/theme'
+import { createShadow } from '../lib/shadow'
 
 /** 웹 그림자(0 2px 8px 15%)를 RN 그림자 속성으로 옮김 */
-const BUTTON_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.15,
-  shadowRadius: 4,
-  shadowOffset: { width: 0, height: 2 },
-}
+const BUTTON_SHADOW = createShadow(2, 8, 0.15)
 
 /** 버튼 지름 (웹 size-11). 지도 홈이 시트 위에 띄울 자리를 계산할 때 씀 */
 export const LOCATE_BUTTON_SIZE = 44

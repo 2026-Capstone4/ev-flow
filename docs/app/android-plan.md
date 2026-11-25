@@ -50,14 +50,14 @@ iOS로 만든 앱(`mobile/`)을 Android에서도 돌리는 계획 · 진행 기�
 | 시연 빌드 | iOS처럼 이 Mac에서 Release 빌드를 직접 설치 (`expo run:android --variant release`). 시연 위치 고정 값도 iOS와 같음 ([README 환경 변수](README.md#5-환경-변수)) | 🟡 |
 | 앱 언어 | **한국어** (2026-11-25, Android · iOS). iOS는 개발 언어가 Xcode 기본값 영어(en)라 한국어 기기에서도 시스템 문구(웹 화면 닫기 버튼 등)가 영어로 나오고 App Store 언어 칸이 영어로 보일 수 있음 → `app.config.ts` `locales`에 한국어 + 개발 언어 `ko`. Android는 시스템 문구가 기기 언어를 따라 같은 설정으로 앱 이름만 한국어 자원에 들어감. 1단계와 따로 PR, iOS는 다음 App Store 빌드부터 | ✅ 정함 · 구현 ⏳ |
 | `android/` 폴더 | iOS처럼 git 제외(`mobile/.gitignore`에 이미 있음), `expo prebuild --platform android`로 만듦 | ✅ |
-| 그림자 | iOS `shadow*`는 그대로 두고 Android만 같은 값의 `boxShadow`(RN 0.76+ 새 구조에서 지원) — `elevation`은 방향 · 투명도를 못 맞춤 | 🟡 |
+| 그림자 | iOS `shadow*`는 그대로 두고 Android만 같은 값의 `boxShadow`(RN 0.76+ 새 구조에서 지원) — `elevation`은 방향 · 투명도를 못 맞춤 | ✅ `src/lib/shadow.ts` |
 | 뒤로 가기 (하드웨어 · 제스처) | Android 관례대로 열린 것부터 닫음: 필터 패널 → 펼친 추천 시트(접힘으로) → 화면 뒤로. 첫 방문 안내는 뒤로 가기로 안 닫힘 (웹 · iOS처럼 바깥을 눌러도 안 닫히는 것과 맞춤) | 🟡 |
 
 ## 4. 단계
 
 PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 고치면 `feat/fe-*`)
 
-### 1단계: 에뮬레이터에서 개발 빌드 띄우기 🟡 (PR 남음)
+### 1단계: 에뮬레이터에서 개발 빌드 띄우기 ✅ (#221)
 
 - `app.config.ts`: `android` 설정(`package` · `versionCode: 1` · adaptive icon), 머리 주석 · 경고 문구의 "iOS만" 고치기
 - adaptive icon 앞 그림(`assets/adaptive-icon.png`, 가운데 66% 안에 흰 E + 노란 번개, 투명 바탕) · 뒤 색(파랑) — 원본 `assets/icon.svg`
@@ -67,7 +67,7 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 - 네이버 지도 SDK(3.23.2)를 Gradle이 받는지 — 라이브러리는 `mavenCentral()`만 봄 → 네이버 저장소 추가함 (진행 기록)
 - 확인: 에뮬레이터에서 지도 · 마커 · 탭 이동, 지도가 회색 격자면 NCP 등록 · `client_id`부터 봄. iOS 시뮬레이터도 한 번
 
-### 2단계: 화면 모양 ⏳
+### 2단계: 화면 모양 🟡
 
 - [README 화면 표](README.md#3-화면) 순서대로 10개 화면
 - 그림자 · 한글 줄바꿈 · 글꼴 · 화면 끝까지 그리기(edge-to-edge) · 하단 탭 · 시트 높이 — [5번 표](#5-코드에서-고칠-곳)
@@ -115,8 +115,8 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
 | `expo-location` plugin | iOS 설명 문구만 | Android 정확 · 대략 위치 권한은 plugin이 넣음, 백그라운드 위치는 안 씀 — prebuild 뒤 확인 |
 | `src/lib/openMapApp.ts` | 플랫폼 `'ios'` 고정, 없으면 `itms-apps://` | core는 Android면 브라우저용 `intent://` URL을 줌 — RN `Linking.openURL`은 `intent://`를 못 여는 것으로 보임 → 앱에서도 `nmap://` · `kakaomap://`를 쓰고, 없으면 `market://details?id=com.nhn.android.nmap` · `net.daum.android.map`. 실제로 열어 보고 정함 |
 | 지도 앱 설치 확인 | Info.plist `LSApplicationQueriesSchemes` | Android 11+는 manifest `<queries>`에 두 앱(패키지 또는 scheme)을 적어야 `canOpenURL`이 true — Expo 설정에 칸이 없어 작은 config plugin(`withAndroidManifest`)으로 넣음 |
-| 그림자 8곳 | `shadow*` — `BackButton` · `FilterPanel` · `OnboardingDialog` · `LocateButton` · `SearchBar` · `HorizonSelector` · `RecommendSheet` · 길찾기 시트 | Android는 `shadow*`가 안 그려짐 → 같은 값을 한 곳(예: `src/lib/shadow.ts`)에서 플랫폼별로 |
-| 한글 줄바꿈 10곳 | `lineBreakStrategyIOS="hangul-word"` | Android는 무시됨 — 줄바꿈 모양 보고 어색한 문구만 직접 끊음 |
+| 그림자 9곳 | `shadow*` — `BackButton` · `FilterPanel` · `OnboardingDialog` · `LocateButton` · `SearchBar` · `HorizonSelector` · `SegmentedControl` · `RecommendSheet` · 길찾기 시트 | ✅ Android는 `shadow*`가 안 그려짐 → `src/lib/shadow.ts` `createShadow`로 플랫폼별 (2단계) |
+| 한글 줄바꿈 10곳 | `lineBreakStrategyIOS="hangul-word"` | ✅ Android는 무시됨 → `KoreanText`가 단어 안 글자 사이에 WORD JOINER (2단계) |
 | 글꼴 | Pretendard otf를 PostScript 이름으로 (`Pretendard-Regular` 등) | Android는 글꼴을 파일 이름으로 찾음 — 파일 이름과 PostScript 이름이 같아 그대로 잡힐 것으로 보이나 확인 |
 | `OnboardingDialog` | `onRequestClose={onClose}` (iOS에서 안 불림) | 뒤로 가기에 닫히지 않게 |
 | 하단 · 시트 여백 | `insets.bottom` (하단 탭 · 시트 · 화면들) | 제스처 바 · 3버튼 바에서 확인. 화면 끝까지 그리기가 기본이라 위 상태바 여백도 |
@@ -172,3 +172,18 @@ PR 하나에 단계 하나. 브랜치는 `feat/app-android-*` (core를 같이 �
   - 개발 빌드에만 들어가는 권한: 주변 기기(`ACCESS_LOCAL_NETWORK` 등, 개발 메뉴의 Metro 찾기) · 다른 앱 위에 그리기 — 5단계 Release 빌드 manifest에서 빠졌는지 확인
   - 그림자가 안 그려지는 것 확인 (2단계)
 - iOS 확인 (iPhone 17 Pro 시뮬레이터 · iOS 26.4, 개발 빌드): `expo-system-ui`가 들어간 뒤에도 prebuild · 빌드 성공, 지도 홈 · 추천 시트 · 그림자 · 하단 탭 · 더보기가 제출 빌드와 같음. 기기를 다크 모드로 바꿔도 앱은 밝은 화면 그대로
+
+### 2026-11-25 2단계 화면 모양 (`feat/app-android-ui`)
+
+글자 · 탭 크기 변경(#222)이 들어간 develop 기준. 에뮬레이터는 앱 언어만 한국어(`adb shell cmd locale set-app-locales app.evflowkr.evflow --locales ko-KR`, 시스템 언어는 루트 없이 못 바꿈) · GPS 합정역(`adb emu geo fix 126.9137 37.5495`)
+
+- 화면 10개를 Android · iOS 나란히 비교 — 배치 · 글자 크기 · 줄바꿈은 거의 같고 그림자 · 한글 줄바꿈만 다름
+- 그림자: 9곳이 모두 웹 box-shadow 값을 손으로 옮긴 것(iOS `shadowRadius` = 웹 blur의 절반) → `createShadow(offsetY, blur, opacity)` 하나로. iOS는 같은 `shadow*` 값, Android는 웹과 같은 `boxShadow`
+- 한글 줄바꿈: RN Android에는 `hangul-word` 같은 설정이 없어(Android `LineBreakConfig`를 RN이 연결 안 함) "남길 수 있어 / 요."처럼 단어가 갈라짐 → `KoreanText` 컴포넌트: iOS는 `lineBreakStrategyIOS="hangul-word"` 그대로, Android는 문자열의 단어 안 글자 사이에 WORD JOINER(U+2060)를 넣음. 10곳을 바꿈, 깨진 글자 상자 없음
+- 확인만 한 것 (바꾼 것 없음)
+  - 추천 시트 펼침 덮개: 눈으로는 안 보였는데 지도 밝기 0.93 → 0.82로 iOS(0.94 → 0.85)와 같게 어두워짐
+  - 3버튼 내비게이션 바: 하단 탭 · 길찾기 시트가 바 위에 놓임. 목록은 스크롤 중 바 아래로 지나감(화면 끝까지 그리기 기본)
+  - 상태바 · 검색 화면 키보드 · 필터 패널 · 휴게소 노선 · 지역 화면 · 더보기
+- 3단계로 넘긴 것: **필터 패널을 연 채 뒤로 가기를 누르면 패널이 닫히지 않고 앱이 꺼짐**
+- 에뮬레이터 GPS 기본값은 미국(마운틴뷰)이라, 앱이 현재 위치를 쓰면 지도가 서울 범위 끝(인천 쪽)으로 밀리고 추천은 한국 밖 좌표라 서버 422 → '불러오지 못했습니다'. iOS도 같은 상황이면 같음 — 확인할 때 GPS부터 옮김
+- iOS 시뮬레이터: 길찾기 · 상태 이상 화면이 바꾸기 전과 같음 (그림자 · 줄바꿈 그대로)

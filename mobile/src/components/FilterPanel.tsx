@@ -4,6 +4,7 @@ import { DEFAULT_FILTERS, isDefaultFilters, matchesFilters } from '@ev-flow/core
 import type { RecommendationFilters, Station } from '@ev-flow/core/types/station'
 import { Button } from './Button'
 import { StationFilterOptions } from './StationFilterOptions'
+import { createShadow } from '../lib/shadow'
 
 type FilterPanelProps = {
   /** 지금 지도에 적용된 필터. 패널을 열 때 이 값에서 시작 */
@@ -14,12 +15,7 @@ type FilterPanelProps = {
 }
 
 /** 웹 그림자(0 4px 16px 16%)를 RN 그림자 속성으로 옮김 */
-const SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.16,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 4 },
-}
+const SHADOW = createShadow(4, 16, 0.16)
 
 /**
  * 지도 홈 검색창 아래로 내려오는 필터 패널. 고르는 동안은 지도에 반영하지 않고 적용을 눌러야 반영(초기화는 바로 반영)
