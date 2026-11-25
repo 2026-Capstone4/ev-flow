@@ -18,6 +18,7 @@ import { type LayoutChangeEvent, Pressable, Text, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 import { HorizonSelector } from './HorizonSelector'
 import { RECOMMEND_CARD_HEIGHT, RecommendCard, RecommendCardSkeleton } from './RecommendCard'
+import { createShadow } from '../lib/shadow'
 
 const RECOMMEND_MESSAGE = {
   error: '추천 충전소를 불러오지 못했습니다',
@@ -44,12 +45,7 @@ const GAP = 12
 const TOP_RESERVED_HEIGHT = 120
 
 /** 웹 그림자(0 -2px 12px 12%)를 RN 그림자 속성으로 옮김 */
-const SHEET_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.12,
-  shadowRadius: 6,
-  shadowOffset: { width: 0, height: -2 },
-}
+const SHEET_SHADOW = createShadow(-2, 12, 0.12)
 
 /** 지도 홈이 시트를 직접 움직일 때 쓰는 함수 */
 export type RecommendSheetHandle = {

@@ -16,6 +16,7 @@ import { BackButton } from '../components/BackButton'
 import { DistrictPicker } from '../components/DistrictPicker'
 import { FilterChip } from '../components/FilterChip'
 import { UpdateStatus } from '../components/UpdateStatus'
+import { KoreanText } from '../components/KoreanText'
 
 type SectionProps = {
   title: string
@@ -32,12 +33,7 @@ function Section({ title, count, description, children }: SectionProps) {
         <Text className="font-bold text-base text-text-primary">
           {title} <Text className="text-text-secondary">{count}기</Text>
         </Text>
-        <Text
-          lineBreakStrategyIOS="hangul-word"
-          className="font-sans text-[14px] text-text-secondary"
-        >
-          {description}
-        </Text>
+        <KoreanText className="font-sans text-[14px] text-text-secondary">{description}</KoreanText>
       </View>
       {children}
     </View>
@@ -78,13 +74,10 @@ function StationIssueCard({ station, statusLabel, onPress }: StationIssueCardPro
             index === station.chargers.length - 1 ? '' : 'border-b border-border-default'
           }`}
         >
-          <Text
-            lineBreakStrategyIOS="hangul-word"
-            className="min-w-0 flex-shrink font-medium text-[14px] text-text-primary"
-          >
+          <KoreanText className="min-w-0 flex-shrink font-medium text-[14px] text-text-primary">
             급속 {charger.chargerId} ·{' '}
             {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
-          </Text>
+          </KoreanText>
           <Text className="flex-shrink-0 font-bold text-[14px] text-congestion-unknown">
             {statusLabel}
           </Text>
@@ -157,13 +150,10 @@ export default function ChargerIssuesScreen() {
     if (isAllUnknown) {
       return (
         <View className="rounded-md bg-status-warning-bg px-4 py-3">
-          <Text
-            lineBreakStrategyIOS="hangul-word"
-            className="font-medium text-sm text-status-warning"
-          >
+          <KoreanText className="font-medium text-sm text-status-warning">
             상태 수집이 늦어지고 있어요.
             {'\n'}지금은 모든 충전기 상태를 확인할 수 없어요.
-          </Text>
+          </KoreanText>
         </View>
       )
     }

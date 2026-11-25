@@ -18,6 +18,8 @@ import { openMapCarRoute } from '../../../lib/openMapApp'
 import { RouteOverlay, toRegion } from '../../../map/RouteOverlay'
 import { StationMarker } from '../../../map/StationMarker'
 import { toAppZoom } from '../../../map/zoom'
+import { createShadow } from '../../../lib/shadow'
+import { KoreanText } from '../../../components/KoreanText'
 
 /** 경로를 받기 전 첫 화면 줌 (웹 기준 14) */
 const INITIAL_WEB_ZOOM = 14
@@ -33,12 +35,7 @@ const FIT_MARGIN = 40
 const SHEET_MIN_PADDING = 16
 
 /** 웹 시트 그림자(0 -2px 12px 12%)를 RN 그림자 속성으로 옮김 */
-const SHEET_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.12,
-  shadowRadius: 6,
-  shadowOffset: { width: 0, height: -2 },
-}
+const SHEET_SHADOW = createShadow(-2, 12, 0.12)
 
 /** 경로를 만든 길찾기 제공자 이름. 약관상 출처를 헷갈리지 않게 시트에 작게 표시함 */
 const ROUTE_PROVIDER_LABEL = { kakao: '카카오모빌리티', naver: '네이버' } as const
@@ -194,17 +191,14 @@ export default function RouteScreen() {
               <View className="mt-px">
                 <TriangleAlert size={16} strokeWidth={2} color={COLORS['status-warning']} />
               </View>
-              <Text
-                lineBreakStrategyIOS="hangul-word"
-                className="flex-1 font-sans text-[14px] text-status-warning"
-              >
+              <KoreanText className="flex-1 font-sans text-[14px] text-status-warning">
                 {/* 경로 없음 · 호출 제한 · 그 밖의 오류 순으로 안내를 고름 */}
                 {isRouteUnavailable
                   ? '경로를 찾을 수 없어요. 다른 충전소를 선택해 주세요.'
                   : isRouteRateLimited
                     ? `요청이 많아 경로를 불러오지 못했어요.\n${getRetryWaitText(routeRetryAfterSeconds)} 다시 시도해 주세요.`
                     : '경로를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}
-              </Text>
+              </KoreanText>
             </View>
             {/* 경로 없음은 다시 해도 같아서 재시도 버튼을 숨김 */}
             {!isRouteUnavailable && (

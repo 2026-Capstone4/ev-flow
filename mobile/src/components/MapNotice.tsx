@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { KoreanText } from './KoreanText'
 
 type MapNoticeProps = {
   message: string
@@ -12,9 +13,7 @@ export function MapNotice({ message }: MapNoticeProps) {
       accessibilityLiveRegion="polite"
       className="max-w-full rounded-2xl bg-text-primary/85 px-3 py-1.5"
     >
-      <Text lineBreakStrategyIOS="hangul-word" className="font-medium text-xs text-text-on-brand">
-        {message}
-      </Text>
+      <KoreanText className="font-medium text-xs text-text-on-brand">{message}</KoreanText>
     </View>
   )
 }

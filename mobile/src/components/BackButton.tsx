@@ -2,14 +2,10 @@ import { router } from 'expo-router'
 import { ChevronLeft } from 'lucide-react-native'
 import { Pressable } from 'react-native'
 import { COLORS } from '@ev-flow/core/lib/theme'
+import { createShadow } from '../lib/shadow'
 
 /** 지도 위에 띄우는 둥근 버튼 그림자 (웹 0 2px 8px 12%) */
-export const FLOATING_BUTTON_SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.12,
-  shadowRadius: 4,
-  shadowOffset: { width: 0, height: 2 },
-}
+export const FLOATING_BUTTON_SHADOW = createShadow(2, 8, 0.12)
 
 type BackButtonProps = {
   /** true면 지도 위에 띄우는 흰 원 모양 (길찾기 화면) */
