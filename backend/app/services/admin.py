@@ -5,6 +5,7 @@
 서비스 대상 기준 수(eligible_*)를 씀. 시간 구간은 모두 회차 시작 시각(started_at) 기준.
 """
 
+import json
 import logging
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
@@ -99,6 +100,12 @@ HOUR_TOTAL_FIELD = "_"
 # 시간대가 끝날 때마다 새 키가 생기므로 다음 시간대까지만 남김
 CHARGER_SUM_CACHE_KEY = "admin:occ-charger-sum:v1:{target}:{day}:{upto:02d}"
 CHARGER_SUM_CACHE_TTL_SEC = 2 * 3600
+# 아직 저장하지 않은 시간대(from_hour시 ~ 지금)의 충전기별 시간대 집계 - 수집 회차가 끝나야 바뀌므로 대상의
+# 마지막으로 끝난 회차로 키를 만들어 이용률(일 · 주) · 충전기 목록이 함께 씀. 화면이 세 요청을 동시에 보내
+# 같은 집계를 각각 세면 서버에서 1.3초 (2026-11-26). 값은 JSON {시: {charger_field: [충전 중, 분모]}}.
+# collector가 회차를 끝낸 뒤 미리 채움 (warm_open_hours). 다음 회차(5분) 뒤엔 새 키를 쓰므로 짧게 남김
+OPEN_CACHE_KEY = "admin:occ-open:v1:{target}:{day}:{from_hour:02d}:{run_id}"
+OPEN_CACHE_TTL_SEC = 15 * 60
 _redis = redis.Redis.from_url(settings.redis_url, socket_timeout=1, socket_connect_timeout=1)
 
 
@@ -234,13 +241,17 @@ def hourly_log_counts(
     missing = [h for h in hours if h not in counts]
     if not missing:
         return counts
-    # 빠진 시간대의 처음 ~ 끝을 한 번에 셈. 끝난 시간대는 한 번에 함께 저장하므로 보통은 끝쪽 한두 시간만 빠짐
+    # 빠진 시간대의 처음 ~ 끝을 한 번에 셈. 끝난 시간대는 한 번에 함께 저장하므로 보통은 끝쪽 한두 시간만 빠짐.
+    # 지금까지 세는 경우(진행 중인 시간대 포함)는 회차 단위 저장값을 씀
     end = min(hour_start(day, missing[-1]) + timedelta(hours=1), now)
-    computed: dict[int, dict[str, tuple[int, int]]] = defaultdict(dict)
-    for (hour, station_id, charger_id), value in log_counts(
-        db, target, hour_start(day, missing[0]), end, "hour_charger"
-    ).items():
-        computed[hour][charger_field(station_id, charger_id)] = value
+    if end == now:
+        computed = defaultdict(dict, open_hour_counts(db, target, day, missing[0], now))
+    else:
+        computed = defaultdict(dict)
+        for (hour, station_id, charger_id), value in log_counts(
+            db, target, hour_start(day, missing[0]), end, "hour_charger"
+        ).items():
+            computed[hour][charger_field(station_id, charger_id)] = value
     for hour in missing:
         fields = computed[hour]
         fields[HOUR_TOTAL_FIELD] = (
@@ -318,13 +329,66 @@ def today_charger_counts(db: Session, target: str, now: datetime) -> dict[str, t
     counts = dict(closed)
     counts.pop(HOUR_TOTAL_FIELD, None)
     if hour_start(day, upto) < now:
-        for (_, station_id, charger_id), (c, o) in log_counts(
-            db, target, hour_start(day, upto), now, "hour_charger"
-        ).items():
-            field = charger_field(station_id, charger_id)
-            charging, observed = counts.get(field, (0, 0))
-            counts[field] = (charging + c, observed + o)
+        for fields in open_hour_counts(db, target, day, upto, now).values():
+            for field, (c, o) in fields.items():
+                charging, observed = counts.get(field, (0, 0))
+                counts[field] = (charging + c, observed + o)
     return counts
+
+
+def last_finished_run_id(db: Session, target: str, now: datetime) -> int | None:
+    """now 전에 시작해 끝난(RUNNING이 아닌) 대상의 마지막 회차 - 상태 로그와 회차 결과는 함께 커밋됨"""
+    return db.scalar(
+        select(CollectionRun.id)
+        .where(
+            CollectionRun.target == target,
+            CollectionRun.status != "RUNNING",
+            CollectionRun.started_at < now,
+        )
+        .order_by(CollectionRun.started_at.desc())
+        .limit(1)
+    )
+
+
+def open_hour_counts(
+    db: Session, target: str, day: date, from_hour: int, now: datetime
+) -> dict[int, dict[str, tuple[int, int]]]:
+    """day의 from_hour시 ~ now에 시작한 회차의 시간대별 충전기 집계 {시: {charger_field: (충전 중, 분모)}}.
+    마지막으로 끝난 회차가 같으면 OPEN_CACHE_KEY에 저장한 값을 씀 - Redis 장애면 DB에서 바로 셈"""
+    run_id = last_finished_run_id(db, target, now)
+    key = None
+    if run_id is not None:
+        key = OPEN_CACHE_KEY.format(
+            target=target, day=day.isoformat(), from_hour=from_hour, run_id=run_id
+        )
+        try:
+            raw = _redis.get(key)
+            if raw is not None:
+                return {
+                    int(hour): {field: tuple(value) for field, value in fields.items()}
+                    for hour, fields in json.loads(raw).items()
+                }
+        except redis.RedisError:
+            logger.warning("Redis 오류 - 진행 중인 시간대 집계를 DB에서 바로 계산", exc_info=True)
+
+    counts: dict[int, dict[str, tuple[int, int]]] = defaultdict(dict)
+    for (hour, station_id, charger_id), value in log_counts(
+        db, target, hour_start(day, from_hour), now, "hour_charger"
+    ).items():
+        counts[hour][charger_field(station_id, charger_id)] = value
+    if key is not None:
+        try:
+            _redis.set(key, json.dumps(counts), ex=OPEN_CACHE_TTL_SEC)
+        except redis.RedisError:
+            logger.warning("Redis 오류 - 진행 중인 시간대 집계를 저장하지 못함", exc_info=True)
+    return dict(counts)
+
+
+def warm_open_hours(db: Session, target: str, now: datetime | None = None) -> None:
+    """collector가 회차를 끝낸 뒤 부름 - 화면 요청과 같은 경로로 오늘 시간대별 집계를 읽어
+    이번 회차의 진행 중인 시간대 집계를 저장해 둠"""
+    now = now or datetime.now(UTC)
+    hourly_log_counts(db, target, kst_today(now), now)
 
 
 def daily_log_counts(db: Session, target: str, days: list[date], now: datetime) -> dict:
