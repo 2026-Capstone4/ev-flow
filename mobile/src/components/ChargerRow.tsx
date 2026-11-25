@@ -37,7 +37,7 @@ export function ChargerRow({ charger, now, isLast }: ChargerRowProps) {
       >
         급속 {charger.chargerId} · {formatChargerSpec(charger.connectorTypes, charger.capacityKw)}
       </Text>
-      <Text className={`flex-shrink-0 font-bold text-[13px] ${STATUS_CLASS[charger.status]}`}>
+      <Text className={`flex-shrink-0 font-bold text-[14px] ${STATUS_CLASS[charger.status]}`}>
         {CHARGER_STATUS_LABEL[charger.status]}
         {elapsed && ` · ${elapsed}`}
       </Text>

@@ -174,7 +174,7 @@ export default function RouteScreen() {
         {station ? (
           <View className="gap-1">
             <Text className="font-bold text-lg text-text-primary">{station.name}</Text>
-            <Text className="font-sans text-[13px] text-text-secondary">{station.address}</Text>
+            <Text className="font-sans text-[14px] text-text-secondary">{station.address}</Text>
           </View>
         ) : isStationError ? (
           <Text className="font-sans text-sm text-text-secondary">
@@ -196,7 +196,7 @@ export default function RouteScreen() {
               </View>
               <Text
                 lineBreakStrategyIOS="hangul-word"
-                className="flex-1 font-sans text-[13px] text-status-warning"
+                className="flex-1 font-sans text-[14px] text-status-warning"
               >
                 {/* 경로 없음 · 호출 제한 · 그 밖의 오류 순으로 안내를 고름 */}
                 {isRouteUnavailable
@@ -242,7 +242,7 @@ export default function RouteScreen() {
                 )}
               </View>
               {/* 경로 출처. 받기 전에도 한 줄 자리를 잡아 다 받았을 때 시트 높이가 튀지 않게 함 */}
-              <Text className="text-right font-sans text-[11px] text-text-secondary">
+              <Text className="text-right font-sans text-[12px] text-text-secondary">
                 {providerLabel ? `경로 정보: ${providerLabel}` : ' '}
               </Text>
             </View>
@@ -263,7 +263,7 @@ export default function RouteScreen() {
                 className="flex-row items-center justify-center gap-2 rounded-md bg-brand-primary px-4 py-3 opacity-50"
               >
                 <ActivityIndicator size="small" color={COLORS['text-on-brand']} />
-                <Text className="font-bold text-[15px] text-text-on-brand">경로를 찾고 있어요</Text>
+                <Text className="font-bold text-[16px] text-text-on-brand">경로를 찾고 있어요</Text>
               </View>
             )}
           </>

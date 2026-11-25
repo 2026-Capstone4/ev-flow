@@ -75,14 +75,14 @@ export default function SearchScreen() {
             autoFocus
             value={query}
             onChangeText={changeQuery}
-            placeholder="충전소 이름·주소 검색"
+            placeholder="충전소 이름 · 주소 검색"
             placeholderTextColor={COLORS['text-secondary']}
             accessibilityLabel="충전소 검색"
             returnKeyType="search"
             autoCorrect={false}
             // 검색창이라 iOS 자동 완성(AutoFill) 말풍선이 뜨지 않게 함
             autoComplete="off"
-            className="min-w-0 flex-1 py-2.5 font-medium text-base text-text-primary"
+            className="min-w-0 flex-1 py-3.5 font-medium text-[17px] text-text-primary"
           />
           {query !== '' && (
             <Pressable
@@ -91,7 +91,7 @@ export default function SearchScreen() {
               onPress={() => changeQuery('')}
               hitSlop={8}
             >
-              <X size={16} strokeWidth={2} color={COLORS['text-secondary']} />
+              <X size={18} strokeWidth={2} color={COLORS['text-secondary']} />
             </Pressable>
           )}
         </View>
@@ -127,7 +127,7 @@ export default function SearchScreen() {
           keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingBottom: insets.bottom }}
           ListHeaderComponent={
-            <Text className="px-4 pt-4 pb-1 font-medium text-[13px] text-text-secondary">
+            <Text className="px-4 pt-4 pb-1 font-medium text-[14px] text-text-secondary">
               검색 결과 {results.length}곳 ·{' '}
               {horizon === 0 ? '지금 기준' : `${horizon}분 후 예측 기준`}
             </Text>
@@ -161,7 +161,7 @@ export default function SearchScreen() {
               <Text className="font-bold text-base text-text-primary">
                 조건에 맞는 충전소가 없어요
               </Text>
-              <Text className="text-center font-sans text-[13px] text-text-secondary">
+              <Text className="text-center font-sans text-[14px] text-text-secondary">
                 필터를 줄이거나 다른 지역 이름으로 검색해 보세요.
               </Text>
               {/* 필터를 바꿔 둔 경우에만 한 번에 되돌리는 버튼을 보여 줌 */}

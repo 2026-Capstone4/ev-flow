@@ -12,7 +12,7 @@ export default function LicensesScreen() {
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">오픈소스 라이선스</Text>
+        <Text className="font-bold text-[18px] text-text-primary">오픈소스 라이선스</Text>
       </View>
       <FlatList
         data={licenses}
@@ -30,8 +30,8 @@ export default function LicensesScreen() {
             onPress={() => openWebPage(item.url)}
             className="gap-0.5 border-t border-border-default px-4 py-3 active:bg-bg-subtle"
           >
-            <Text className="font-medium text-[15px] text-text-primary">{item.name}</Text>
-            <Text className="font-sans text-[13px] text-text-secondary">
+            <Text className="font-medium text-[16px] text-text-primary">{item.name}</Text>
+            <Text className="font-sans text-[14px] text-text-secondary">
               {item.version} · {item.license}
             </Text>
           </Pressable>

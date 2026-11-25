@@ -59,7 +59,7 @@ export default function ServiceAreaListScreen() {
     >
       <View className="gap-0.5">
         <Text className="font-bold text-[22px] text-text-primary">고속도로 휴게소</Text>
-        <Text className="font-sans text-[13px] text-text-secondary">
+        <Text className="font-sans text-[14px] text-text-secondary">
           전국{totalCount !== undefined && ` ${totalCount}곳`} · 현재 충전기 현황
         </Text>
       </View>
@@ -75,7 +75,7 @@ export default function ServiceAreaListScreen() {
           autoCorrect={false}
           // 검색창이라 iOS 자동 완성(AutoFill) 말풍선이 뜨지 않게 함
           autoComplete="off"
-          className="min-w-0 flex-1 py-3 font-medium text-[15px] text-text-primary"
+          className="min-w-0 flex-1 py-3.5 font-medium text-[17px] text-text-primary"
         />
         {/* 검색어가 있을 때만 지우기 버튼 */}
         {searchText !== '' && (
@@ -199,7 +199,7 @@ function GroupRow({ badge, title, subtitle, count, isFirst, onPress }: GroupRowP
         <Text className="font-bold text-base text-text-primary">{title}</Text>
         {/* 작은 설명이 있을 때만 이름 옆에 */}
         {subtitle && (
-          <Text className="font-sans text-[13px] text-text-secondary">
+          <Text className="font-sans text-[14px] text-text-secondary">
             {'  '}
             {subtitle}
           </Text>
@@ -228,7 +228,7 @@ function SearchResults({ results, onPress }: SearchResultsProps) {
   }
   return (
     <View className="gap-2">
-      <Text className="px-1 font-medium text-[13px] text-text-secondary">
+      <Text className="px-1 font-medium text-[14px] text-text-secondary">
         검색 결과 {results.length}곳
       </Text>
       <View className="overflow-hidden rounded-lg bg-bg-page">

@@ -132,7 +132,7 @@ export function WaitRangeBar({ p50, p90 }: WaitRangeBarProps) {
               className="absolute top-0"
               style={{ width: LABEL_BOX_WIDTH, ...labelBoxAt(tick.percent) }}
             >
-              <Text numberOfLines={1} className="font-sans text-[11px] text-text-secondary">
+              <Text numberOfLines={1} className="font-sans text-[12px] text-text-secondary">
                 {tick.label}
               </Text>
             </View>

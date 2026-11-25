@@ -15,7 +15,7 @@ export function SubPageLayout({ title, children }: SubPageLayoutProps) {
     <View className="flex-1 bg-bg-page" style={{ paddingTop: insets.top }}>
       <View className="h-[52px] flex-row items-center gap-2 px-4">
         <BackButton />
-        <Text className="font-bold text-[17px] text-text-primary">{title}</Text>
+        <Text className="font-bold text-[18px] text-text-primary">{title}</Text>
       </View>
       <ScrollView
         className="flex-1"

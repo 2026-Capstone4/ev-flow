@@ -220,7 +220,7 @@ export function RecommendSheet({
           {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
           <View className="flex-row items-center gap-1.5">
             <View className="size-2.5 rounded-full bg-marker-recommended" />
-            <Text accessibilityRole="header" className="font-bold text-[17px] text-text-primary">
+            <Text accessibilityRole="header" className="font-bold text-[18px] text-text-primary">
               추천 충전소
             </Text>
           </View>
@@ -253,7 +253,7 @@ export function RecommendSheet({
             ))}
             {/* 후보가 3곳 미만이면 짧은 배열로 옴 (UC-U06 E1) */}
             {recommendations.length < 3 && (
-              <Text className="text-center font-sans text-[13px] text-text-secondary">
+              <Text className="text-center font-sans text-[14px] text-text-secondary">
                 조건에 맞는 후보가 {recommendations.length}곳뿐이에요
               </Text>
             )}
