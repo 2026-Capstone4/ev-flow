@@ -16,7 +16,7 @@ export type MapApp = keyof typeof MAP_APP_STORE_URL
 
 type Destination = LatLng & { name: string }
 
-/** 고른 지도 앱의 자동차 길찾기 URL. 출발지는 넣지 않아 지도 앱이 실제 현재 위치에서 안내함 (계획 문서 10번) */
+/** 고른 지도 앱의 자동차 길찾기 URL. 출발지는 넣지 않아 지도 앱이 실제 현재 위치에서 안내함 (docs/app/README.md 8번) */
 const getCarRouteUrl = (app: MapApp, destination: Destination) =>
   app === 'naver'
     ? getNaverCarRouteUrl({ destination, appName: APP_NAME }, 'ios')

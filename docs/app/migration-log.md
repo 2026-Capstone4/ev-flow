@@ -1,19 +1,18 @@
-# EV-flow RN(앱) 전환 계획 (2026-11-19)
+# EV-flow 앱 전환 기록 — iOS (2026-11-19 ~ 11-24)
 
-새 세션에서 앱 전환을 시작할 때 읽는 문서. 이전 대화 없이 읽히게 정리함.
+웹 사용자 화면을 RN(Expo) iOS 앱으로 옮긴 0~6단계 기록. 앱의 지금 상태는 [README.md](README.md), 안드로이드는 [android-plan.md](android-plan.md).
+
+- 계획 · 확인 내용은 적은 날 그대로 둠. 이후 바뀐 곳은 **→ 이후:** 로 표시
+- 원래 문서(`docs/rn-migration-plan.md`)의 7 · 8 · 9 · 10번(정해야 할 것 · 작업 규칙 · NCP 콘솔 등록 · 네이버 지도 앱 딥링크)은 README로 옮김. 본문의 "9번" · "10번"은 README의 [NCP 콘솔 등록](README.md#7-ncp-콘솔-등록) · [지도 앱 딥링크](README.md#8-지도-앱-딥링크)
 
 ## 목차
 
 - [1. 목표 · 전제](#1-목표--전제)
-- [2. 현재 상태](#2-현재-상태)
+- [2. 시작 당시 상태 (2026-11-19)](#2-시작-당시-상태-2026-11-19)
 - [3. 그대로 쓰는 것 · 다시 짜는 것](#3-그대로-쓰는-것--다시-짜는-것)
 - [4. 전환 때 문제가 되는 점](#4-전환-때-문제가-되는-점)
 - [5. 지도 마커 참고](#5-지도-마커-참고)
-- [6. 구현 계획 (연동과 병렬)](#6-구현-계획-연동과-병렬)
-- [7. 정해야 할 것](#7-정해야-할-것)
-- [8. 작업 규칙](#8-작업-규칙)
-- [9. NCP 콘솔 등록](#9-ncp-콘솔-등록)
-- [10. 네이버 지도 앱 딥링크](#10-네이버-지도-앱-딥링크)
+- [6. 구현 단계](#6-구현-단계)
 
 ---
 
@@ -24,8 +23,9 @@
 - **실제 API 연동과 병렬로 진행함** (일정상 어쩔 수 없음). 연동하며 바뀌는 코드가 웹 · 앱에 한 번에 들어가도록 공용 코드 분리를 먼저 함
 - 12주차 데모는 웹 기준 — 앱 작업이 웹 연동 · 안정화 시간을 잡아먹지 않게 함
 - 운영자 대시보드(`/admin`)는 **웹에 남김 (확정)**. 앱은 사용자 화면 6개만 대상. 웹은 운영자 화면 때문에 계속 배포 · 유지함
+  - → 이후: 더보기 · 상태 이상 충전기 · 휴게소 노선별 · 지역별 화면이 늘어남 ([README 화면](README.md#3-화면))
 
-## 2. 현재 상태
+## 2. 시작 당시 상태 (2026-11-19)
 
 ### 프론트엔드 (`frontend/`)
 
@@ -140,7 +140,7 @@
 - RN 라이브러리가 뷰를 아이콘으로 바꾸는 방식과 비용은 버전마다 다름 → 옮길 때 해당 라이브러리 문서로 확인
 - 라이브러리의 클러스터링 지원 여부도 확인 안 됨
 
-## 6. 구현 계획 (연동과 병렬)
+## 6. 구현 단계
 
 연동 작업은 웹에서 계속하고, 앱은 아래 순서로 진행. **0 · 1단계는 앱 화면 작업보다 먼저** 끝냄.
 
@@ -331,6 +331,7 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 
 길찾기 — 완료 (`feat/app-route`, 2026-11-21)
 - **길찾기를 카카오모빌리티로 바꾼 뒤를 기준으로 만듦** (백엔드 전환은 실험 브랜치 `exp/be-kakao-directions`, develop에는 아직 없음). 응답의 `provider`(`kakao` · `naver`)로 출처를 표시하고, 안내 버튼은 네이버 지도 · 카카오맵 두 개
+  - → 이후: 백엔드 전환은 #148로 2026-11-21 develop에 병합됨. 서버가 `provider`를 보내서 출처 줄이 실제로 보임
   - core: 실험 브랜치의 `lib/kakaoMapLink.ts`(+테스트)를 가져오고 `RouteResponse.provider`를 추가. 지금 develop 서버는 `provider`를 안 보내서 출처 줄만 비어 있음 (화면은 그대로 동작)
 - 화면: `src/app/stations/[stationId]/route.tsx` (웹과 같은 주소 `/stations/{id}/route?horizon=`), core `useRouteData` 그대로. 웹 `RoutePage`와 같은 구성 — 소요 · 거리 · 지금 사용 가능(지금 출발)/예상 대기, 받는 동안 같은 자리 회색 칸, 오류 3종(경로 없음 · 호출 제한 · 그 밖) + 다시 시도
   - 지도: 경로 선(`src/map/RouteOverlay.tsx`, 브랜드 색 5pt) + 경로 끝 → 충전소 회색 점선(3pt, `[6, 6]`), 도착 충전소 마커, 출발지는 지도 홈과 같은 `locationOverlay`
@@ -356,6 +357,7 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
   - 시트가 `@gorhom/bottom-sheet`의 `animatedPosition` · `animatedIndex`(UI 스레드 값)에 위쪽 끝 위치 · 단계 번호를 써 주고, 지도 홈이 그 값으로 버튼 자리 · 투명도를 정함 (`RecommendSheet`에 두 값과 `onExpandedChange`를 넘길 수 있게 함)
   - 재는 동안은 아이콘 대신 기본 로딩 표시 (웹은 아이콘을 돌리지만 NativeWind 애니메이션은 실험 기능)
 - 흐름: `src/hooks/useCurrentLocation.ts` — 웹 `useCurrentLocation` · `handleLocate`와 같음. 버튼을 누를 때만 권한을 물음 → 마포구 안이면 기준 위치(`setUserLocation`)를 바꾸고 지도를 옮김, 마포구 밖이면 지금 기준 위치로 지도만 옮기고 안내, 실패하면 3초 안내(`src/components/MapNotice.tsx`)
+  - → 이후 (#198, 2026-11-24): 온보딩을 닫으면 바로 권한을 묻고, 허용했으면 **마포구 밖이어도** 기준 위치로 씀 (추천은 서버 422로 "마포구만 지원" 안내). 웹은 그대로 마포구 안만
   - 위치 서비스 꺼짐(`hasServicesEnabledAsync`) → 권한(`requestForegroundPermissionsAsync`) → 30초 안의 위치(`getLastKnownPositionAsync`) → 새로 잼(`Accuracy.High`). expo-location에는 시간 제한이 없어서 10초 타이머와 경주시켜 `timeout`
   - core `lib/geolocation.ts`는 그대로 씀. 앱 실패 이유는 `Exclude<LocateFailure, 'insecure'>`(HTTP 주소는 앱에 없음), 문구는 앱 쪽 `APP_LOCATE_FAILURE_MESSAGE`에서 두 개만 바꿈 — `denied`는 "설정 앱에서 … 허용", `unsupported`는 기기 위치 서비스가 꺼진 경우
   - 웹처럼 `EXPO_PUBLIC_USE_GEOLOCATION=true`일 때만 GPS를 씀 (`.env.example`). 꺼져 있으면 시연 위치로 지도만 옮김
@@ -382,7 +384,7 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
 - 복귀 갱신: 위 경고가 뜬 채로 API 주소를 되돌리고 백그라운드에 70초 둔 뒤 돌아오면, 바로 다시 받아 경고가 풀리고 "기준 · n분 전 갱신"으로 돌아옴 (시각은 서버 데이터 기준)
 - 실기기 위치 권한 · 실제 GPS는 6단계
 
-### 6단계: 실기기 확인 · 배포 — 진행 중
+### 6단계: 실기기 확인 · 배포 — 완료 (iOS, 2026-11-24)
 
 계획 (당시 그대로)
 - iOS 실기기에서 딥링크 · 위치 권한 · 지도 성능 확인, EAS Build로 시연용 빌드
@@ -402,109 +404,35 @@ Mock — 완료 (`feat/fe-shared-mocks`, 2026-11-20)
   - 숫자 마커는 겹쳐도 숨기지 않음 (`StationMarker`) — 숨기면 그 충전소를 지도에서 찾을 수 없었음. 색 점만 겹치면 SDK가 숨김
 - 확인: 시뮬레이터에서 줌 하한 · 서울 모서리에서 멈춤 · 줌 13/12(숫자 마커 겹쳐도 모두 보임) · 줌 11(마포 점, 추천만 숫자), 실기기(iPhone 17 Pro)에서 사용자가 확인
 
-남은 것
-- 실기기 확인: 딥링크(네이버 지도 · 카카오맵 앱 있음 · 없음, `kakaomap` scheme은 공식 문서가 없어 특히), 위치 권한 · 실제 GPS, 한글 입력 · 검색어 지우기
-- 시연용 빌드 방식 정하기 (이 Mac에서 Release 빌드 직접 설치 / EAS Build · TestFlight)
-- 백엔드 길찾기 카카오 전환(`exp/be-kakao-directions`)을 develop에 넣기 — 앱 · core는 전환된 응답(`provider`) 기준으로 이미 맞춰 둠
+App Store 제출 준비 (2026-11-22 ~ 11-23)
+- 앱 시연 위치를 환경 변수로 (#163): `EXPO_PUBLIC_DEMO_LOCATION="위도,경도"`. 비우거나 마포구 밖이면 합정역 근처. core `parseDemoLocation` · `MapViewProvider` `initialUserLocation`
+- 더보기 탭 (#166): App Store 심사 지침 5.1.1(개인정보 처리방침 · 고객 지원) 때문에 추가. 안내 다시 보기 · 서비스 지역 안내 · 문의하기(메일) · 고객 지원(`/support`) · 개인정보 처리방침(`/privacy`) · 데이터 출처 · 오픈소스 라이선스 · 버전
+  - 웹 링크는 `expo-web-browser`(앱 안 Safari 화면). 라이선스 목록은 `pnpm --dir mobile run licenses`로 `mobile/assets/licenses.json`을 만듦
+  - 웹 페이지 `/support` · `/privacy`는 #165
+- 앱 아이콘 (#171): 파란 바탕에 흰 E + 노란 번개, 원본 `mobile/assets/icon.svg` → 1024px PNG
+- 홈 화면 이름 `EV Flow` (#178): `ios.infoPlist.CFBundleDisplayName`만 바꿈. Expo `name`(`EV-flow`)은 `ios/` 프로젝트 이름(`EVflow`)을 정해서 그대로 둠
+- Xcode Archive 번들 실패 수정 (#177): Xcode 번들 단계는 pnpm 실행 래퍼를 거치지 않아 `NODE_PATH`가 없음 → `@babel/plugin-transform-react-jsx`를 앱 의존성으로 직접 넣음. 수출 규정 면제(`usesNonExemptEncryption: false`), `ios.buildNumber` 명시
+- 쓰지 않는 영어 권한 설명 제거 (#179): `locationFullAccuracyPermission: false`
+- 지도 홈에서 겹친 점 마커도 모두 표시 (#174, 4단계 지도 홈에 기록)
 
-## 7. 정해야 할 것
+App Store 제출 (2026-11-23 ~ 11-24)
+- 2026-11-23 App Store Connect 앱 등록 — 이름 `EV Flow - AI 충전소 추천`, 번들 ID `app.evflowkr.evflow`, SKU `evflow-ios`
+- 빌드 1.0.0 (1) ~ (5) 업로드 (#180 · #197 · #199 · #202). 1.0.0 (5)가 2026-11-24 제출 빌드
+- 제출 전 수정 (#198): 온보딩 뒤 위치 권한 · 마포구 밖 현재 위치(5단계 → 이후 참고) · 지도 탭 반응(SDK `onTapMap`이 늦어서 바깥 View 터치로 판단) · 상세 문구
+- 첫 추천 (#201): GPS를 받기 전 시연 위치로 부르던 첫 추천을 처음 위치 재기 뒤 1번으로. 실패한 추천을 탭 이동 때 다시 부르지 않음(`retryOnMount: false`)
+- 지도를 탭하면 추천 시트 최소화 (#194, 앱 · 웹)
+- 빌드 방법은 [README 실행 · 빌드](README.md#6-실행--빌드)
 
-| 항목 | 추천 | 비고 |
-|---|---|---|
-| 플랫폼 | **iOS로 결정 (2026-11-19)** | Apple 개발자 계정 있음. 실기기 설치 · 시연용 빌드는 EAS Build(또는 TestFlight) |
-| 라우터 | Expo Router | 파일 기반, 웹 라우트 구조와 비슷 |
-| 폴더 구조 | `packages/core` + `frontend/`(웹, 이름 유지) + `mobile/` | `frontend/` 이름을 바꾸면 CI · 문서 · Nginx 경로를 모두 고쳐야 함 |
-| 번들 ID | **`app.evflowkr.evflow`로 결정 (2026-11-19)** | NCP 콘솔 등록 완료. 스토어에 올리면 못 바꿈 ([9번](#9-ncp-콘솔-등록)) |
-| Expo SDK | 시작 시점 최신 안정판 (2026-11-19 기준 SDK 58 · React 19.3 · RN 0.88 — 1단계에서 core와 함께 동작 확인) | NativeWind v4 · 네이버 지도 라이브러리 지원 여부 함께 확인 |
-| 앱 작업 일정 | 데모(12주차) 전엔 0 · 1단계 + 3단계 검증까지 | 데모 준비가 우선 |
+시연 빌드 (2026-11-21 결정)
+- 이 Mac에서 Release 빌드를 사용자 iPhone에 직접 설치 (EAS · TestFlight 안 씀). 위치 기능은 끄고 시연 위치를 고정 (`EXPO_PUBLIC_USE_GEOLOCATION` 비움 · `EXPO_PUBLIC_DEMO_LOCATION`)
 
-## 8. 작업 규칙
+6단계 이후 화면 추가 (2026-11-22 ~ 11-25)
+- 상태 이상 충전기 (#152): 지도 홈 '상태 이상' 버튼 → `/charger-issues`. 상태 미확인 · 상태 불안정 칩, 구 선택
+  - → 이후 (#213, 2026-11-25): 처음 구를 현재 위치 구 → 마포구에서 **서울 전체**로. 위치로 구를 찾는 코드는 지움 (앱 · 웹)
+- 휴게소 탭을 전국 휴게소로 (#192 · #193): `[노선별 | 지역별]` 탭, 노선 화면 · 지역 화면 · 검색. 15 · 16번 API, 노선 미확인 휴게소는 core에서 이름 · 주소로 묶음. 웹은 아직 옛 휴게소 화면
+- 하단 탭 휴게소 글자는 '휴게소'로 줄였다가(#166) '고속도로 휴게소'로 되돌림 (#196)
 
-- 커밋 · PR 제목: 한글 Conventional Commits, 명사형 또는 '~함'체, 마침표 없음. 코드 식별자는 영어
-- 파트(브랜치 이름 · 커밋 scope): 앱(`mobile/`)만 바꾸면 `app`, 웹 · 공용 코드(`packages/core`)는 `fe` (`docs/conventions/git.md`)
-- 브랜치: `feat/*` · `fix/*` → develop으로 PR. 실험은 `exp/*`(develop에 병합하지 않음). 커밋 · 푸시 전에 현재 브랜치가 작업 내용과 맞는지 확인하고, 다르면 새 브랜치로
-- 강제 푸시 금지. 푸시한 브랜치 기록을 바꿔야 하면 새 이름 브랜치로
-- PR 전 `pnpm lint` · `typecheck` · `test` · `build` 모두 실행. 필수 CI 체크는 `ci-result` 하나
-- 주석: 함수 · if문마다 동작 설명, 문장 끝 마침표 없음
-- 사용자에게 보이는 문구는 한국어, 혼잡도는 `여유` · `보통` · `혼잡`
-- 관련 문서: `docs/decisions.md`, `docs/conventions/frontend.md`, `docs/api/`
-
-## 9. NCP 콘솔 등록
-
-앱은 네이버 지도 **모바일 SDK**를 씀. SDK는 앱의 Bundle ID로 인증하므로 콘솔에 등록해야 지도가 뜸.
-
-### 할 일
-
-1. ✅ **번들 ID 정하기** — `app.evflowkr.evflow` (도메인 `evflowkr.app`을 거꾸로, 2026-11-19 결정). 스토어(TestFlight 포함)에 올리면 못 바꿈
-2. ✅ **콘솔에서 Application 수정** (2026-11-19 완료) — NCP 콘솔 › Application Services › Maps › Application에서 웹이 쓰는 기존 Application에 iOS Bundle ID 추가
-   - 웹 · 앱이 Client ID 하나를 같이 씀. 사용량도 같은 Dynamic Map 월 한도(6,000,000회)에서 셈
-   - 개발용 빌드를 다른 ID(예: `….dev`)로 나누게 되면 그 값도 추가 등록 필요 (최대 10개)
-   - 웹 배포 도메인 `https://evflowkr.app`도 추가 완료 (`MAP-04`, 2026-11-19)
-3. **앱 설정에 Client ID 넣기 (2단계 앱 골격 만들 때)** — `@mj-studio/react-native-naver-map`의 Expo config plugin 옵션 `client_id`에 넣음. iOS에서는 Info.plist의 `NMFNcpKeyId`로 들어감
-   - `app.json`의 `ios.bundleIdentifier`가 콘솔에 등록한 값과 **글자 하나까지 같아야** 함 (다르면 인증 실패)
-   - Client ID는 앱 안에 들어가는 공개 값이고 Bundle ID 제한으로 보호됨. **Client Secret은 절대 앱에 넣지 않음** (Directions는 지금처럼 백엔드에서 호출)
-   - 값은 `app.config.ts`에서 환경 변수로 읽어 저장소에 하드코딩하지 않기 (웹의 `.env.local`과 같은 방식)
-4. **확인** — dev build를 실기기에 설치해 지도가 뜨는지 봄. 회색 화면이거나 인증 오류 로그가 나오면 Bundle ID 오타부터 확인
-
-### 확인 안 된 것
-
-- config plugin 옵션 이름(`client_id`)은 라이브러리 버전마다 다를 수 있음 → 설치하는 버전의 README로 확인 (2.11.0은 `client_id` 맞음, 3단계에서 확인)
-- 참고: [NCP Maps Application 가이드](https://guide.ncloud-docs.com/docs/application-maps-app-vpc), [react-native-naver-map](https://github.com/mym0404/react-native-naver-map)
-
-## 10. 네이버 지도 앱 딥링크
-
-길찾기 · 휴게소 상세의 "네이버 지도로 안내" 버튼. 앱 안에서는 경로 미리보기만 하고, 실제 운전 안내는 네이버 지도 앱에 넘김 (2026-11-03 결정).
-
-### 지금 웹 방식
-
-- 사용처: `pages/RoutePage.tsx`, `pages/ServiceAreaDetailPage.tsx`
-- `detectPlatform(navigator.userAgent)`로 기기 판별 → Android는 `intent://` URL, iOS는 `nmap://route/car?…`, PC는 네이버 지도 웹 URL
-- iOS는 앱이 없으면 아무 일도 안 일어나서, 1.5초 뒤 `document.visibilityState`가 그대로면 App Store로 보냄
-- 출발지는 넣지 않음 — 우리 화면의 출발지는 시연용 고정 좌표라, 네이버 지도 앱이 실제 현재 위치에서 안내하게 함
-
-### 앱에서 바뀌는 것
-
-| 웹 | 앱 (iOS) |
-|---|---|
-| `detectPlatform(userAgent)` | 필요 없음 (iOS 앱만 만듦, 필요하면 `Platform.OS`) |
-| `intent://` · PC 웹 URL | 쓰지 않음 |
-| `window.location.href = url` | `Linking.openURL(url)` |
-| 1.5초 뒤 화면 확인 → App Store | `Linking.canOpenURL('nmap://…')`로 앱이 있는지 먼저 확인 |
-| `appname` = 페이지 URL | `appname` = 번들 ID |
-| App Store URL `http://itunes.apple.com/…` | `itms-apps://apps.apple.com/app/id311867728` (App Store 앱을 바로 엶) |
-
-### 그대로 쓰는 것
-
-- `getNaverCarRouteUrl`의 iOS 분기(`nmap://route/car?dlat=…&dlng=…&dname=…&appname=…`)와 띄어쓰기를 `%20`으로 바꾸는 처리
-- `toWebMercator` · `getNaverWebCarRouteUrl`은 웹 전용이라 `core`에 두되 앱에서는 안 씀
-
-### 필수 설정
-
-- `app.json`의 `ios.infoPlist.LSApplicationQueriesSchemes`에 `"nmap"` 추가
-  - 없으면 `canOpenURL`이 앱이 깔려 있어도 **항상 false** → 매번 App Store로 감
-  - Info.plist를 바꾸므로 Expo Go로는 안 되고 dev build 필요 (지도 때문에 어차피 dev build)
-
-### 앱 쪽 코드 모양 (예시)
-
-```ts
-import { Linking } from 'react-native'
-
-const NAVER_MAP_APP_STORE_URL = 'itms-apps://apps.apple.com/app/id311867728'
-
-// 네이버 지도 앱이 있으면 길찾기를 열고, 없으면 App Store의 네이버 지도 페이지를 엶
-export async function openNaverMapApp(url: string) {
-  // LSApplicationQueriesSchemes에 nmap이 있어야 설치 여부를 알 수 있음
-  if (await Linking.canOpenURL(url)) {
-    await Linking.openURL(url)
-    return
-  }
-  await Linking.openURL(NAVER_MAP_APP_STORE_URL)
-}
-```
-
-### 확인할 것
-
-- **시뮬레이터에서는 확인 불가** — 네이버 지도 앱도 App Store도 없음. 실기기에서 "앱 있음 · 없음" 두 경우 모두 확인
-- 목적지 이름에 띄어쓰기 · 특수문자(`+`, `&`, 괄호)가 있는 충전소 · 휴게소로 이름이 제대로 보이는지
-- 네이버 지도 앱에서 돌아왔을 때 우리 앱 화면 · 폴링이 정상으로 이어지는지 (`AppState` 복귀 처리)
-- 딥링크는 API 명세 밖 기능이라 팀에 공유된 상태인지 (`decisions.md` 2026-11-03 기록 있음)
+실기기에서 아직 확인 기록이 없는 것 (2026-11-25 기준)
+- 딥링크: 네이버 지도 · 카카오맵 앱이 있을 때 · 없을 때 (`kakaomap` scheme은 공식 문서가 없어 특히)
+- 한글 직접 입력 · 검색어 지우기(X)
+- 위치 권한 · 실제 GPS는 #198 Release 빌드로 확인함

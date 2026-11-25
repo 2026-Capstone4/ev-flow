@@ -1,6 +1,6 @@
 // Metro(번들러) 설정. 공용 코드(packages/core)를 쓰면서 React · TanStack Query가 한 벌만 들어가게 함
 // 기본 설정이면 core 폴더 기준으로 찾아서 웹 버전(React 18용)이 같이 들어감 → core 훅이 앱의 QueryClientProvider를 못 찾음
-// (docs/rn-migration-plan.md 1단계 Expo 확인)
+// (docs/app/migration-log.md 1단계 Expo 확인)
 const path = require('path')
 const { getDefaultConfig } = require('expo/metro-config')
 const { withNativeWind } = require('nativewind/metro')
