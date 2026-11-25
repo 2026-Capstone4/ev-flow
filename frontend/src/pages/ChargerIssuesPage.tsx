@@ -1,18 +1,19 @@
 import { ChevronRight } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { BackButton } from '@/components/BackButton'
 import { DistrictPicker } from '@/components/DistrictPicker'
 import { FilterChip } from '@/components/FilterChip'
 import { UpdateStatus } from '@/components/UpdateStatus'
-import { readDeviceLocation } from '@/hooks/useCurrentLocation'
 import { usePageTitle } from '@/hooks/usePageMeta'
-import { IS_GEOLOCATION_ENABLED } from '@/lib/config'
 import { useChargerIssuesData } from '@ev-flow/core/hooks/useChargerIssuesData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { CHARGER_STATUS_LABEL, formatChargerSpec } from '@ev-flow/core/lib/charger'
-import type { ChargerIssueFilter, StationChargerIssues } from '@ev-flow/core/lib/chargerIssues'
-import type { LatLng } from '@ev-flow/core/types/geo'
+import {
+  ALL_DISTRICTS,
+  type ChargerIssueFilter,
+  type StationChargerIssues,
+} from '@ev-flow/core/lib/chargerIssues'
 
 /** 칩 순서와 이름 */
 const FILTER_OPTIONS: { value: ChargerIssueFilter; label: string }[] = [
@@ -97,34 +98,18 @@ function EmptyRow({ message }: { message: string }) {
 
 // 상태 이상 충전기 목록 (앱 charger-issues 화면과 같음). 지도 홈 검색창 아래 '상태 이상' 버튼으로 들어옴
 // 미확인 = 지금 상태를 알 수 없는 충전기, 불안정 = 원천 데이터 문제로 상태가 계속 바뀌는 정해진 충전기 중 지금 확인 불가인 것
-// 구는 처음에 현재 위치에서 가장 가까운 충전소의 구, 못 잡으면 마포구. 화면을 나가면 고른 구 · 칩은 초기화됨
+// 처음에는 서울 전체를 보여 주고, 구를 고르면 그 구만. 화면을 나가면 고른 구 · 칩은 초기화됨
 export function ChargerIssuesPage() {
   const navigate = useNavigate()
   const { horizon } = useMapView()
   usePageTitle('상태 이상 충전기')
 
-  // 사용자가 직접 고른 구. 고르기 전이면 null이라 위치로 잡은 구 또는 기본 구를 씀
-  const [pickedDistrict, setPickedDistrict] = useState<string | null>(null)
+  // 보여 줄 구. 처음에는 서울 전체('전체')로 시작함
+  const [district, setDistrict] = useState<string>(ALL_DISTRICTS)
   const [filter, setFilter] = useState<ChargerIssueFilter>('all')
 
-  // 화면에 들어올 때 기기 위치를 한 번 잼. GPS 기능이 꺼져 있으면(시연 빌드) 재지 않고 기본 구를 씀
-  const [deviceLocation, setDeviceLocation] = useState<LatLng | null>(null)
-  useEffect(() => {
-    // GPS를 쓰지 않는 빌드면 권한 창도 띄우지 않음
-    if (!IS_GEOLOCATION_ENABLED) return
-    let isActive = true
-    readDeviceLocation().then((location) => {
-      // 재는 동안 화면을 나갔으면 값을 버림
-      if (isActive) setDeviceLocation(location)
-    })
-    return () => {
-      isActive = false
-    }
-  }, [])
-
-  // 고른 구 → 위치에서 가장 가까운 구 → 마포구 순으로 정해서 그 구의 목록을 받음
-  const { district, isLocatedDistrict, issues, districts, updatedAt, isError, isAllUnknown } =
-    useChargerIssuesData(pickedDistrict, deviceLocation)
+  // 고른 구의 목록을 받음
+  const { issues, districts, updatedAt, isError, isAllUnknown } = useChargerIssuesData(district)
 
   // 충전소 상세로. 지도 홈에서 보던 시점을 그대로 넘김
   const openStation = (stationId: string) => navigate(`/stations/${stationId}?horizon=${horizon}`)
@@ -244,12 +229,7 @@ export function ChargerIssuesPage() {
       <main className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 pt-2 pb-6">
         {/* 갱신 시각 알약을 구 버튼 높이에 맞춤 */}
         <div className="flex flex-wrap items-stretch gap-2">
-          <DistrictPicker
-            value={district}
-            districts={districts}
-            isCurrentLocation={isLocatedDistrict}
-            onChange={setPickedDistrict}
-          />
+          <DistrictPicker value={district} districts={districts} onChange={setDistrict} />
           <UpdateStatus updatedAt={updatedAt} isError={isError} />
         </div>
         {renderBody()}

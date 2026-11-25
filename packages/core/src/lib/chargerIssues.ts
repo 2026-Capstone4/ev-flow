@@ -1,5 +1,3 @@
-import { getDistanceMeters } from './distance'
-import type { LatLng } from '../types/geo'
 import type { Charger, Station } from '../types/station'
 
 /**
@@ -25,9 +23,6 @@ export const UNSTABLE_CHARGER_KEYS: ReadonlySet<string> = new Set([
   'ME21B412-03',
   'ME21B412-04',
 ])
-
-/** 위치를 못 잡았을 때 처음 보여 주는 구. 예측을 제공하는 지역이자 시연 위치가 있는 곳 */
-export const DEFAULT_DISTRICT = '마포구'
 
 /** 구 선택 목록 맨 위 '전체'. 고르면 서울 전체 충전소를 보여 줌 (실제 구 이름과 겹치지 않음) */
 export const ALL_DISTRICTS = '전체'
@@ -134,22 +129,4 @@ export function filterStationsByDistrict(stations: Station[], district: string) 
   // 전체를 골랐으면 거르지 않음
   if (district === ALL_DISTRICTS) return stations
   return stations.filter((station) => getDistrict(station.address) === district)
-}
-
-/**
- * 위치에서 가장 가까운 충전소의 구를 돌려줌. 앱에 구 경계 데이터가 없어서 충전소 주소로 대신함
- * 구 경계 근처면 옆 구가 나올 수 있음. 충전소가 없으면 null
- */
-export function findNearestDistrict(stations: Station[], location: LatLng) {
-  let nearest: Station | null = null
-  let nearestMeters = Infinity
-  for (const station of stations) {
-    const meters = getDistanceMeters(location, station)
-    // 지금까지 본 곳보다 가까우면 바꿔 둠
-    if (meters < nearestMeters) {
-      nearest = station
-      nearestMeters = meters
-    }
-  }
-  return nearest ? getDistrict(nearest.address) : null
 }
