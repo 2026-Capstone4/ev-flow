@@ -287,7 +287,7 @@ export function MapHomePage() {
           onTransitionEnd={(event) => {
             if (event.target === event.currentTarget) setIsSheetAnimating(false)
           }}
-          className={`absolute inset-x-0 bottom-0 flex max-h-[calc(100%-120px)] flex-col items-center gap-3 rounded-t-[20px] bg-bg-page px-4 pt-2.5 pb-3 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] ${
+          className={`absolute inset-x-0 bottom-0 flex max-h-[calc(100%-120px)] flex-col items-center gap-3 rounded-t-lg bg-bg-page px-4 pt-2.5 pb-3 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] ${
             isSheetAnimating && !sheetDrag.isDragging
               ? 'transition-transform duration-200 ease-out'
               : ''
@@ -321,7 +321,7 @@ export function MapHomePage() {
               )}
               className="-my-2.5 flex w-full justify-center py-2.5"
             >
-              <span className="h-1 w-10 rounded-[2px] bg-border-default" />
+              <span className="h-1 w-10 rounded-full bg-border-default" />
             </button>
             <div ref={setSheetHeader} className="flex w-full items-center justify-between">
               {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
