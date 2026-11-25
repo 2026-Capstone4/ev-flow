@@ -59,6 +59,10 @@ const config: ExpoConfig = {
       CFBundleDisplayName: DISPLAY_NAME,
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
       LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
+      // 앱 기본 언어를 한국어로 둠. 없으면 en이 기본이라 복사 · 붙여넣기 메뉴 같은 iOS 기본 화면이 영어로 뜨고 App Store 언어도 영어로 표시됨
+      CFBundleDevelopmentRegion: 'ko',
+      // 앱이 지원하는 언어 목록. 한국어만 적어서 기기 언어와 상관없이 한국어로 맞춤
+      CFBundleLocalizations: ['ko'],
     },
   },
   android: {
