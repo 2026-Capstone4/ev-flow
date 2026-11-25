@@ -19,7 +19,7 @@
 | `sequence-길찾기.drawio` | 길찾기 | STN-006, UC-U07, MAP-02 |
 | `sequence-휴게소 충전 현황 조회.drawio` | 휴게소 | UC-U08, DATA-003 |
 | `sequence-운영자 로그인 로그아웃.drawio` | 로그인 · 로그아웃 · 만료 | AUTH-002 · 003, SER-001 |
-| `sequence-운영자 대시보드 조회.drawio` | 운영 현황 · 상태 이상 충전기 · 데이터 수집 | ADM-001~006 |
+| `sequence-운영자 대시보드 조회.drawio` | 운영 현황 · 상태 이상 충전기 · 데이터 수집 | ADM-001~005 |
 
 ## 초기본(`docs/diagrams/`)과 달라진 점
 
