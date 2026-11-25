@@ -39,6 +39,7 @@ from app.schemas.admin import (
     UtilizationResponse,
 )
 from app.schemas.base import KST
+from app.services.service_areas import without_duplicates
 from app.services.snapshot import latest_success_run, load_charger_states
 from app.services.status import BUS_CHARGER_TYPE, STAT_TO_STATUS
 
@@ -448,9 +449,14 @@ def get_chargers(
         run = latest_success_run(db, target)  # 수집 기록이 없으면 503
         updated.append(run.started_at)
         states = load_charger_states(db, charger_model, log_model, run, now)
-        stations = db.scalars(
-            select(station_model).where(station_model.station_id.in_(list(states)))
+        stations = list(
+            db.scalars(select(station_model).where(station_model.station_id.in_(list(states))))
         )
+        if target == "service_area":
+            # HY E-pit 이중 등록은 상태가 늘 stat 9라 상태 이상으로 잘못 셈 - 사용자 휴게소 API(#217)와 같이 뺌
+            stations = without_duplicates(db, stations, states)
+            kept = {s.station_id for s in stations}
+            states = {sid: cs for sid, cs in states.items() if sid in kept}
         names = {
             s.station_id: (s.service_area_name or s.name if target == "service_area" else s.name)
             or s.station_id

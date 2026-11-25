@@ -382,6 +382,32 @@ def test_chargers_filtered_by_district(monkeypatch, db_calls):
     }
 
 
+def test_chargers_exclude_hy_duplicate_registrations(monkeypatch):
+    run = SimpleNamespace(started_at=NOW)
+    monkeypatch.setattr(admin, "latest_success_run", lambda db, target: run)
+    monkeypatch.setattr(admin, "log_counts", lambda *args: {})
+    states = {
+        sid: [ChargerState(sid, "01", "unknown", ["dc_combo"], 260, None)]
+        for sid in ("HD000042", "HY002005")
+    }
+    monkeypatch.setattr(admin, "load_charger_states", lambda *args: states)
+    # HY는 같은 자리 · 같은 용량의 HD 짝이 있는 E-pit 이중 등록
+    stations = [
+        SimpleNamespace(
+            station_id=sid, name=f"{sid} 충전소", service_area_name=None, lat=37.7004, lng=127.5437
+        )
+        for sid in ("HD000042", "HY002005")
+    ]
+
+    class Rows(list):
+        def all(self):
+            return self
+
+    db = SimpleNamespace(scalars=lambda query: Rows(stations))
+    res = admin.get_chargers(db, "service_area", NOW)
+    assert [c.station_id for c in res.chargers] == ["HD000042"]
+
+
 # --- 엔드포인트 ---
 
 
