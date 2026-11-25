@@ -32,7 +32,7 @@ const TOP_BUTTON_SIZE = 40
 /** 경로를 화면에 맞출 때 위 버튼 · 아래 시트 · 좌우 가장자리와 띄우는 간격 (웹 fitBounds 여백 40) */
 const FIT_MARGIN = 40
 
-/** 아래 시트의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(16px, safe-area)) */
+/** 아래 시트의 최소 여백 (웹 max(16px, safe-area)). 플랫폼별 계산은 lib/footerPadding.ts getFooterPaddingBottom */
 const SHEET_MIN_PADDING = 16
 
 /** 웹 시트 그림자(0 -2px 12px 12%)를 RN 그림자 속성으로 옮김 */
