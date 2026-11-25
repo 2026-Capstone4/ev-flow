@@ -80,7 +80,7 @@ function toRecommendation(candidate: Candidate, index: number, nearest: Candidat
 
 /**
  * 한 시점(horizon)의 추천 Top 3를 만든다.
- * 충전소 목록을 인자로 받아서 전체 Mock은 Mock 충전소로, 혼합 모드는 실제 충전소로 같은 계산을 함
+ * 충전소 목록을 인자로 받아서 어떤 충전소 목록이든 같은 계산을 함
  */
 export function buildRecommendations(
   stations: Station[],

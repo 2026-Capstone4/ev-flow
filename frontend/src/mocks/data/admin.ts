@@ -5,7 +5,6 @@ import type {
   AdminPeriod,
   AdminRegion,
   CollectionTarget,
-  ImputedCountResponse,
   MissingBucket,
   MissingStatsResponse,
   UtilizationBucket,
@@ -237,20 +236,5 @@ export function buildMissingStats(
     from: toKstIso(period === 'day' ? today : new Date(today.getTime() - 6 * 86_400_000)),
     to: toKstIso(now),
     series,
-  }
-}
-
-export function buildImputedCount(period: AdminPeriod, now: Date): ImputedCountResponse {
-  const today = startOfKstDay(now)
-  const hours = kstHour(now) + 1
-  // 도심 충전소 수 × 예측 시점 3개 × 5분 간격 실행 수
-  const runs = period === 'day' ? hours * 12 : 7 * 288
-  const totalCount = STATIONS.length * 3 * runs
-  return {
-    period,
-    from: toKstIso(period === 'day' ? today : new Date(today.getTime() - 6 * 86_400_000)),
-    to: toKstIso(now),
-    imputedCount: Math.round(totalCount * 0.004),
-    totalCount,
   }
 }

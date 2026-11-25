@@ -9,7 +9,7 @@
 1. develop → main PR을 merge commit으로 병합
 2. 서버: `cd /home/ubuntu/ev-flow && bash infra/deploy.sh` — 수집 로직이 바뀌었으면 `--with-collector`
 3. 마이그레이션 · `.env` · AI 패키지 교체가 있으면 PR 본문 순서대로 따로 실행
-4. 화면이 바뀌었으면 맥에서 main을 빌드해 `rsync -a --delete`로 서버 `~/ev-flow/frontend/dist/`에 복사 (`VITE_USE_MOCK=partial pnpm build`). 폴더째 지우고 다시 만들지 않음
+4. 화면이 바뀌었으면 맥에서 main을 빌드해 `rsync -a --delete`로 서버 `~/ev-flow/frontend/dist/`에 복사 (`VITE_USE_MOCK=false pnpm build`). 폴더째 지우고 다시 만들지 않음
 
 ## 2. 배포 후 확인 (읽기 전용)
 

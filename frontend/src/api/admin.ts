@@ -5,7 +5,6 @@ import type {
   AdminRegion,
   AuthSession,
   CollectionStatusResponse,
-  ImputedCountResponse,
   LoginRequest,
   MissingStatsResponse,
   UtilizationResponse,
@@ -50,14 +49,6 @@ export async function fetchCollectionStatus(region: AdminRegion) {
 export async function fetchMissingStats(region: AdminRegion, period: AdminPeriod) {
   const { data } = await api.get<MissingStatsResponse>('/admin/missing-stats', {
     params: { region, period },
-  })
-  return data
-}
-
-// 예측은 도심만이라 region 없음
-export async function fetchImputedCount(period: AdminPeriod) {
-  const { data } = await api.get<ImputedCountResponse>('/admin/imputed-count', {
-    params: { period },
   })
   return data
 }

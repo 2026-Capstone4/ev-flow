@@ -1,5 +1,4 @@
 import {
-  bypass,
   delay,
   http,
   HttpResponse,
@@ -19,7 +18,6 @@ import { findStationDetail, STATIONS, toKstIso } from '@ev-flow/core/mocks/stati
 import {
   buildAdminChargers,
   buildCollectionTargets,
-  buildImputedCount,
   buildMissingStats,
   buildUtilization,
   MOCK_ADMIN,
@@ -46,7 +44,7 @@ function toHttpResponse<T extends JsonBodyType>(mock: MockResponse<T>) {
   return HttpResponse.json<T>(mock.body, { status: mock.status, headers: mock.headers })
 }
 
-/** 충전소 목록 · 상세 API - 전체 Mock 모드에서만 씀 (혼합 모드에서는 실제 서버가 응답) */
+/** 충전소 목록 · 상세 API */
 const stationHandlers = [
   // 지도 홈 마커용 충전소 목록. Mock 충전소 전체를 돌려줌
   http.get('/api/v1/stations', async () => {
@@ -81,7 +79,7 @@ const stationHandlers = [
 const checkMockRateLimit = createMockRateLimit()
 
 /**
- * 추천 API 핸들러를 만든다. 전체 Mock에서만 쓰고, 혼합 모드는 실제 서버가 응답함.
+ * 추천 API 핸들러를 만든다.
  * 응답 만들기는 앱과 같이 쓰는 core 함수에 맡기고, 충전소 목록을 어디서 가져올지(getStations)만 바꿔 끼움
  */
 function createRecommendationHandler(getStations: StationSource) {
@@ -94,7 +92,7 @@ function createRecommendationHandler(getStations: StationSource) {
 }
 
 /**
- * 길찾기 Mock - 전체 Mock 모드에서만 씀. 혼합 모드는 실제 서버(POST /routes, #117)로 보냄
+ * 길찾기 Mock (실제 서버는 POST /routes, #117)
  * 출발지와 충전소 ID를 받아 Mock 경로(꺾은선 · 거리 · 시간)를 돌려줌
  */
 const routeHandler = http.post<never, RouteRequest, ApiErrorBody | RouteResponse>(
@@ -204,26 +202,12 @@ function readDashboardParams(request: Request) {
 
 /**
  * 대시보드 요청이 로그인된 상태인지 판단하는 함수 모양.
- * 전체 Mock은 Mock 쿠키를, 혼합 모드는 실제 서버의 /auth/me를 본다
+ * 지금은 전체 Mock의 Mock 쿠키 확인만 있음
  */
 type SessionCheck = (cookies: Record<string, string>) => Promise<boolean>
 
 /** 전체 Mock용 - Mock 로그인 쿠키가 살아 있으면 로그인된 상태 */
 const checkMockSession: SessionCheck = async (cookies) => readMockSession(cookies) !== null
-
-/**
- * 혼합 모드용 - 실제 서버의 /auth/me로 확인한다.
- * 실제 로그인 쿠키는 HttpOnly라 MSW가 읽을 수 없어서, 브라우저가 쿠키를 붙여 보내는 bypass 요청으로 물어봄
- */
-const checkRealSession: SessionCheck = async () => {
-  try {
-    const response = await fetch(bypass('/api/v1/auth/me'))
-    return response.ok
-  } catch {
-    // 서버에 연결이 안 되면 로그인 여부를 알 수 없으니 로그인 안 된 상태로 봄
-    return false
-  }
-}
 
 /**
  * 로그인이 필요한 운영자 API 핸들러를 만든다.
@@ -252,7 +236,7 @@ function adminGet<T extends DefaultBodyType>(
   })
 }
 
-/** 운영자 로그인 · 로그아웃 · 로그인 상태 API - 전체 Mock에서만 씀 (혼합 모드는 실제 서버가 응답) */
+/** 운영자 로그인 · 로그아웃 · 로그인 상태 API */
 const authHandlers = [
   // 로그인. 아이디 · 비밀번호가 맞으면 만료 시각을 담은 쿠키를 내려줌
   http.post<never, LoginRequest>('/api/v1/auth/login', async ({ request }) => {
@@ -338,8 +322,7 @@ const authHandlers = [
 ]
 
 /**
- * 운영자 대시보드 10~13번 (이용률 · 충전기 목록 · 수집 상태 · 결측 현황) - 전체 Mock에서만 씀.
- * 혼합 모드는 실제 서버가 응답 (백엔드 #72)
+ * 운영자 대시보드 10~13번 (이용률 · 충전기 목록 · 수집 상태 · 결측 현황) (실제 서버는 백엔드 #72)
  */
 const dashboardHandlers = [
   adminGet('/admin/utilization', checkMockSession, ({ region, period }, now) =>
@@ -357,16 +340,6 @@ const dashboardHandlers = [
   ),
 ]
 
-/**
- * 운영자 대시보드 14번 보정 건수 - 모델 연동 전이라 백엔드에 없어서(404) 전체 · 혼합 모드 모두 Mock.
- * 로그인 확인 방법만 모드에 따라 받아서 씀
- */
-function createImputedCountHandler(isLoggedIn: SessionCheck) {
-  return adminGet('/admin/imputed-count', isLoggedIn, ({ period }, now) =>
-    buildImputedCount(period, now),
-  )
-}
-
 /** VITE_USE_MOCK=true - 모든 API를 Mock으로. 추천 · 길찾기도 Mock 충전소 기준 */
 export const handlers = [
   ...stationHandlers,
@@ -375,11 +348,4 @@ export const handlers = [
   ...serviceAreaHandlers,
   ...authHandlers,
   ...dashboardHandlers,
-  createImputedCountHandler(checkMockSession),
 ]
-
-/**
- * VITE_USE_MOCK=partial - 백엔드에 없는 API(대시보드 보정 건수)만 Mock, 나머지는 실제 서버로.
- * 추천 · 운영자 로그인 · 대시보드 10~13번은 실제 서버가 응답하고, 보정 건수 Mock은 실제 로그인 여부를 확인한 뒤 응답함
- */
-export const partialHandlers = [createImputedCountHandler(checkRealSession)]
