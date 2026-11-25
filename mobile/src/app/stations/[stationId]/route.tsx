@@ -20,6 +20,7 @@ import { StationMarker } from '../../../map/StationMarker'
 import { toAppZoom } from '../../../map/zoom'
 import { createShadow } from '../../../lib/shadow'
 import { KoreanText } from '../../../components/KoreanText'
+import { getFooterPaddingBottom } from '../../../lib/footerPadding'
 
 /** 경로를 받기 전 첫 화면 줌 (웹 기준 14) */
 const INITIAL_WEB_ZOOM = 14
@@ -165,7 +166,10 @@ export default function RouteScreen() {
 
       <View
         onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
-        style={[SHEET_SHADOW, { paddingBottom: Math.max(SHEET_MIN_PADDING, insets.bottom) }]}
+        style={[
+          SHEET_SHADOW,
+          { paddingBottom: getFooterPaddingBottom(insets.bottom, SHEET_MIN_PADDING) },
+        ]}
         className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-[20px] bg-bg-page px-4 pt-5"
       >
         {station ? (

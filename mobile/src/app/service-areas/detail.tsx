@@ -12,6 +12,7 @@ import { ChargerRow } from '../../components/ChargerRow'
 import { UpdateStatus } from '../../components/UpdateStatus'
 import { openNaverMapCarRoute } from '../../lib/openMapApp'
 import { KoreanText } from '../../components/KoreanText'
+import { getFooterPaddingBottom } from '../../lib/footerPadding'
 
 /** 아래 버튼 영역의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(12px, safe-area)) */
 const FOOTER_MIN_PADDING = 12
@@ -110,7 +111,7 @@ export default function ServiceAreaDetailScreen() {
 
           <View
             className="border-t border-border-default px-4 pt-3"
-            style={{ paddingBottom: Math.max(FOOTER_MIN_PADDING, insets.bottom) }}
+            style={{ paddingBottom: getFooterPaddingBottom(insets.bottom, FOOTER_MIN_PADDING) }}
           >
             <Button
               className="w-full"
