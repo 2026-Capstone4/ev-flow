@@ -9,14 +9,16 @@ os.environ.setdefault("EV_SERVICE_KEY", "test")
 import pytest  # noqa: E402
 import redis  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy.dialects import postgresql  # noqa: E402
 
 from app.api.deps import require_admin  # noqa: E402
 from app.api.errors import ApiError  # noqa: E402
+from app.db.models import LiveCharger, LiveStatusLog  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.schemas.base import KST  # noqa: E402
 from app.services import admin  # noqa: E402
-from app.services.snapshot import ChargerState  # noqa: E402
+from app.services.snapshot import ChargerState, load_charger_states  # noqa: E402
 
 NOW = datetime(2026, 11, 16, 14, 5, tzinfo=KST)  # 월요일
 TODAY = date(2026, 11, 16)
@@ -64,6 +66,9 @@ class FakePipeline:
 
 class BrokenRedis:
     def mget(self, keys):
+        raise redis.ConnectionError("down")
+
+    def hgetall(self, key):
         raise redis.ConnectionError("down")
 
     def pipeline(self):
@@ -276,6 +281,12 @@ def test_warm_cache_fills_closed_days_and_hours_for_every_target(fake_redis, db_
     for target in admin.TARGETS:
         assert f"admin:occ:v1:{target}:2026-11-15" in fake_redis.values
         assert f"admin:occ-hour:v1:{target}:2026-11-16:12" in fake_redis.hashes
+        # 충전기 목록용 끝난 시간대(0 ~ 12시) 합 - 시간대마다 S1|01 = (1, 10)
+        assert fake_redis.hashes[f"admin:occ-charger-sum:v1:{target}:2026-11-16:13"] == {
+            b"S1|01": b"13,130",
+            b"S1|02": b"0,130",
+            b"_": b"13,260",
+        }
     # 서울(city · live)은 구별 날짜 집계도 채움
     assert fake_redis.hashes["admin:occ-district:v1:live:2026-11-15"] == {
         b"_": b"15,10",
@@ -299,6 +310,7 @@ def test_warm_cache_continues_after_target_failure(fake_redis, monkeypatch):
 
     monkeypatch.setattr(admin, "daily_log_counts", fake_daily)
     monkeypatch.setattr(admin, "daily_district_counts", lambda *args: None)
+    monkeypatch.setattr(admin, "warm_charger_sums", lambda *args: None)
     admin.warm_cache(SimpleNamespace(rollback=lambda: None), NOW)
     assert done == ["live", "service_area"]
 
@@ -358,6 +370,94 @@ def test_district_week_caches_closed_days(fake_redis, db_calls):
     second = admin.get_utilization(None, "seoul", "week", NOW, district="11680")
     assert second.series == first.series
     assert [c[0] for c in db_calls] == ["hour_charger"]  # 오늘의 진행 중인 시간대만
+
+
+def chargers_db(monkeypatch, station_ids):
+    """get_chargers 대역 - 충전소마다 충전기 01 · 02, 최근 회차는 NOW"""
+    run = SimpleNamespace(started_at=NOW)
+    monkeypatch.setattr(admin, "latest_success_run", lambda db, target: run)
+    states = {
+        sid: [ChargerState(sid, cid, "available", ["dc_combo"], 100, None) for cid in ("01", "02")]
+        for sid in station_ids
+    }
+    monkeypatch.setattr(admin, "load_charger_states", lambda *args: states)
+    stations = [SimpleNamespace(station_id=sid, name=f"{sid} 충전소") for sid in station_ids]
+    return SimpleNamespace(scalars=lambda query: stations)
+
+
+def test_chargers_today_sums_closed_hours_once(fake_redis, monkeypatch, db_calls):
+    db = chargers_db(monkeypatch, ["S1"])
+    first = admin.get_chargers(db, "city", NOW)
+    # 0 ~ 12시는 끝난 시간대라 더해서 저장, 13시 ~ 지금은 DB에서 셈 - 시간대마다 S1|01 = (1, 10)
+    assert [(c.charger_id, c.today_occupancy_rate) for c in first.chargers] == [
+        ("01", 0.1),
+        ("02", 0.0),
+    ]
+    assert fake_redis.ttls["admin:occ-charger-sum:v1:city:2026-11-16:13"] == (
+        admin.CHARGER_SUM_CACHE_TTL_SEC
+    )
+    # 다음 요청은 시간대 해시를 다시 읽지 않고 합 하나 + 진행 중인 시간대만 DB에서 셈
+    db_calls.clear()
+    fake_redis.hashes = {
+        k: v for k, v in fake_redis.hashes.items() if k.startswith("admin:occ-charger-sum:")
+    }
+    second = admin.get_chargers(db, "city", NOW)
+    assert second.chargers == first.chargers
+    assert db_calls == [("hour_charger", kst(TODAY, 13), NOW)]
+
+
+def test_chargers_today_before_first_closed_hour(fake_redis, monkeypatch, db_calls):
+    db = chargers_db(monkeypatch, ["S1"])
+    now = kst(TODAY, 1, 5)  # 0시는 1시 10분에 끝난 시간대가 됨
+    res = admin.get_chargers(db, "city", now)
+    assert res.chargers[0].today_occupancy_rate == 0.1
+    assert db_calls == [("hour_charger", kst(TODAY, 0), now)]
+    assert not any(k.startswith("admin:occ-charger-sum:") for k in fake_redis.hashes)
+
+
+def test_chargers_today_redis_down_falls_back_to_db(monkeypatch, db_calls):
+    monkeypatch.setattr(admin, "_redis", BrokenRedis())
+    db = chargers_db(monkeypatch, ["S1"])
+    res = admin.get_chargers(db, "city", NOW)
+    assert res.chargers[0].today_occupancy_rate == 0.1
+
+
+# --- 충전기 상태 쿼리 (snapshot.load_charger_states) ---
+# CI에는 DB가 없어 PostgreSQL 방언으로 만든 SQL을 확인함
+
+
+def charger_state_sql(**kwargs):
+    """load_charger_states가 실행하는 쿼리 - (공백을 한 칸으로 줄인 SQL, 바인드 값)"""
+    queries = []
+    db = SimpleNamespace(execute=lambda query: queries.append(query) or [])
+    load_charger_states(
+        db, LiveCharger, LiveStatusLog, SimpleNamespace(id=42, started_at=NOW), NOW, **kwargs
+    )
+    compiled = queries[0].compile(dialect=postgresql.dialect())
+    return " ".join(str(compiled).split()), compiled.params
+
+
+def test_charger_states_read_run_rows_at_once():
+    sql, params = charger_state_sql()
+    # 그 회차의 행을 충전기마다 가장 늦게 받은 하나로 줄여 충전기 표와 맞춤 - 충전기마다 찾지 않음
+    assert "LATERAL" not in sql
+    assert (
+        "LEFT OUTER JOIN (SELECT DISTINCT ON (live_status_log.station_id, live_status_log.charger_id)"
+        in sql
+    )
+    assert (
+        "ORDER BY live_status_log.station_id, live_status_log.charger_id, "
+        "live_status_log.collected_at DESC) AS anon_1 "
+        "ON anon_1.station_id = live_chargers.station_id "
+        "AND anon_1.charger_id = live_chargers.charger_id" in sql
+    )
+    assert params["collection_run_id_1"] == 42 and params["collected_at_1"] == NOW
+
+
+def test_charger_states_for_one_station_look_up_each_charger():
+    sql, params = charger_state_sql(station_id="S1")
+    assert "LEFT OUTER JOIN LATERAL" in sql and "DISTINCT ON" not in sql
+    assert params["station_id_1"] == "S1" and params["collection_run_id_1"] == 42
 
 
 def test_chargers_filtered_by_district(monkeypatch, db_calls):
