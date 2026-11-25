@@ -1,4 +1,4 @@
-# EV-flow
+# EV Flow
 
 전기차 충전소 혼잡 예측 · 추천 서비스 — 서울 마포구 급속 충전소의 30분 후 혼잡도를 예측해 기다릴 가능성이 가장 낮은 충전소를 추천한다.
 
@@ -33,7 +33,7 @@ ev-flow/
 
 | 데이터 | 사용 위치 | 출처 · 라이선스 |
 |---|---|---|
-| 서울 · 마포구 경계 | [`packages/core/src/assets/coverage-boundary.json`](packages/core/src/assets/coverage-boundary.json) — 지도 홈의 서비스 범위 표시 | 본 데이터는 통계청 통계지리정보서비스([SGIS](https://sgis.kostat.go.kr))에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: [vuski/admdongkor](https://github.com/vuski/admdongkor), ver20261001), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)으로 배포됩니다. EV-flow에서 서울 · 마포구 단위로 동을 합치고 점 수를 줄였습니다 |
+| 서울 · 마포구 경계 | [`packages/core/src/assets/coverage-boundary.json`](packages/core/src/assets/coverage-boundary.json) — 지도 홈의 서비스 범위 표시 | 본 데이터는 통계청 통계지리정보서비스([SGIS](https://sgis.kostat.go.kr))에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: [vuski/admdongkor](https://github.com/vuski/admdongkor), ver20261001), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)으로 배포됩니다. EV Flow에서 서울 · 마포구 단위로 동을 합치고 점 수를 줄였습니다 |
 
 ## 팀
 
