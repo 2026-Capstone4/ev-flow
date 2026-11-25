@@ -89,6 +89,7 @@
 |---|---|
 | **NCP Maps Application `ev-flow` 등록 완료** — 사용 API: Dynamic Map, Directions 5 | 경유지 없는 "현재 위치 → 충전소" 경로라 Directions 15(경유지 15개, 단가 4배)는 불필요 |
 | **월 한도**: Dynamic Map 6,000,000회, Directions 5 60,000회 (2026-09-14 콘솔 확인) | 프로젝트 규모(개발 + 시연)에서는 한도의 수 % 수준으로 예상 |
+| **키 사용처 제한** (`MAP-04`, 2026-11-19 완료) — 웹 개발 주소 · 배포 도메인 `https://evflowkr.app`, iOS 번들 ID `app.evflowkr.evflow`를 콘솔에 등록. Android 패키지 이름은 [app/android-plan.md](app/android-plan.md) | Client ID는 공개 값이라 등록한 도메인 · 앱에서만 쓰이게 막음 |
 | **지도 스크립트 인증은 Client ID(`ncpKeyId`)만 사용**, 프론트 환경 변수로 관리 | Client ID는 브라우저에 노출되는 값이며, 보안은 콘솔의 Web 서비스 URL 제한으로 처리 |
 | **Directions 5는 백엔드(FastAPI)에서 호출** (구 `MAP-01`) — 추천 점수의 이동시간 계산과 선택한 충전소 경로 표시 모두 서버에서 처리. 프론트는 `/api`로 받은 경로 좌표로 지도에 선만 그림 | Client Secret이 필요해 브라우저에서 호출 불가 (비밀값 노출 · CORS). 추천 점수 계산에 이동시간이 필요하고, 서버에서 캐시 · 호출 제한 가능 |
 | **프론트는 60초 폴링에 경로 요청을 포함하지 않음** — 사용자가 충전소를 선택할 때만 요청 | 반복 호출로 인한 한도 소진 · 과금 방지 |
