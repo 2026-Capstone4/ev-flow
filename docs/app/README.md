@@ -174,4 +174,4 @@ App Store 빌드
 - **채움 없는 폴리곤이 흰색**: SDK가 `transparent`도 색 0으로 받아 흰색으로 칠함 → 마포구 테두리는 폴리곤 대신 선으로 그림 (`src/map/CoverageMask.tsx`)
 - **`@types/react` 두 벌**: 앱(React 19) 패키지가 공용 위치의 `@types/react`를 바꿔 웹 타입 검사가 깨졌음 → `pnpm-workspace.yaml` `packageExtensions`로 react-router에 `@types/react`를 적음
 - **시트 단계 번호**: 추천 오류로 시트 단계 수가 바뀐 직후 `snapToIndex(n)`을 부르면 앱이 멈춤 → `expand()` · `snapToIndex(1)`만 씀 (`RecommendSheet`)
-- **휴게소 이중 등록**: 현대엔지니어링(HY) 충전소가 현대자동차(HD) 충전기를 한 번 더 등록한 것으로 보이고 늘 확인 불가 → 앱이 HD 짝이 있는 HY를 뺌. 백엔드가 HY를 빼고 보내면 조건에 맞는 곳이 없어 저절로 꺼짐 (앱 다시 배포 필요 없음)
+- **휴게소 이중 등록**: 현대엔지니어링(HY) 충전소가 현대자동차(HD) 충전기를 한 번 더 등록한 것으로 보이고 늘 확인 불가 → 앱이 HD 짝이 있는 HY를 뺌. 백엔드가 HY를 빼고 보내면 조건에 맞는 곳이 없어 저절로 꺼짐 (앱 다시 배포 필요 없음). 2026-11-25부터 백엔드가 뺌 — 서버 배포 뒤에는 우회 코드를 지워도 됨
