@@ -1,5 +1,10 @@
 import type { ExpoConfig } from 'expo/config'
-import { AndroidConfig, withStringsXml, type ConfigPlugin } from 'expo/config-plugins'
+import {
+  AndroidConfig,
+  withAndroidManifest,
+  withStringsXml,
+  type ConfigPlugin,
+} from 'expo/config-plugins'
 
 /**
  * Expo 앱 설정. app.json 대신 TS로 둬서 나중에 환경 변수(네이버 지도 Client ID 등)를 읽어 넣음
@@ -33,6 +38,30 @@ const withAndroidDisplayName: ConfigPlugin = (config) =>
     return stringsConfig
   })
 
+/** 길찾기 안내에 쓰는 지도 앱 URL Scheme (네이버 지도 · 카카오맵). src/lib/openMapApp.ts가 설치 여부를 확인함 */
+const MAP_APP_SCHEMES = ['nmap', 'kakaomap']
+
+/**
+ * Android manifest queries에 지도 앱 scheme을 적음. iOS LSApplicationQueriesSchemes와 같은 역할
+ * Android 11+는 여기 없는 앱을 볼 수 없어서 지도 앱이 깔려 있어도 canOpenURL이 false. Expo 설정에 칸이 없어 직접 넣음
+ */
+const withAndroidMapAppQueries: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (manifestConfig) => {
+    const { manifest } = manifestConfig.modResults
+    const queries = manifest.queries ?? []
+    const listed = JSON.stringify(queries)
+    // prebuild를 다시 돌려도 같은 scheme이 두 번 들어가지 않게 없는 것만 더함
+    const intents = MAP_APP_SCHEMES.filter(
+      (scheme) => !listed.includes(`"android:scheme":"${scheme}"`),
+    ).map((scheme) => ({
+      action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+      data: [{ $: { 'android:scheme': scheme } }],
+    }))
+    // 더할 scheme이 있을 때만 queries 묶음 하나를 추가
+    if (intents.length > 0) manifest.queries = [...queries, { intent: intents }]
+    return manifestConfig
+  })
+
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
@@ -58,7 +87,7 @@ const config: ExpoConfig = {
       // 설치했을 때 홈 화면 아이콘 아래 이름. name(EV-flow)은 ios 폴더 · 프로젝트 이름(EVflow)에 쓰여서 그대로 두고 표시 이름만 바꿈
       CFBundleDisplayName: DISPLAY_NAME,
       // 네이버 지도 · 카카오맵 앱 설치 여부를 canOpenURL로 확인하려면 nmap · kakaomap을 적어 둬야 함 (없으면 항상 false)
-      LSApplicationQueriesSchemes: ['nmap', 'kakaomap'],
+      LSApplicationQueriesSchemes: MAP_APP_SCHEMES,
       // 앱 기본 언어를 한국어로 둠. 없으면 en이 기본이라 복사 · 붙여넣기 메뉴 같은 iOS 기본 화면이 영어로 뜨고 App Store 언어도 영어로 표시됨
       CFBundleDevelopmentRegion: 'ko',
       // 앱이 지원하는 언어 목록. 한국어만 적어서 기기 언어와 상관없이 한국어로 맞춤
@@ -148,4 +177,4 @@ const config: ExpoConfig = {
   },
 }
 
-export default withAndroidDisplayName(config)
+export default withAndroidMapAppQueries(withAndroidDisplayName(config))

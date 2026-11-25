@@ -16,7 +16,7 @@ export type AppLocateFailure = Exclude<LocateFailure, 'insecure' | 'out-of-area'
  */
 export const APP_LOCATE_FAILURE_MESSAGE: Record<AppLocateFailure, string> = {
   unsupported: '기기의 위치 서비스가 꺼져 있어요. 설정 앱에서 켜 주세요',
-  denied: '위치 권한이 꺼져 있어요. 설정 앱에서 EV-flow의 위치 접근을 허용해 주세요',
+  denied: '위치 권한이 꺼져 있어요. 설정 앱에서 EV Flow의 위치 접근을 허용해 주세요',
   unavailable: LOCATE_FAILURE_MESSAGE.unavailable,
   timeout: LOCATE_FAILURE_MESSAGE.timeout,
 }
