@@ -19,6 +19,9 @@ from app.db.models import (
     CityStation,
     CityStatusLog,
     CollectionRun,
+    LiveCharger,
+    LiveStation,
+    LiveStatusLog,
     ServiceAreaCharger,
     ServiceAreaStation,
     ServiceAreaStatusLog,
@@ -39,13 +42,21 @@ from app.services.status import BUS_CHARGER_TYPE, STAT_TO_STATUS
 
 logger = logging.getLogger(__name__)
 
-# collection_runs.target → (충전소, 충전기, 상태 로그) 모델
+# collection_runs.target → (충전소, 충전기, 상태 로그) 모델. live는 마포를 뺀 서울 (2026-11-25 추가)
 TARGETS = {
     "city": (CityStation, CityCharger, CityStatusLog),
+    "live": (LiveStation, LiveCharger, LiveStatusLog),
     "service_area": (ServiceAreaStation, ServiceAreaCharger, ServiceAreaStatusLog),
 }
+# 요청 region → 집계 대상. seoul은 마포(city) + 나머지 서울(live) - live가 마포를 빼고 받아 겹치지 않음
+REGION_TARGETS = {
+    "all": list(TARGETS),
+    "seoul": ["city", "live"],
+    "city": ["city"],
+    "service_area": ["service_area"],
+}
 # 수집 기록이 하나도 없을 때만 씀 - collector JOBS와 같음
-DEFAULT_ZSCODES = {"city": "11440", "service_area": "C0"}
+DEFAULT_ZSCODES = {"city": "11440", "live": "11", "service_area": "C0"}
 
 SAVED_RUN_STATUSES = ("SUCCESS", "PARTIAL")  # 상태 로그를 저장한 회차
 CHARGING_STATS = tuple(s for s, v in STAT_TO_STATUS.items() if v == "charging")  # 3 · 6
@@ -77,7 +88,7 @@ _redis = redis.Redis.from_url(settings.redis_url, socket_timeout=1, socket_conne
 
 
 def targets_of(region: str) -> list[str]:
-    return list(TARGETS) if region == "all" else [region]
+    return REGION_TARGETS[region]
 
 
 def kst_today(now: datetime) -> date:
@@ -238,6 +249,22 @@ def daily_log_counts(db: Session, target: str, days: list[date], now: datetime) 
     return counts
 
 
+def warm_cache(db: Session, now: datetime | None = None) -> None:
+    """이용률 집계를 화면 요청 전에 Redis에 채움 - collector가 매시 끝난 시간대 뒤에 부름.
+    끝난 날(4주)과 오늘의 끝난 시간대가 저장돼 화면을 처음 연 사람도 진행 중인 시간대만 기다림.
+    대상 하나가 실패해도 나머지는 채움"""
+    now = now or datetime.now(UTC)
+    today = kst_today(now)
+    days = [today - timedelta(days=i) for i in range(UTILIZATION_DAYS - 1, -1, -1)]
+    for target in TARGETS:
+        try:
+            # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함
+            daily_log_counts(db, target, days, now)
+        except Exception:
+            db.rollback()
+            logger.exception("운영자 집계 미리 계산 실패 [%s]", target)
+
+
 def get_utilization(
     db: Session, region: str, period: str, now: datetime | None = None
 ) -> UtilizationResponse:
@@ -295,7 +322,7 @@ def get_chargers(db: Session, region: str, now: datetime | None = None) -> Admin
             select(station_model).where(station_model.station_id.in_(list(states)))
         )
         names = {
-            s.station_id: (s.name if target == "city" else s.service_area_name or s.name)
+            s.station_id: (s.service_area_name or s.name if target == "service_area" else s.name)
             or s.station_id
             for s in stations
         }

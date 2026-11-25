@@ -218,12 +218,13 @@ def test_week_groups_by_weekday_and_pools_average(monkeypatch):
     res = admin.get_utilization(None, "all", "week", NOW)
     assert seen == [
         ("city", date(2026, 10, 20), TODAY, 28),
+        ("live", date(2026, 10, 20), TODAY, 28),
         ("service_area", date(2026, 10, 20), TODAY, 28),
     ]
     assert res.from_.isoformat() == "2026-10-20T00:00:00+09:00"
     assert [b.label for b in res.series] == ["월", "화", "수", "목", "금", "토", "일"]
-    # 요일마다 4일 × 대상 2곳 × 분모 4
-    assert all(b.observation_count == 32 and b.occupancy_rate == 0.25 for b in res.series)
+    # 요일마다 4일 × 대상 3곳 × 분모 4
+    assert all(b.observation_count == 48 and b.occupancy_rate == 0.25 for b in res.series)
     assert res.average_occupancy_rate == 0.25
 
 
@@ -238,6 +239,47 @@ def test_day_has_24_hours_and_empty_hours_are_null(monkeypatch):
     assert res.series[0].occupancy_rate == 0.5
     assert res.series[15].occupancy_rate is None and res.series[15].observation_count == 0
     assert res.average_occupancy_rate == round(1 / 7, 4)  # 칸별 평균(0.25)이 아니라 관측 합계 비율
+
+
+@pytest.mark.parametrize(
+    "region, targets",
+    [
+        ("all", ["city", "live", "service_area"]),
+        ("seoul", ["city", "live"]),  # 마포 + 마포를 뺀 서울 = 서울 전체
+        ("city", ["city"]),
+        ("service_area", ["service_area"]),
+    ],
+)
+def test_region_targets(region, targets):
+    assert admin.targets_of(region) == targets
+
+
+# --- 미리 계산 ---
+
+
+def test_warm_cache_fills_closed_days_and_hours_for_every_target(fake_redis, db_calls):
+    admin.warm_cache(None, NOW)
+    for target in admin.TARGETS:
+        assert f"admin:occ:v1:{target}:2026-11-15" in fake_redis.values
+        assert f"admin:occ-hour:v1:{target}:2026-11-16:12" in fake_redis.hashes
+    # 화면 요청은 끝난 날 · 시간대를 다시 세지 않고 진행 중인 13 · 14시만 DB에서 셈
+    db_calls.clear()
+    admin.get_utilization(None, "all", "week", NOW)
+    assert [c[0] for c in db_calls] == ["hour_charger"] * 3
+    assert {c[1:] for c in db_calls} == {(kst(TODAY, 13), NOW)}
+
+
+def test_warm_cache_continues_after_target_failure(fake_redis, monkeypatch):
+    done = []
+
+    def fake_daily(db, target, days, now):
+        if target == "city":
+            raise RuntimeError("db")
+        done.append(target)
+
+    monkeypatch.setattr(admin, "daily_log_counts", fake_daily)
+    admin.warm_cache(type("Db", (), {"rollback": lambda self: None})(), NOW)
+    assert done == ["live", "service_area"]
 
 
 # --- 엔드포인트 ---
@@ -274,6 +316,6 @@ def test_dashboard_response_uses_camel_case_and_from(client, monkeypatch):
 
 def test_unknown_region_is_422(client):
     app.dependency_overrides[require_admin] = lambda: None
-    res = client.get("/api/v1/admin/utilization?region=seoul")
+    res = client.get("/api/v1/admin/utilization?region=live")  # live는 seoul로만 받음
     assert res.status_code == 422
     assert res.json()["error"]["code"] == "VALIDATION_ERROR"
