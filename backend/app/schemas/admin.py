@@ -10,6 +10,36 @@ from app.schemas.common import ChargerStatus
 AdminRegion = Literal["all", "seoul", "city", "service_area"]
 AdminPeriod = Literal["day", "week"]  # day = 오늘 · week = 이용률 최근 4주, 결측 최근 7일
 CollectionTargetName = Literal["city", "live", "service_area"]
+
+# 서울 구 코드(충전기 API zscode) → 이름 - region=seoul 안의 구 선택(district). 마포구만 city, 나머지는 live
+SEOUL_DISTRICTS = {
+    "11110": "종로구",
+    "11140": "중구",
+    "11170": "용산구",
+    "11200": "성동구",
+    "11215": "광진구",
+    "11230": "동대문구",
+    "11260": "중랑구",
+    "11290": "성북구",
+    "11305": "강북구",
+    "11320": "도봉구",
+    "11350": "노원구",
+    "11380": "은평구",
+    "11410": "서대문구",
+    "11440": "마포구",
+    "11470": "양천구",
+    "11500": "강서구",
+    "11530": "구로구",
+    "11545": "금천구",
+    "11560": "영등포구",
+    "11590": "동작구",
+    "11620": "관악구",
+    "11650": "서초구",
+    "11680": "강남구",
+    "11710": "송파구",
+    "11740": "강동구",
+}
+SeoulDistrict = Literal[tuple(SEOUL_DISTRICTS)]
 CollectionRunStatus = Literal["running", "success", "partial", "failed"]
 
 
@@ -29,6 +59,7 @@ class UtilizationBucket(CamelModel):
 
 class UtilizationResponse(PeriodRange):
     region: AdminRegion
+    district: SeoulDistrict | None  # 구를 골랐을 때만
     period: AdminPeriod
     average_occupancy_rate: float | None  # 기간 전체 관측을 합친 비율 (칸별 평균이 아님)
     series: list[UtilizationBucket]
@@ -39,6 +70,8 @@ class AdminCharger(CamelModel):
     region: CollectionTargetName
     station_id: str
     station_name: str  # 도심 · 서울은 충전소명, 휴게소는 휴게소명
+    district: SeoulDistrict | None  # 구 코드 - 휴게소 · 주소에서 구를 못 뽑은 충전소는 null
+    district_name: str | None
     charger_id: str
     status: ChargerStatus
     stat: str | None  # API 원본 상태 코드. 마지막 성공 회차에 행이 없으면 null
