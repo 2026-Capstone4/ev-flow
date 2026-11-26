@@ -42,6 +42,7 @@ from app.schemas.admin import (
 from app.schemas.base import KST
 from app.services.service_areas import without_duplicates
 from app.services.snapshot import latest_success_run, load_charger_states
+from app.services.stations import clean_station_name
 from app.services.status import BUS_CHARGER_TYPE, STAT_TO_STATUS
 
 logger = logging.getLogger(__name__)
@@ -601,7 +602,9 @@ def get_chargers(
             kept = {s.station_id for s in stations}
             states = {sid: cs for sid, cs in states.items() if sid in kept}
         names = {
-            s.station_id: (s.service_area_name or s.name if target == "service_area" else s.name)
+            s.station_id: clean_station_name(
+                s.service_area_name or s.name if target == "service_area" else s.name
+            )
             or s.station_id
             for s in stations
         }

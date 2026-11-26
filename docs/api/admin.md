@@ -139,7 +139,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `region` | string | 수집 대상 `city` · `live` · `service_area` — `region=seoul`이면 `city` · `live`가 섞여 온다 |
-| `stationName` | string | 도심 · 서울은 충전소명, 휴게소는 휴게소명 |
+| `stationName` | string | 도심 · 서울은 충전소명, 휴게소는 휴게소명. 밑줄은 사용자 API 1번 `name`과 같은 규칙으로 정리 |
 | `district` · `districtName` | string \| null | 구 코드 · 이름(`11680` · `강남구`). 휴게소 · 구를 모르는 충전소는 `null`. `district`로 요청하면 그 구 충전기만 온다 — 요약 카드(충전기 수 · 현재 이용률 · 운영 중지 · 점검)는 이 목록으로 계산 |
 | `status` | string | 화면 상태 (README) |
 | `updatedAt` | string | 대상별 마지막 성공 수집 시각 중 오래된 쪽 (`region=all`) |
