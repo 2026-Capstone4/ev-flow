@@ -53,6 +53,92 @@ index 6e1054f264acd6b16ec983cf58151985f80c5e42..16a6db7962789ece0a81658b1814db56
  - (void)animateCameraBy:(double)x
                        y:(double)y
                 duration:(NSInteger)duration
+diff --git a/lib/commonjs/component/NaverMapView.js b/lib/commonjs/component/NaverMapView.js
+index efd4aceb3a309adcc5a1da6e5d2028a08ee3870f..53c39fd83cd3789c2cbdc3da3c7f6a35519f4181 100644
+--- a/lib/commonjs/component/NaverMapView.js
++++ b/lib/commonjs/component/NaverMapView.js
+@@ -397,6 +397,14 @@ const NaverMapView = exports.NaverMapView = /*#__PURE__*/(0, _react.forwardRef)(
+         _RNCNaverMapViewNativeComponent.Commands.animateCameraTo(innerRef.current, latitude, longitude, duration ?? _Const.Const.DEFAULT_ANIM_DURATION, (0, _Util.cameraEasingToNumber)(easing ?? _Const.Const.DEFAULT_EASING), pivot?.x ?? 0.5, pivot?.y ?? 0.5, zoom);
+       }
+     },
++    animateCameraResetHeading: ({
++      duration,
++      easing
++    } = {}) => {
++      if (innerRef.current) {
++        _RNCNaverMapViewNativeComponent.Commands.animateCameraResetHeading(innerRef.current, duration ?? _Const.Const.DEFAULT_ANIM_DURATION, (0, _Util.cameraEasingToNumber)(easing ?? _Const.Const.DEFAULT_EASING));
++      }
++    },
+     animateCameraBy: ({
+       duration,
+       easing,
+diff --git a/lib/commonjs/spec/RNCNaverMapViewNativeComponent.ts b/lib/commonjs/spec/RNCNaverMapViewNativeComponent.ts
+index 8a8e7f57a8f4b4b15f806dffcc7e9fe59fd03c77..b44d69ce26544f793cf9b00c8a4ed3a3bd273be8 100644
+--- a/lib/commonjs/spec/RNCNaverMapViewNativeComponent.ts
++++ b/lib/commonjs/spec/RNCNaverMapViewNativeComponent.ts
+@@ -320,6 +320,11 @@ interface NativeCommands {
+     pivotY?: Double
+   ) => void;
+   cancelAnimation: (ref: React.ElementRef<ComponentType>) => void;
++  animateCameraResetHeading: (
++    ref: React.ElementRef<ComponentType>,
++    duration?: Int32,
++    easing?: Int32
++  ) => void;
+   setLocationTrackingMode: (
+     ref: React.ElementRef<ComponentType>,
+     mode: string
+@@ -345,6 +350,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
+     'animateCameraTo',
+     'animateCameraBy',
+     'cancelAnimation',
++    'animateCameraResetHeading',
+     'animateRegionTo',
+     'setLocationTrackingMode',
+     'showInfoWindow',
+diff --git a/lib/module/component/NaverMapView.js b/lib/module/component/NaverMapView.js
+index a22e22e09019477b936a71809ed567a5fcc1e568..ee14de9e1820ef6f051b2ca10d70715c7e018a27 100644
+--- a/lib/module/component/NaverMapView.js
++++ b/lib/module/component/NaverMapView.js
+@@ -392,6 +392,14 @@ export const NaverMapView = /*#__PURE__*/forwardRef(({
+         Commands.animateCameraTo(innerRef.current, latitude, longitude, duration ?? Const.DEFAULT_ANIM_DURATION, cameraEasingToNumber(easing ?? Const.DEFAULT_EASING), pivot?.x ?? 0.5, pivot?.y ?? 0.5, zoom);
+       }
+     },
++    animateCameraResetHeading: ({
++      duration,
++      easing
++    } = {}) => {
++      if (innerRef.current) {
++        Commands.animateCameraResetHeading(innerRef.current, duration ?? Const.DEFAULT_ANIM_DURATION, cameraEasingToNumber(easing ?? Const.DEFAULT_EASING));
++      }
++    },
+     animateCameraBy: ({
+       duration,
+       easing,
+diff --git a/lib/module/spec/RNCNaverMapViewNativeComponent.ts b/lib/module/spec/RNCNaverMapViewNativeComponent.ts
+index 8a8e7f57a8f4b4b15f806dffcc7e9fe59fd03c77..b44d69ce26544f793cf9b00c8a4ed3a3bd273be8 100644
+--- a/lib/module/spec/RNCNaverMapViewNativeComponent.ts
++++ b/lib/module/spec/RNCNaverMapViewNativeComponent.ts
+@@ -320,6 +320,11 @@ interface NativeCommands {
+     pivotY?: Double
+   ) => void;
+   cancelAnimation: (ref: React.ElementRef<ComponentType>) => void;
++  animateCameraResetHeading: (
++    ref: React.ElementRef<ComponentType>,
++    duration?: Int32,
++    easing?: Int32
++  ) => void;
+   setLocationTrackingMode: (
+     ref: React.ElementRef<ComponentType>,
+     mode: string
+@@ -345,6 +350,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
+     'animateCameraTo',
+     'animateCameraBy',
+     'cancelAnimation',
++    'animateCameraResetHeading',
+     'animateRegionTo',
+     'setLocationTrackingMode',
+     'showInfoWindow',
 diff --git a/lib/typescript/commonjs/src/component/NaverMapView.d.ts b/lib/typescript/commonjs/src/component/NaverMapView.d.ts
 index eb3e14112994f2b0af2ccc0aec8b1f866275a0a1..0587d7df57575ff44b728454cb0eabbf9fc496ef 100644
 --- a/lib/typescript/commonjs/src/component/NaverMapView.d.ts
