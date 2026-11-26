@@ -28,13 +28,13 @@ describe('getCongestionLabel', () => {
 describe('formatWaitRange', () => {
   it('상세 화면용으로 접두어 없이 표기함', () => {
     expect(formatWaitRange(5, 15)).toBe('5~15분')
-    expect(formatWaitRange(0, 0)).toBe('대기 거의 없음')
+    expect(formatWaitRange(0, 0)).toBe('거의 안 기다려요')
     expect(formatWaitRange(null, null)).toBeNull()
   })
 
   it('혼잡인데 P90이 0이면 0분이라고 말하지 않음', () => {
     expect(formatWaitRange(0, 0, 'high')).toBe('대기 예측 어려움')
-    expect(formatWaitRange(0, 0, 'low')).toBe('대기 거의 없음')
+    expect(formatWaitRange(0, 0, 'low')).toBe('거의 안 기다려요')
     expect(formatWaitRange(15, 30, 'high')).toBe('15~30분')
   })
 
@@ -53,8 +53,8 @@ describe('formatWaitTime', () => {
     expect(formatWaitTime(5, 5)).toBe('대기 5분')
   })
 
-  it('P90이 0이면 대기 거의 없음으로 표기함', () => {
-    expect(formatWaitTime(0, 0)).toBe('대기 거의 없음')
+  it('P90이 0이면 거의 안 기다려요로 표기함', () => {
+    expect(formatWaitTime(0, 0)).toBe('거의 안 기다려요')
   })
 
   it('혼잡인데 P90이 0이면 대기 예측 어려움으로 표기함', () => {
