@@ -4,6 +4,8 @@ import { Text } from './Text'
 const VARIANT_CLASS = {
   primary: { box: 'bg-brand-primary', text: 'text-text-on-brand' },
   secondary: { box: 'bg-brand-primary-bg', text: 'text-brand-primary' },
+  // 연한 색 바탕(첫 방문 안내 카드) 위에서 쓰는 보조 버튼. secondary 바탕이 카드와 겹쳐 안 보여서 흰색으로
+  surface: { box: 'bg-bg-page', text: 'text-brand-primary' },
 }
 
 type ButtonProps = {

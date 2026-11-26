@@ -3,6 +3,7 @@ import {
   AndroidConfig,
   CodeGenerator,
   withAndroidManifest,
+  withAndroidStyles,
   withAppBuildGradle,
   withStringsXml,
   type ConfigPlugin,
@@ -38,6 +39,23 @@ const withAndroidDisplayName: ConfigPlugin = (config) =>
       stringsConfig.modResults,
     )
     return stringsConfig
+  })
+
+/**
+ * Android 하단 버튼 · 제스처 바 뒤에 시스템이 깔던 반투명 흰 막을 끔 (android:enforceNavigationBarContrast)
+ * 켜져 있으면 안내 창처럼 화면을 어둡게 덮을 때 그 칸만 하얗게 남음. 막이 없어도 하단 탭이 흰 바탕이라 버튼은 잘 보임
+ * 이 값은 Android 10(API 29)부터 있어서 그 아래 기기에서는 무시되게 targetApi를 붙임
+ */
+const withAndroidNoNavBarScrim: ConfigPlugin = (config) =>
+  withAndroidStyles(config, (stylesConfig) => {
+    stylesConfig.modResults = AndroidConfig.Styles.assignStylesValue(stylesConfig.modResults, {
+      add: true,
+      parent: AndroidConfig.Styles.getAppThemeGroup(),
+      name: 'android:enforceNavigationBarContrast',
+      value: 'false',
+      targetApi: '29',
+    })
+    return stylesConfig
   })
 
 /** 길찾기 안내에 쓰는 지도 앱 URL Scheme (네이버 지도 · 카카오맵). src/lib/openMapApp.ts가 설치 여부를 확인함 */
@@ -245,4 +263,6 @@ const config: ExpoConfig = {
   },
 }
 
-export default withAndroidReleaseSigning(withAndroidMapAppQueries(withAndroidDisplayName(config)))
+export default withAndroidNoNavBarScrim(
+  withAndroidReleaseSigning(withAndroidMapAppQueries(withAndroidDisplayName(config))),
+)
