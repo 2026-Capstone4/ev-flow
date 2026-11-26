@@ -16,6 +16,8 @@ import { ServiceAreaInfoPage } from '@/pages/more/ServiceAreaInfoPage'
 import { PrivacyPage } from '@/pages/PrivacyPage'
 import { ServiceAreaDetailPage } from '@/pages/ServiceAreaDetailPage'
 import { ServiceAreaListPage } from '@/pages/ServiceAreaListPage'
+import { ServiceAreaRegionPage } from '@/pages/ServiceAreaRegionPage'
+import { ServiceAreaRoutePage } from '@/pages/ServiceAreaRoutePage'
 import { RoutePage } from '@/pages/RoutePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { StationDetailPage } from '@/pages/StationDetailPage'
@@ -50,6 +52,8 @@ export function App() {
             <Route path="/stations/:stationId" element={<StationDetailPage />} />
             <Route path="/stations/:stationId/route" element={<RoutePage />} />
             <Route path="/service-areas" element={<ServiceAreaListPage />} />
+            <Route path="/service-areas/route" element={<ServiceAreaRoutePage />} />
+            <Route path="/service-areas/region" element={<ServiceAreaRegionPage />} />
             <Route path="/service-areas/detail" element={<ServiceAreaDetailPage />} />
             <Route path="/more" element={<MorePage />} />
             <Route path="/more/service-area" element={<ServiceAreaInfoPage />} />

@@ -13,7 +13,12 @@ import {
   type StationSource,
 } from '@ev-flow/core/mocks/mockApi'
 import { buildMockRoute } from '@ev-flow/core/mocks/routes'
-import { findServiceAreaChargers, SERVICE_AREAS } from '@ev-flow/core/mocks/serviceAreas'
+import {
+  findNationwideServiceAreaChargers,
+  findServiceAreaChargers,
+  NATIONWIDE_SERVICE_AREAS,
+  SERVICE_AREAS,
+} from '@ev-flow/core/mocks/serviceAreas'
 import { findStationDetail, STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
 import {
   buildAdminChargers,
@@ -28,6 +33,8 @@ import {
 import type { AdminPeriod, AdminRegion, AuthSession, LoginRequest } from '@/types/admin'
 import type { ApiErrorBody } from '@ev-flow/core/types/api'
 import type {
+  NationwideServiceAreaChargersResponse,
+  NationwideServiceAreasResponse,
   ServiceAreaChargersResponse,
   ServiceAreasResponse,
 } from '@ev-flow/core/types/serviceArea'
@@ -159,6 +166,45 @@ const serviceAreaHandlers = [
         )
       }
       return HttpResponse.json<ServiceAreaChargersResponse>({
+        updatedAt: toKstIso(new Date()),
+        dataQuality: 'normal',
+        ...found,
+      })
+    },
+  ),
+
+  // 전국 휴게소 목록 (15번). 휴게소 탭 노선별 · 지역별 · 노선 · 지역 화면이 모두 이 응답을 씀
+  http.get('/api/v1/service-areas/nationwide', async () => {
+    await delay(300)
+    return HttpResponse.json<NationwideServiceAreasResponse>({
+      updatedAt: toKstIso(new Date()),
+      dataQuality: 'normal',
+      serviceAreas: NATIONWIDE_SERVICE_AREAS,
+    })
+  }),
+
+  // 전국 휴게소 충전기 현황 (16번). ?id=목록의 id (휴게소명 또는 statId 하나)
+  http.get<PathParams, DefaultBodyType, ApiErrorBody | NationwideServiceAreaChargersResponse>(
+    '/api/v1/service-areas/nationwide/chargers',
+    async ({ request }) => {
+      await delay(300)
+      const id = new URL(request.url).searchParams.get('id')
+      // id가 없으면 백엔드(FastAPI)처럼 422로 응답
+      if (!id) {
+        return HttpResponse.json<ApiErrorBody>(
+          { error: { code: 'VALIDATION_ERROR', message: '요청 형식이 올바르지 않습니다.' } },
+          { status: 422 },
+        )
+      }
+      const found = findNationwideServiceAreaChargers(id, new Date())
+      // 목록에 없는 id면 404
+      if (!found) {
+        return HttpResponse.json<ApiErrorBody>(
+          { error: { code: 'SERVICE_AREA_NOT_FOUND', message: '휴게소를 찾을 수 없습니다.' } },
+          { status: 404 },
+        )
+      }
+      return HttpResponse.json<NationwideServiceAreaChargersResponse>({
         updatedAt: toKstIso(new Date()),
         dataQuality: 'normal',
         ...found,

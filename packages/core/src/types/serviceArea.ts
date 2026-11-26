@@ -50,7 +50,7 @@ export type ServiceAreaChargersResponse = {
 }
 
 // --- 전국 휴게소 (docs/api/user.md 15 · 16번) ---
-// 위 타입은 옛 천안 대조군 API(5 · 6번)용. 웹이 아직 쓰고 있어서 그대로 둠
+// 위 타입은 옛 천안 대조군 API(5 · 6번)용. 웹 · 앱 화면은 더 쓰지 않고, 웹 운영자 Mock(충전기 목록)만 Mock 데이터를 씀
 
 /** 노선 안 순서 방향. 방향 버튼(heading) 쪽으로 갈 때 asc면 routeSeq가 커지고 desc면 작아짐 */
 export type SeqOrder = 'asc' | 'desc'

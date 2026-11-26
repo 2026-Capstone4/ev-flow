@@ -3,27 +3,23 @@ import { useSearchParams } from 'react-router'
 import { BackButton } from '@/components/BackButton'
 import { Button } from '@/components/Button'
 import { ChargerRow } from '@/components/ChargerRow'
-import { DirectionTag } from '@/components/DirectionTag'
 import { UpdateStatus } from '@/components/UpdateStatus'
 import { useNoIndex, usePageTitle } from '@/hooks/usePageMeta'
 import { useNow } from '@ev-flow/core/hooks/useNow'
-import { useServiceAreaDetailData } from '@ev-flow/core/hooks/useServiceAreaDetailData'
+import { useNationwideServiceAreaDetailData } from '@ev-flow/core/hooks/useNationwideServiceAreaDetailData'
 import { detectPlatform, getNaverCarRouteUrl } from '@ev-flow/core/lib/naverMapLink'
 import { openMapApp } from '@/lib/openMapApp'
-import {
-  AVAILABILITY_TONE_CLASS,
-  getAvailabilityTone,
-  parseDirection,
-} from '@ev-flow/core/lib/serviceArea'
+import { AVAILABILITY_TONE_CLASS, getAvailabilityTone } from '@ev-flow/core/lib/serviceArea'
 
+// 전국 휴게소 상세 (/service-areas/detail?id=). id는 15번 목록의 id(노선이 붙은 곳은 휴게소명, 못 붙인 곳은 statId)
+// 노선 미확인을 묶은 휴게소는 id가 statId를 쉼표로 이은 값이라 statId마다 16번을 불러 합침 (core 훅이 처리)
 // 휴게소는 앱 안 경로 미리보기가 없어서(POST /routes는 도심 충전소만) 길찾기 버튼이 바로 네이버 지도 앱을 엶
 export function ServiceAreaDetailPage() {
   const [searchParams] = useSearchParams()
-  const name = searchParams.get('name') ?? ''
-  const direction = parseDirection(searchParams.get('direction'))
+  const id = searchParams.get('id') ?? ''
   const now = useNow()
   const { serviceArea, chargerGroups, unknownCount, updatedAt, isError, isNotFound } =
-    useServiceAreaDetailData(name, direction)
+    useNationwideServiceAreaDetailData(id)
   // 휴게소 이름이 검색 결과 제목이 됨. 없는 휴게소는 색인하지 않음
   usePageTitle(serviceArea ? serviceArea.name : isNotFound ? '휴게소를 찾을 수 없어요' : undefined)
   useNoIndex(isNotFound)
@@ -51,12 +47,9 @@ export function ServiceAreaDetailPage() {
         <>
           <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-2 pb-8">
             <section className="flex flex-col items-start gap-1.5">
-              <div className="flex items-center gap-2">
-                <h2 className="text-[22px] font-bold">{serviceArea.name}</h2>
-                <DirectionTag direction={serviceArea.direction} />
-              </div>
+              <h2 className="text-[22px] font-bold">{serviceArea.name}</h2>
               <p className="text-sm text-text-secondary">
-                {serviceArea.route}선 · 급속 {serviceArea.totalChargers}기
+                {serviceArea.routeName ?? '노선 미확인'} · 급속 {serviceArea.totalChargers}기
               </p>
               <UpdateStatus updatedAt={updatedAt} isError={isError} />
             </section>
