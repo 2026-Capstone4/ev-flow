@@ -13,7 +13,15 @@ import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BackHandler, Platform, Pressable, View, type GestureResponderEvent } from 'react-native'
+import {
+  Alert,
+  BackHandler,
+  Linking,
+  Platform,
+  Pressable,
+  View,
+  type GestureResponderEvent,
+} from 'react-native'
 import Animated, {
   Extrapolation,
   interpolate,
@@ -222,7 +230,19 @@ export default function MapHomeScreen() {
       panTo(result.location)
       return
     }
-    // 못 쓴 이유는 잠깐 안내 (권한 거부 · 위치 서비스 꺼짐 · 시간 초과 등)
+    // 예전에 거부해 OS가 더 묻지 않으면 설정 앱으로 갈지 물음. 허용하고 돌아오면 useLocationTracking이 다시 확인함
+    if (result.isBlocked) {
+      Alert.alert(
+        '위치 권한이 꺼져 있어요',
+        '현재 위치를 보려면 설정 앱에서\nEV Flow의 위치 접근을 허용해 주세요.',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: '설정 열기', onPress: () => Linking.openSettings() },
+        ],
+      )
+      return
+    }
+    // 못 쓴 이유는 잠깐 안내 (방금 거부 · 위치 서비스 꺼짐 · 시간 초과 등)
     setNotice({ id: Date.now(), message: APP_LOCATE_FAILURE_MESSAGE[result.reason] })
   }
 
