@@ -25,7 +25,12 @@ export const APP_LOCATE_FAILURE_MESSAGE: Record<AppLocateFailure, string> = {
 const TIMEOUT_MS = 10_000
 const MAX_AGE_MS = 30_000
 
-export type LocateResult = { ok: true; location: LatLng } | { ok: false; reason: AppLocateFailure }
+/**
+ * isBlocked: 예전에 거부해서 OS가 권한 창을 더 띄우지 않는 상태. 설정 앱으로만 바꿀 수 있음
+ * 방금 권한 창에서 거부한 경우는 false (바로 또 묻지 않으려고 나눔)
+ */
+export type LocateResult =
+  { ok: true; location: LatLng } | { ok: false; reason: AppLocateFailure; isBlocked?: boolean }
 
 // 30초 안에 잰 위치가 있으면 그걸 쓰고, 없으면 정확도 우선으로 새로 잼
 // expo-location에는 시간 제한 옵션이 없어서 10초 타이머와 경주시켜 늦으면 'timeout'으로 reject
@@ -82,9 +87,15 @@ export function useCurrentLocation() {
     try {
       // 기기 설정에서 위치 서비스를 통째로 끈 경우. 권한을 물어도 소용없어서 먼저 확인함
       if (!(await Location.hasServicesEnabledAsync())) return { ok: false, reason: 'unsupported' }
-      // 처음이면 iOS 권한 창을 띄우고, 이미 정했으면 창 없이 그 결과를 바로 돌려받음
+      // OS가 더 묻지 않는 거부 상태인지 먼저 봄 (iOS는 한 번 거부, Android는 두 번 거부하면 이렇게 됨)
+      const current = await Location.getForegroundPermissionsAsync()
+      // 이미 막혀 있으면 권한 창이 안 뜨므로 설정 앱으로 보내도록 알림
+      if (!current.granted && !current.canAskAgain) {
+        return { ok: false, reason: 'denied', isBlocked: true }
+      }
+      // 처음이면 권한 창을 띄우고, 이미 허용했으면 창 없이 그 결과를 바로 돌려받음
       const { granted } = await Location.requestForegroundPermissionsAsync()
-      // 거부했으면 다시 물을 수 없어서 설정 앱 안내를 띄움
+      // 방금 권한 창에서 거부했으면 안내 문구만 띄움
       if (!granted) return { ok: false, reason: 'denied' }
 
       // 마포구 밖이어도 기준 위치로 씀. 추천은 지금 출발만 오고 15 · 30분 탭은 마포구만 지원한다고 안내함
