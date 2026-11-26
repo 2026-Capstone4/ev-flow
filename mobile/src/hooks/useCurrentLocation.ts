@@ -87,16 +87,16 @@ export function useCurrentLocation() {
     try {
       // 기기 설정에서 위치 서비스를 통째로 끈 경우. 권한을 물어도 소용없어서 먼저 확인함
       if (!(await Location.hasServicesEnabledAsync())) return { ok: false, reason: 'unsupported' }
-      // OS가 더 묻지 않는 거부 상태인지 먼저 봄 (iOS는 한 번 거부, Android는 두 번 거부하면 이렇게 됨)
-      const current = await Location.getForegroundPermissionsAsync()
-      // 이미 막혀 있으면 권한 창이 안 뜨므로 설정 앱으로 보내도록 알림
-      if (!current.granted && !current.canAskAgain) {
-        return { ok: false, reason: 'denied', isBlocked: true }
+      // 요청 전에 이미 막힌 상태였는지 봄 (iOS는 한 번 거부, Android는 두 번 거부하면 이렇게 됨)
+      // Android는 이 값이 마지막 요청 결과라 설정에서 바꾼 걸 모를 수 있어서, 이것만 보고 요청을 건너뛰지 않음
+      const before = await Location.getForegroundPermissionsAsync()
+      const wasBlocked = !before.granted && !before.canAskAgain
+      // 항상 요청함. 처음이면 권한 창이 뜨고, 정말 막혀 있으면 창 없이 거부가 바로 돌아옴
+      const after = await Location.requestForegroundPermissionsAsync()
+      // 거부면, 요청 전후 모두 막힘일 때만 설정 앱 창을 띄우고 방금 권한 창에서 거부한 경우는 안내 문구만 띄움
+      if (!after.granted) {
+        return { ok: false, reason: 'denied', isBlocked: wasBlocked && !after.canAskAgain }
       }
-      // 처음이면 권한 창을 띄우고, 이미 허용했으면 창 없이 그 결과를 바로 돌려받음
-      const { granted } = await Location.requestForegroundPermissionsAsync()
-      // 방금 권한 창에서 거부했으면 안내 문구만 띄움
-      if (!granted) return { ok: false, reason: 'denied' }
 
       // 마포구 밖이어도 기준 위치로 씀. 추천은 지금 출발만 오고 15 · 30분 탭은 마포구만 지원한다고 안내함
       const location = await readPosition()
