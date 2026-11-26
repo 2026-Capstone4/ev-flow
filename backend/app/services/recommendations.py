@@ -7,6 +7,12 @@ docs/api/user.md 3번
   충전소 중복 없이 Top 3 · 혼잡 제외 필터(그 탭 혼잡도, 우리 규칙) · 응답 문구
 - 이동시간은 가까운 20곳, 3단계 (2026-11-22 결정, 캐시 없음): 카카오 다중 목적지 1회 → 자동차 길찾기 20곳 →
   직선거리 추정. 전체 3초 안에 못 받으면 경로 없이 넘김 → AI가 직선거리로 추정(2분 + 시속 24km)
+
+마포구 밖 출발 - 임시 지금 출발 추천 (2026-11-26 결정, 서울은 예측 기능을 꺼 둠)
+- AI 채점 · 혼잡 예측 · 대기시간 예측 없이 이동시간과 현재 상태만 봄. 15 · 30분 탭은 빈 배열
+  (화면이 "현재 마포구만 지원" 문구를 띄움)
+- 후보는 마포 · 서울 충전소를 합쳐 가까운 20곳 - 마포 충전소도 현재 상태만 봄
+- 점수 = 이동시간/30 + (1 − 사용 가능/운영 중), 낮을수록 위 - AI 점수식에서 예측 점유율 자리에 현재 점유율
 """
 
 import json
@@ -16,7 +22,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import exists, select
@@ -39,9 +45,19 @@ from app.services import directions
 from app.services.ai_ranking import TABS, AiPackageUnavailable, get_scorer
 from app.services.directions import DirectionsQuotaExceeded
 from app.services.predictions import load_raw_predictions, round_wait
-from app.services.snapshot import ChargerState, latest_success_run, load_charger_states
-from app.services.stations import MAPO, area_stations
-from app.services.status import elapsed_quality
+from app.services.snapshot import (
+    ChargerState,
+    find_latest_success_run,
+    latest_success_run,
+    load_charger_states,
+)
+from app.services.stations import MAPO, SEOUL, Area, area_stations
+from app.services.status import (
+    BUS_CHARGER_TYPE,
+    CONNECTOR_TYPES,
+    elapsed_quality,
+    to_capacity_kw,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +73,11 @@ CONGESTION_LABEL = {"low": "여유", "medium": "보통", "high": "혼잡"}
 # AI 채점 결과의 근거 단계 → 응답 basis
 FORECAST_SOURCES = ("model", "last_good_model")
 BOUNDARY_PATH = Path(__file__).resolve().parents[2] / "data" / "mapo_boundary.json"
+# 마포구 밖 지금 출발 추천 - 상태를 읽는 가까운 충전소 수 (지역마다). 조건 · 사용 가능으로 걸러도 20곳이 남게 넉넉히
+NOW_POOL_LIMIT = 60
+# 이 시간 넘게 새 회차가 없는 지역은 현재 상태로 보지 않음 - AI 채점의 관측 기준(15분 미만)과 같음
+NOW_MAX_AGE = timedelta(minutes=15)
+NOW_TRAVEL_SCALE_MIN = 30  # 점수의 이동시간 단위 - AI 점수식(이동시간/30)과 같음
 
 # 요청이 여럿 겹쳐도 Directions 동시 호출 수를 묶음
 _executor = ThreadPoolExecutor(max_workers=CANDIDATE_LIMIT * 2, thread_name_prefix="directions")
@@ -116,6 +137,13 @@ def scope_ids(station_id: str, states: list[ChargerState], members: dict) -> tup
     return tuple(members.get(station_id) or sorted(c.charger_id for c in states))
 
 
+def charger_fits(connectors, capacity_kw, filters: RecommendationFilters) -> bool:
+    """충전기 한 대가 커넥터(하나라도 맞으면) · 용량 조건을 만족하는지"""
+    if filters.connector_types and not set(connectors) & set(filters.connector_types):
+        return False
+    return filters.min_capacity_kw is None or capacity_kw >= filters.min_capacity_kw
+
+
 def meets_charger_filters(
     scope: tuple[str, ...], states: list[ChargerState], filters: RecommendationFilters
 ) -> bool:
@@ -123,11 +151,7 @@ def meets_charger_filters(
     by_id = {c.charger_id: c for c in states}
     for cid in scope:
         c = by_id.get(cid)
-        if c is None:
-            return False
-        if filters.connector_types and not set(c.connector_types) & set(filters.connector_types):
-            return False
-        if filters.min_capacity_kw is not None and c.capacity_kw < filters.min_capacity_kw:
+        if c is None or not charger_fits(c.connector_types, c.capacity_kw, filters):
             return False
     return True
 
@@ -458,9 +482,140 @@ def log_empty_tabs(tabs: dict[str, dict]) -> None:
         )
 
 
+def nearby_station_ids(
+    db: Session, area: Area, origin: tuple[float, float], filters: RecommendationFilters
+) -> list[str]:
+    """반경 15km 안에서 커넥터 · 용량 조건을 만족하는 가까운 충전소 NOW_POOL_LIMIT곳
+
+    조건은 잘 바뀌지 않는 충전기 정보라 상태 기록 없이 충전기 표로 먼저 거름 - 거리로 먼저 자르면 조건에 맞는
+    곳이 반경 안에 있어도 빈 목록이 될 수 있음. 판정은 meets_charger_filters와 같음 (버스 제외 충전기가 모두 만족)
+    """
+    station, charger = area.station_model, area.charger_model
+    rows = db.execute(
+        select(station.station_id, station.lat, station.lng, charger.charger_type, charger.capacity)
+        .join(charger, charger.station_id == station.station_id)
+        .where(charger.charger_type != BUS_CHARGER_TYPE)
+    )
+    places: dict[str, tuple[float, float]] = {}
+    fits: dict[str, bool] = {}
+    for row in rows:
+        if row.lat is None or row.lng is None:
+            continue
+        places[row.station_id] = (row.lat, row.lng)
+        ok = charger_fits(
+            CONNECTOR_TYPES.get(row.charger_type, []), to_capacity_kw(row.capacity), filters
+        )
+        fits[row.station_id] = fits.get(row.station_id, True) and ok
+    found = []
+    for sid, place in places.items():
+        if not fits[sid]:
+            continue
+        km = distance_km(origin, place)
+        if km <= RADIUS_KM:
+            found.append((km, sid))
+    found.sort()
+    return [sid for _, sid in found[:NOW_POOL_LIMIT]]
+
+
+def now_stations(
+    db: Session, origin: tuple[float, float], now: datetime, filters: RecommendationFilters
+):
+    """마포 · 서울의 가까운 충전소와 충전기 상태, 응답 기준 시각
+
+    15분 넘게 새 회차가 없는 지역은 후보에서 뺌. 두 지역 모두 회차가 없으면 503
+    기준 시각은 후보를 읽은 지역 회차 중 오래된 쪽 - 뺀 지역의 회차가 섞이면 새 데이터로 추천해도 오래된
+    것처럼 보임. 모두 오래돼 뺐으면 받은 회차 중 오래된 쪽
+    """
+    stations: list[Station] = []
+    states: dict[str, list[ChargerState]] = {}
+    used: list[datetime] = []
+    every: list[datetime] = []
+    for area in (MAPO, SEOUL):
+        run = find_latest_success_run(db, area.target)
+        if run is None:
+            continue
+        every.append(run.started_at)
+        if now - run.started_at >= NOW_MAX_AGE:
+            logger.warning("%s 마지막 회차가 15분 넘음 - 지금 출발 추천 후보에서 뺌", area.target)
+            continue
+        used.append(run.started_at)
+        ids = nearby_station_ids(db, area, origin, filters)
+        area_states = load_charger_states(
+            db, area.charger_model, area.log_model, run, now, station_ids=ids
+        )
+        states.update(area_states)
+        stations += area_stations(db, area, run, now, None, None, area_states)
+    if not every:
+        raise ApiError(503, "DATA_UNAVAILABLE", "충전 상태 데이터를 불러올 수 없습니다.")
+    return stations, states, min(used or every)
+
+
+def now_eligible(station: Station, filters: RecommendationFilters) -> bool:
+    """지금 출발 추천 대상 - 지금 사용 가능한 충전기가 있고, 혼잡 제외면 현재 혼잡도가 높음이 아님"""
+    if station.available_chargers == 0:
+        return False
+    return not (filters.status_filter == "exclude_high" and station.congestion == "high")
+
+
+def now_score(station: Station, travel: Travel) -> float:
+    """이동시간/30 + 현재 점유율(1 − 사용 가능/운영 중). 운영 중 = 사용 가능 + 충전 중"""
+    statuses = [c.status for c in station.chargers]
+    available = statuses.count("available")
+    operating = available + statuses.count("charging")
+    return travel.minutes / NOW_TRAVEL_SCALE_MIN + (1 - available / operating)
+
+
+def rank_now(candidates, travel: dict[str, Travel]) -> list[Picked]:
+    """점수 낮은 순 Top 3 - 같으면 이동시간 짧은 곳, 충전소 ID 순"""
+    ordered = sorted(
+        candidates,
+        key=lambda c: (
+            now_score(c[0], travel[c[0].station_id]),
+            travel[c[0].station_id].minutes,
+            c[0].station_id,
+        ),
+    )
+    return [
+        Picked(
+            s,
+            travel[s.station_id],
+            "recent_observation",
+            s.congestion if s.congestion in CONGESTION_ORDER else None,
+            None,
+            None,
+        )
+        for s, _ in ordered[:TOP_N]
+    ]
+
+
+def get_now_recommendations(db: Session, body: RecommendationRequest) -> RecommendationsResponse:
+    """마포구 밖 출발 - 이동시간과 현재 상태만으로 지금 출발 Top 3 (임시). 15 · 30분 탭은 빈 배열"""
+    now = datetime.now(UTC)
+    origin = (body.lat, body.lng)
+    stations, states, updated_at = now_stations(db, origin, now, body.filters)
+    # Directions를 기다리는 동안 DB 연결을 붙잡지 않게 먼저 풀에 돌려줌
+    db.close()
+    usable = [s for s in stations if now_eligible(s, body.filters)]
+    # 모델 범위가 없으므로 버스를 뺀 충전기 전부가 조건 판정 범위
+    candidates = nearest_candidates(usable, states, origin, body.filters, {})
+    travel = travel_times(origin, candidates)
+    picked = rank_now(candidates, travel)
+    return RecommendationsResponse(
+        updated_at=updated_at,
+        data_quality=elapsed_quality(updated_at, now),
+        results=[
+            HorizonRecommendations(
+                horizon_minutes=h, recommendations=to_recommendations(picked) if h == 0 else []
+            )
+            for h in TABS
+        ],
+    )
+
+
 def get_recommendations(db: Session, body: RecommendationRequest) -> RecommendationsResponse:
+    # 마포구 밖은 예측 없이 지금 출발만 (임시) - 경계 근처도 계산을 단순하게 하려고 출발점으로만 나눔
     if not in_mapo(body.lat, body.lng):
-        raise ApiError(422, "OUT_OF_SERVICE_AREA", "현재 충전소 추천 기능은 마포구만 지원해요")
+        return get_now_recommendations(db, body)
     now = datetime.now(UTC)
     run = latest_success_run(db, MAPO.target)
     states = load_charger_states(db, MAPO.charger_model, MAPO.log_model, run, now)

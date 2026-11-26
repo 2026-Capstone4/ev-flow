@@ -195,7 +195,7 @@
 | 404 | `ROUTE_NOT_FOUND` | 경로를 찾지 못함 (UC-U07 E2) |
 | 405 | `METHOD_NOT_ALLOWED` | 지원하지 않는 메서드 |
 | 422 | `VALIDATION_ERROR` | 파라미터 · 본문 형식 오류 |
-| 422 | `OUT_OF_SERVICE_AREA` | 추천 출발 위치가 마포구 밖 (🟡 제안 `MAP-02`) |
+| 422 | `OUT_OF_SERVICE_AREA` | 추천 출발 위치가 마포구 밖 — 2026-11-26부터 쓰지 않음 (마포구 밖은 지금 출발만 임시 추천, user.md 3번) |
 | 429 | `LOGIN_LOCKED` | 로그인 실패가 반복돼 일정 시간 제한됨 (SER-001) |
 | 429 | `RATE_LIMITED` | 추천 · 길찾기 호출 제한 초과 (SER-003) |
 | 502 | `ROUTE_PROVIDER_ERROR` | 길찾기에서 네이버 Directions 오류 · 타임아웃 (UC-U07 E2) |

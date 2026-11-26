@@ -75,11 +75,163 @@ def test_in_mapo():
     assert not rec.in_mapo(37.4979, 127.0276)  # 강남역
 
 
-def test_out_of_service_area_before_db():
-    body = RecommendationRequest(lat=37.4979, lng=127.0276)
+# --- 마포구 밖 지금 출발 (임시) ---
+
+GANGNAM = (37.4979, 127.0276)  # 강남역 - 마포구 밖
+
+
+def test_now_eligible_needs_available_and_respects_exclude_high():
+    assert rec.now_eligible(station("A"), ALL)
+    assert not rec.now_eligible(station("B", chargers=[charger("charging")]), ALL)
+    high = station("C", congestion="high")
+    assert rec.now_eligible(high, ALL)
+    assert not rec.now_eligible(high, RecommendationFilters(status_filter="exclude_high"))
+
+
+def test_now_score_travel_and_current_occupancy():
+    # 운영 중 2대 중 1대 사용 가능 - 점유율 0.5. 점검 중(unknown 등)은 분모에서 뺌
+    half = station("A", chargers=[charger(), charger("charging", cid="02")])
+    assert rec.now_score(half, travel(6)) == pytest.approx(6 / 30 + 0.5)
+    mixed = station("B", chargers=[charger(), charger("unknown", cid="02")])
+    assert rec.now_score(mixed, travel(3)) == pytest.approx(3 / 30)
+
+
+def test_rank_now_orders_by_score_then_travel():
+    busy_near = station(
+        "NEAR", chargers=[charger(), *[charger("charging", cid=f"0{i}") for i in range(2, 5)]]
+    )
+    free_far = station("FAR")
+    tie_a, tie_b = station("TA"), station("TB")
+    travel_by = {"NEAR": travel(2), "FAR": travel(12), "TA": travel(9), "TB": travel(9)}
+    cands = [(s, 1.0) for s in (busy_near, free_far, tie_a, tie_b)]
+    # NEAR 2/30 + 0.75 ≈ 0.82, TA · TB 9/30 = 0.3, FAR 12/30 = 0.4 → 같은 점수는 ID 순
+    picked = rec.rank_now(cands, travel_by)
+    assert [p.station.station_id for p in picked] == ["TA", "TB", "FAR"]
+    assert all(p.basis == "recent_observation" and p.wait_p50 is None for p in picked)
+
+
+def test_get_recommendations_outside_mapo_uses_now(monkeypatch):
+    # 마포구 밖 - AI 채점 · 예측 없이 현재 상태만. 15 · 30분 탭은 빈 배열
+    mapo_s = station("MAPO1", lat=GANGNAM[0] + 0.02, congestion="medium")
+    seoul_s = station("SEOUL1", lat=GANGNAM[0] + 0.001)
+    full = station("FULL", lat=GANGNAM[0], chargers=[charger("charging")])
+    by_target = {"city": [mapo_s], "live": [seoul_s, full]}
+
+    class Run:
+        def __init__(self, minutes):
+            self.id, self.started_at = minutes, NOW - timedelta(minutes=minutes)
+
+    runs = {"city": Run(6), "live": Run(3)}
+
+    class Db:
+        def close(self):
+            pass
+
+    def fail_scorer():
+        raise AssertionError("마포구 밖은 AI 채점을 부르지 않음")
+
+    called = []
+    monkeypatch.setattr(rec, "datetime", FrozenDatetime)
+    monkeypatch.setattr(rec, "get_scorer", fail_scorer)
+    monkeypatch.setattr(rec, "find_latest_success_run", lambda db, target: runs[target])
+    monkeypatch.setattr(rec, "nearby_station_ids", lambda db, area, origin, f: [area.target])
+    monkeypatch.setattr(
+        rec,
+        "load_charger_states",
+        lambda db, cm, lm, run, now, station_ids: {
+            s.station_id: [state(s.station_id)] for s in by_target[station_ids[0]]
+        },
+    )
+    monkeypatch.setattr(rec, "area_stations", lambda db, area, *args: by_target[area.target])
+
+    def fake_travel(origin, cands):
+        called.extend(s.station_id for s, _ in cands)
+        return {s.station_id: travel(4 if s.station_id == "SEOUL1" else 10) for s, _ in cands}
+
+    monkeypatch.setattr(rec, "travel_times", fake_travel)
+    resp = rec.get_recommendations(Db(), RecommendationRequest(lat=GANGNAM[0], lng=GANGNAM[1]))
+    # 사용 가능 0대(FULL)는 길찾기 전에 빠짐 - Directions 호출을 아낌
+    assert sorted(called) == ["MAPO1", "SEOUL1"]
+    tabs = {r.horizon_minutes: r.recommendations for r in resp.results}
+    assert [x.station.station_id for x in tabs[0]] == ["SEOUL1", "MAPO1"]
+    assert tabs[15] == [] and tabs[30] == []
+    first, second = tabs[0]
+    assert first.basis == "recent_observation" and first.source is None
+    assert first.wait_time_p50_minutes is None and first.congestion == "low"
+    assert second.reason == "가장 가까운 곳보다 6분 더 이동"
+    # 기준 시각은 쓴 회차 중 오래된 쪽
+    assert resp.updated_at == runs["city"].started_at
+
+
+def test_now_stations_skips_stale_area_and_needs_a_run(monkeypatch):
+    class Run:
+        id, started_at = 1, NOW - timedelta(minutes=16)
+
+    runs = {"city": None, "live": Run}
+    monkeypatch.setattr(rec, "find_latest_success_run", lambda db, target: runs[target])
+    monkeypatch.setattr(
+        rec, "nearby_station_ids", lambda *args: pytest.fail("오래된 회차는 읽지 않음")
+    )
+    stations, states, updated_at = rec.now_stations(None, GANGNAM, NOW, ALL)
+    # 모두 오래돼 뺐으면 받은 회차 시각 그대로
+    assert stations == [] and states == {} and updated_at == Run.started_at
+    runs["live"] = None
     with pytest.raises(ApiError) as e:
-        rec.get_recommendations(None, body)  # DB를 쓰기 전에 거절
-    assert e.value.status_code == 422 and e.value.code == "OUT_OF_SERVICE_AREA"
+        rec.now_stations(None, GANGNAM, NOW, ALL)
+    assert e.value.status_code == 503 and e.value.code == "DATA_UNAVAILABLE"
+
+
+def test_now_stations_updated_at_ignores_skipped_area(monkeypatch):
+    # 마포 수집이 40분 멈추고 서울은 3분 전 - 서울로만 추천하므로 기준 시각도 서울 회차
+    class Run:
+        def __init__(self, minutes):
+            self.id, self.started_at = minutes, NOW - timedelta(minutes=minutes)
+
+    runs = {"city": Run(40), "live": Run(3)}
+    monkeypatch.setattr(rec, "find_latest_success_run", lambda db, target: runs[target])
+    monkeypatch.setattr(rec, "nearby_station_ids", lambda *args: [])
+    monkeypatch.setattr(rec, "load_charger_states", lambda *args, **kwargs: {})
+    monkeypatch.setattr(rec, "area_stations", lambda *args: [])
+    _, _, updated_at = rec.now_stations(None, GANGNAM, NOW, ALL)
+    assert updated_at == runs["live"].started_at
+
+
+class FakeRows:
+    """db.execute만 흉내 - nearby_station_ids가 읽는 (충전소, 좌표, 충전기 종류, 용량) 행"""
+
+    def __init__(self, rows):
+        self.rows = rows
+
+    def execute(self, query):
+        return self.rows
+
+
+def pool_row(sid, lat, capacity="100", charger_type="04"):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        station_id=sid, lat=lat, lng=GANGNAM[1], charger_type=charger_type, capacity=capacity
+    )
+
+
+def test_nearby_station_ids_filters_before_cutting_pool():
+    # 가까운 60곳은 100kW, 그 뒤(약 7km)에 200kW 충전소 - 거리로 먼저 자르면 200kW 조건에서 빈 목록이 됐음
+    rows = [pool_row(f"N{i:02d}", GANGNAM[0] + i * 0.0005) for i in range(60)]
+    rows.append(pool_row("FAST", GANGNAM[0] + 0.06, "200"))
+    # 200kW와 100kW가 섞인 곳 - 모든 충전기가 조건을 만족해야 하므로 200kW 조건에서 빠짐
+    rows += [pool_row("MIX", GANGNAM[0] + 0.001, "200"), pool_row("MIX", GANGNAM[0] + 0.001)]
+    rows.append(pool_row("FAR", GANGNAM[0] + 0.2, "200"))  # 약 22km - 반경 밖
+    db = FakeRows(rows)
+    fast = RecommendationFilters(min_capacity_kw=200)
+    assert rec.nearby_station_ids(db, rec.MAPO, GANGNAM, fast) == ["FAST"]
+    every = rec.nearby_station_ids(db, rec.MAPO, GANGNAM, ALL)
+    assert len(every) == rec.NOW_POOL_LIMIT and "FAST" not in every and "MIX" in every
+
+
+def test_load_charger_states_empty_ids_skips_db():
+    from app.services.snapshot import load_charger_states
+
+    assert load_charger_states(None, None, None, None, NOW, station_ids=[]) == {}
 
 
 def test_charger_filters_need_every_scope_charger():
