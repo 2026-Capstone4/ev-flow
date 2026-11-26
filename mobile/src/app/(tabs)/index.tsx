@@ -77,10 +77,10 @@ import { toAppZoom, toWebZoomLevel } from '../../map/zoom'
 const INITIAL_WEB_ZOOM = 14
 
 /**
- * 가장 멀리 볼 수 있는 앱 줌. 서울 전체(가로 약 37km)가 화면 가로에 겨우 들어오는 넓이
- * 앱 줌 14 = 가로 약 1.5km라 줌 9.3 = 약 39km (zoom.ts 측정 기준)
+ * 가장 멀리 볼 수 있는 앱 줌. 독도까지 대한민국 전체(가로 약 520km)가 화면 가로에 들어오는 넓이
+ * 앱 줌 14 = 가로 약 1.5km라 줌 5.5 = 약 540km (zoom.ts 측정 기준)
  */
-const MIN_APP_ZOOM = 9.3
+const MIN_APP_ZOOM = 5.5
 
 /** 화면 위아래 · 좌우로 화면 크기의 50%씩 더 넓게 마커를 미리 그림. 지도를 끌 때 마커가 늦게 뜨지 않게 함 (웹은 30%) */
 const VIEW_MARGIN_RATIO = 0.5
