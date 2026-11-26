@@ -69,7 +69,7 @@ import {
   type ViewInstance,
 } from '../../lib/tourTargets'
 import { CoverageMask } from '../../map/CoverageMask'
-import { SEOUL_EXTENT } from '../../map/seoulExtent'
+import { KOREA_EXTENT } from '../../map/koreaExtent'
 import { getPillSize, StationMarker } from '../../map/StationMarker'
 import { toAppZoom, toWebZoomLevel } from '../../map/zoom'
 
@@ -595,8 +595,8 @@ export default function MapHomeScreen() {
           }}
           isShowLocationButton={false}
           minZoom={MIN_APP_ZOOM}
-          // 서비스 지역(서울) 밖으로 지도를 끌어가지 않게 지도 가운데를 서울 사각형 안으로 묶음
-          extent={SEOUL_EXTENT}
+          // 대한민국 밖으로 지도를 끌어가지 않게 지도 가운데를 대한민국 사각형 안으로 묶음 (제주도까지)
+          extent={KOREA_EXTENT}
           isShowZoomControls={false}
           // SDK 나침반은 왼쪽 위 검색창에 가려서 끄고, 현재 위치 버튼 위에 따로 띄움
           isShowCompass={false}
