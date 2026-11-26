@@ -1,23 +1,19 @@
 import { toKstIso } from './stations'
 import type {
-  Direction,
   NationwideServiceArea,
   NationwideServiceAreaSummary,
-  ServiceArea,
   ServiceAreaCharger,
 } from '../types/serviceArea'
-import type { ChargerStatus, ConnectorType, DataQuality } from '../types/station'
+import type { ChargerStatus, ConnectorType } from '../types/station'
 
-type MockServiceArea = {
-  name: string
-  route: string
-  direction: Direction
-  address: string
-  lat: number
-  lng: number
-  dataQuality: DataQuality
-  chargers: Omit<ServiceAreaCharger, 'chargingStartedAt'>[]
-}
+// 전국 휴게소 (15 · 16번) Mock
+// 웹 전체 Mock 모드(VITE_USE_MOCK=true)에서 노선별 · 지역별 · 상세 화면을 확인하려고 둔 예시. 이름 · 좌표는 대략값
+// 노선 화면 방향 버튼(경부 서울 · 부산 방향), 방향 버튼 없는 순환선, 노선 미확인 묶기(가평), HY 이중 등록 숨기기를 확인할 수 있게 고름
+
+type MockNationwideArea = Omit<
+  NationwideServiceAreaSummary,
+  'totalChargers' | 'availableChargers'
+> & { chargers: Omit<ServiceAreaCharger, 'chargingStartedAt'>[] }
 
 function charger(
   stationId: string,
@@ -30,67 +26,7 @@ function charger(
   return { stationId, operator, chargerId, status, connectorTypes, capacityKw }
 }
 
-// 휴게소 · 운영기관 이름은 화면 개발용 예시 (실제 수집 데이터 아님). 주소 · 좌표도 망향 외에는 대략값
-const MOCK_SERVICE_AREAS: MockServiceArea[] = [
-  {
-    name: '천안삼거리휴게소',
-    route: '경부',
-    direction: 'up',
-    address: '충청남도 천안시 동남구 삼룡동',
-    lat: 36.7913,
-    lng: 127.1757,
-    dataQuality: 'normal',
-    chargers: [
-      charger('MOCKSA01', '한국도로공사', '01', 'available'),
-      charger('MOCKSA01', '한국도로공사', '02', 'charging'),
-    ],
-  },
-  {
-    name: '입장거봉포도휴게소',
-    route: '경부',
-    direction: 'up',
-    address: '충청남도 천안시 서북구 입장면',
-    lat: 36.9036,
-    lng: 127.2036,
-    dataQuality: 'normal',
-    chargers: [
-      charger('MOCKSA02', '한국도로공사', '01', 'charging'),
-      charger('MOCKSA02', '한국도로공사', '02', 'maintenance', ['dc_chademo', 'ac3'], 50),
-    ],
-  },
-  {
-    name: '망향휴게소',
-    route: '경부',
-    direction: 'down',
-    address: '충청남도 천안시 서북구 성거읍 돌다리길 23-37',
-    lat: 36.8541795,
-    lng: 127.1804275,
-    dataQuality: 'normal',
-    chargers: [
-      charger('MOCKSA03', '한국도로공사', '01', 'available'),
-      charger('MOCKSA03', '한국도로공사', '02', 'charging'),
-      charger('MOCKSA04', 'SK일렉링크', '01', 'available', ['dc_combo'], 200),
-      charger('MOCKSA04', 'SK일렉링크', '02', 'maintenance', ['dc_combo'], 200),
-    ],
-  },
-  {
-    name: '천안호두휴게소',
-    route: '경부',
-    direction: 'down',
-    address: '충청남도 천안시 동남구 광덕면',
-    lat: 36.7342,
-    lng: 127.1478,
-    dataQuality: 'missing',
-    chargers: [
-      charger('MOCKSA05', '한국도로공사', '01', 'available'),
-      charger('MOCKSA05', '한국도로공사', '02', 'available', ['dc_chademo', 'ac3'], 50),
-      charger('MOCKSA06', '이브이시스', '01', 'charging'),
-      charger('MOCKSA06', '이브이시스', '02', 'unknown'),
-    ],
-  },
-]
-
-function countStatus(chargers: MockServiceArea['chargers']) {
+function countStatus(chargers: MockNationwideArea['chargers']) {
   const counts: Record<ChargerStatus, number> = {
     available: 0,
     charging: 0,
@@ -101,43 +37,6 @@ function countStatus(chargers: MockServiceArea['chargers']) {
   chargers.forEach((c) => counts[c.status]++)
   return counts
 }
-
-function toServiceArea({ chargers, ...area }: MockServiceArea): ServiceArea {
-  const statusCounts = countStatus(chargers)
-  return {
-    ...area,
-    totalChargers: chargers.length,
-    availableChargers: statusCounts.available,
-    statusCounts,
-  }
-}
-
-export const SERVICE_AREAS: ServiceArea[] = MOCK_SERVICE_AREAS.map(toServiceArea)
-
-export function findServiceAreaChargers(name: string, direction: Direction, now: Date) {
-  const area = MOCK_SERVICE_AREAS.find((a) => a.name === name && a.direction === direction)
-  if (!area) return null
-  const { totalChargers, availableChargers, route, address, lat, lng } = toServiceArea(area)
-  return {
-    serviceArea: { name, route, direction, address, lat, lng, totalChargers, availableChargers },
-    chargers: area.chargers.map((c, index) => ({
-      ...c,
-      chargingStartedAt:
-        c.status === 'charging'
-          ? toKstIso(new Date(now.getTime() - (index * 13 + 9) * 60_000))
-          : null,
-    })),
-  }
-}
-
-// --- 전국 휴게소 (15 · 16번) ---
-// 웹 전체 Mock 모드(VITE_USE_MOCK=true)에서 노선별 · 지역별 · 상세 화면을 확인하려고 둔 예시. 이름 · 좌표는 대략값
-// 노선 화면 방향 버튼(경부 서울 · 부산 방향), 방향 버튼 없는 순환선, 노선 미확인 묶기(가평), HY 이중 등록 숨기기를 확인할 수 있게 고름
-
-type MockNationwideArea = Omit<
-  NationwideServiceAreaSummary,
-  'totalChargers' | 'availableChargers'
-> & { chargers: Omit<ServiceAreaCharger, 'chargingStartedAt'>[] }
 
 /** 노선이 붙은 휴게소 한 곳. id는 서버처럼 '휴게소명(방향)', name · shortName은 id에서 만듦 */
 function routeArea(

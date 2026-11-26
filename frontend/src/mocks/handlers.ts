@@ -15,9 +15,7 @@ import {
 import { buildMockRoute } from '@ev-flow/core/mocks/routes'
 import {
   findNationwideServiceAreaChargers,
-  findServiceAreaChargers,
   NATIONWIDE_SERVICE_AREAS,
-  SERVICE_AREAS,
 } from '@ev-flow/core/mocks/serviceAreas'
 import { findStationDetail, STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
 import {
@@ -35,8 +33,6 @@ import type { ApiErrorBody } from '@ev-flow/core/types/api'
 import type {
   NationwideServiceAreaChargersResponse,
   NationwideServiceAreasResponse,
-  ServiceAreaChargersResponse,
-  ServiceAreasResponse,
 } from '@ev-flow/core/types/serviceArea'
 import type {
   RecommendationsRequest,
@@ -132,47 +128,6 @@ const routeHandler = http.post<never, RouteRequest, ApiErrorBody | RouteResponse
 
 /** 고속도로 휴게소 API - 전체 Mock 모드에서만 씀 */
 const serviceAreaHandlers = [
-  // 휴게소 목록. Mock 휴게소 전체를 돌려줌
-  http.get('/api/v1/service-areas', async () => {
-    await delay(300)
-    return HttpResponse.json<ServiceAreasResponse>({
-      updatedAt: toKstIso(new Date()),
-      dataQuality: 'normal',
-      serviceAreas: SERVICE_AREAS,
-    })
-  }),
-
-  // 휴게소 충전기 현황. ?name=휴게소명&direction=up|down 으로 한 방향의 충전기 상태를 돌려줌
-  http.get<PathParams, DefaultBodyType, ApiErrorBody | ServiceAreaChargersResponse>(
-    '/api/v1/service-areas/chargers',
-    async ({ request }) => {
-      await delay(300)
-      const url = new URL(request.url)
-      const name = url.searchParams.get('name')
-      const direction = url.searchParams.get('direction')
-      // 이름이 없거나 방향이 up/down이 아니면 백엔드(FastAPI)처럼 422로 응답
-      if (!name || (direction !== 'up' && direction !== 'down')) {
-        return HttpResponse.json<ApiErrorBody>(
-          { error: { code: 'VALIDATION_ERROR', message: '요청 형식이 올바르지 않습니다.' } },
-          { status: 422 },
-        )
-      }
-      const found = findServiceAreaChargers(name, direction, new Date())
-      // 해당 이름 · 방향의 휴게소가 없으면 404
-      if (!found) {
-        return HttpResponse.json<ApiErrorBody>(
-          { error: { code: 'SERVICE_AREA_NOT_FOUND', message: '휴게소를 찾을 수 없습니다.' } },
-          { status: 404 },
-        )
-      }
-      return HttpResponse.json<ServiceAreaChargersResponse>({
-        updatedAt: toKstIso(new Date()),
-        dataQuality: 'normal',
-        ...found,
-      })
-    },
-  ),
-
   // 전국 휴게소 목록 (15번). 휴게소 탭 노선별 · 지역별 · 노선 · 지역 화면이 모두 이 응답을 씀
   http.get('/api/v1/service-areas/nationwide', async () => {
     await delay(300)
