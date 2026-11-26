@@ -69,8 +69,8 @@ jobs:
             echo "frontend=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # backend/ 아래 파일이나 이 워크플로 파일이 바뀌면 BE 검사를 돌림
-          if echo "$changed" | grep -qE '^(backend/|\.github/workflows/ci\.yml$)'; then
+          # backend/ 아래 파일 · AI 연동 계약 예시(docs/contracts/ - test_ai_contract.py가 읽음) · 이 워크플로 파일이 바뀌면 BE 검사를 돌림
+          if echo "$changed" | grep -qE '^(backend/|docs/contracts/|\.github/workflows/ci\.yml$)'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend=false" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,51 @@
+{
+  "run_id": 28873,
+  "status": "partial",
+  "clock_mode": "server_utc",
+  "prediction_snapshot_id": "5273b0bf5e4fff41b352ecaebf7e98a3891f90e96831ee70de81fe348b218800",
+  "deployment": {
+    "deployment_id": "evflow_backend_wait_v34_20261121",
+    "model_version": "v3.4"
+  },
+  "predictions": [
+    {
+      "station_id": "CV004090",
+      "charger_ids": ["01", "02", "03", "04"],
+      "horizon_minutes": 15,
+      "model_versions": { "congestion": "xgb_v1_20261108", "time": "v3.4" },
+      "components": {
+        "congestion": {
+          "status": "ok",
+          "congestion_level": "여유",
+          "occupancy": 0.068,
+          "congestion_prob": 0.0001
+        },
+        "time": {
+          "status": "ok",
+          "p50_minutes": 2.0,
+          "p90_minutes": 9.5
+        }
+      }
+    },
+    {
+      "station_id": "CV004090",
+      "charger_ids": ["01", "02", "03", "04"],
+      "horizon_minutes": 30,
+      "model_versions": { "congestion": "xgb_v1_20261108", "time": "v3.4" },
+      "components": {
+        "congestion": {
+          "status": "ok",
+          "congestion_level": "여유",
+          "occupancy": 0.122,
+          "congestion_prob": 0.0003
+        },
+        "time": {
+          "status": "unavailable",
+          "reason": "model_not_available_at_reference",
+          "p50_minutes": null,
+          "p90_minutes": null
+        }
+      }
+    }
+  ]
+}
