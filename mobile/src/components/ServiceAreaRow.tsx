@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react-native'
-import { Pressable, Text } from 'react-native'
+import { Pressable } from 'react-native'
+import { Text } from './Text'
 import { AVAILABILITY_TONE_CLASS, getAvailabilityTone } from '@ev-flow/core/lib/serviceArea'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import type { NationwideServiceArea } from '@ev-flow/core/types/serviceArea'

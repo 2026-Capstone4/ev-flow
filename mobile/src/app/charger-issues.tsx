@@ -4,12 +4,12 @@ import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 're
 import {
   FlatList,
   Pressable,
-  Text,
   View,
   type ListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
+import { Text } from '../components/Text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { useChargerIssuesData } from '@ev-flow/core/hooks/useChargerIssuesData'

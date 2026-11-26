@@ -1,6 +1,7 @@
 import Constants from 'expo-constants'
 import { router } from 'expo-router'
-import { ScrollView, Text, View } from 'react-native'
+import { ScrollView, View } from 'react-native'
+import { Text } from '../../components/Text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MenuRow, MenuSection } from '../../components/MenuRow'
 import { openContactMail, openWebPage, PRIVACY_URL, SUPPORT_URL } from '../../lib/links'

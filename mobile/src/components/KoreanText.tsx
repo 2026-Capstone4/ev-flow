@@ -1,5 +1,6 @@
 import { Children, type ComponentProps } from 'react'
-import { Platform, Text } from 'react-native'
+import { Platform } from 'react-native'
+import { Text } from './Text'
 
 /** 줄을 바꾸지 말라는 뜻만 있는 보이지 않는 문자 (WORD JOINER) */
 const WORD_JOINER = '\u2060'

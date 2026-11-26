@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { createShadow } from '../lib/shadow'
 
 /** 고른 칸만 살짝 띄움 (웹 0 1px 2px 10%) */

@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react-native'
 import type { ReactNode } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
 
 type MenuSectionProps = {
