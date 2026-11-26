@@ -1,7 +1,15 @@
 import { router } from 'expo-router'
 import { ChevronRight } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useState, type ReactNode } from 'react'
-import { FlatList, Pressable, Text, View, type ListRenderItem } from 'react-native'
+import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  FlatList,
+  Pressable,
+  Text,
+  View,
+  type ListRenderItem,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { useChargerIssuesData } from '@ev-flow/core/hooks/useChargerIssuesData'
@@ -18,6 +26,7 @@ import { DistrictPicker } from '../components/DistrictPicker'
 import { FilterChip } from '../components/FilterChip'
 import { UpdateStatus } from '../components/UpdateStatus'
 import { KoreanText } from '../components/KoreanText'
+import { ScrollTopButton } from '../components/ScrollTopButton'
 
 type SectionHeaderProps = {
   title: string
@@ -138,6 +147,9 @@ type ListRow =
 /** 줄마다 FlatList가 쓰는 키 */
 const keyOfRow = (row: ListRow) => row.key
 
+/** 이만큼(dp) 넘게 내리면 맨 위로 버튼을 띄움. 칸 머리 · 첫 카드가 거의 다 가려지는 정도 */
+const SCROLL_TOP_THRESHOLD = 600
+
 // 상태 이상 충전기 목록. 지도 홈 검색창 아래 '상태 이상' 버튼으로 들어옴
 // 미확인 = 지금 상태를 알 수 없는 충전기, 불안정 = 원천 데이터 문제로 상태가 계속 바뀌는 정해진 충전기 중 지금 확인 불가인 것
 // 처음에는 서울 전체를 보여 주고, 구를 고르면 그 구만. 화면을 나가면 고른 구 · 칩은 초기화됨
@@ -149,6 +161,10 @@ export default function ChargerIssuesScreen() {
   // 보여 줄 구. 처음에는 서울 전체('전체')로 시작함
   const [district, setDistrict] = useState<string>(ALL_DISTRICTS)
   const [filter, setFilter] = useState<ChargerIssueFilter>('all')
+
+  const listRef = useRef<FlatList<ListRow>>(null)
+  // 맨 위로 버튼을 띄울지. 기준을 넘나들 때만 바뀌어 스크롤 중에 화면을 계속 다시 그리지 않음
+  const [isScrolledDown, setIsScrolledDown] = useState(false)
 
   // 고른 구의 목록을 받음
   const { issues, districts, updatedAt, isError, isAllUnknown } = useChargerIssuesData(district)
@@ -251,6 +267,16 @@ export default function ChargerIssuesScreen() {
     [openStation],
   )
 
+  /** 스크롤 위치가 기준을 넘었는지 확인해 맨 위로 버튼을 띄우거나 숨김 */
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setIsScrolledDown(event.nativeEvent.contentOffset.y > SCROLL_TOP_THRESHOLD)
+  }, [])
+
+  /** 목록을 맨 위로 부드럽게 올림 */
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true })
+  }, [])
+
   /** 목록 위 칸. 받은 데이터 상태에 따라 칩 또는 불러오기 · 실패 · 수집 지연 안내를 고름 */
   const renderStatus = () => {
     // 아직 못 받았으면 실패 안내 또는 빈 자리
@@ -307,6 +333,7 @@ export default function ChargerIssuesScreen() {
         <Text className="font-bold text-[18px] text-text-primary">상태 이상 충전기</Text>
       </View>
       <FlatList
+        ref={listRef}
         className="flex-1"
         data={rows}
         keyExtractor={keyOfRow}
@@ -325,9 +352,14 @@ export default function ChargerIssuesScreen() {
         initialNumToRender={8}
         maxToRenderPerBatch={8}
         windowSize={7}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
         contentContainerClassName="px-4 pt-2"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        // 맨 아래까지 내려도 마지막 카드가 맨 위로 버튼(44 + 아래 16)에 가리지 않게 띄움
+        contentContainerStyle={{ paddingBottom: insets.bottom + 76 }}
       />
+      {/* 어느 정도 내렸을 때만 우측 하단에 맨 위로 버튼 */}
+      {isScrolledDown && <ScrollTopButton bottomInset={insets.bottom} onPress={scrollToTop} />}
     </View>
   )
 }
