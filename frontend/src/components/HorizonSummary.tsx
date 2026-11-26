@@ -67,7 +67,7 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
           </div>
         ) : isAllUnknown ? (
           <div className="flex flex-col gap-1">
-            <p className="text-lg font-bold text-text-secondary">상태 확인 불가</p>
+            <p className="text-lg font-bold text-text-secondary">상태를 확인할 수 없어요</p>
             <NoteLines
               lines={[
                 '지금은 충전기 상태를 받아오지 못했어요',
@@ -114,7 +114,7 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
     <section className="flex flex-col gap-3">
       <h3 className="text-base font-bold">{getHorizonWhen(horizon)} 예상 혼잡</h3>
       <div className="flex flex-col gap-1">
-        {/* 예측이 없으면 지금 출발의 상태 확인 불가처럼 작은 회색 글씨 */}
+        {/* 예측이 없으면 지금 출발의 상태를 확인할 수 없어요처럼 작은 회색 글씨 */}
         {prediction.congestion ? (
           <p className="text-[28px] font-bold">{getCongestionLabel(prediction.congestion)}</p>
         ) : (

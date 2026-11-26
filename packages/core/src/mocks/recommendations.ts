@@ -43,15 +43,22 @@ function toCandidate(station: Station, horizon: HorizonMinutes, origin: LatLng):
 /** 추천 카드의 "추천 이유" 문구를 가장 가까운 충전소와 비교해서 만든다 */
 function getReason(candidate: Candidate, nearest: Candidate) {
   // 후보 자신이 가장 가까운 충전소면 비교할 대상이 없으니 바로 반환
-  if (candidate.station.stationId === nearest.station.stationId) return '가장 가까운 충전소'
+  if (candidate.station.stationId === nearest.station.stationId) return '가장 가까운 충전소예요'
   const extraMinutes = candidate.travelTimeMinutes - nearest.travelTimeMinutes
-  const waitSaved =
-    (nearest.prediction.waitTimeP50Minutes ?? 0) - (candidate.prediction.waitTimeP50Minutes ?? 0)
-  // 더 멀면 몇 분 더 가는지, 아니면 이동 시간이 비슷하다고 표시
-  const move =
-    extraMinutes > 0 ? `가장 가까운 곳보다 ${extraMinutes}분 더 이동` : '이동 시간은 비슷함'
-  // 대기가 줄어드는 경우에만 감소분을 덧붙임
-  return waitSaved > 0 ? `${move}, 대기 ${waitSaved}분 감소` : move
+  const { congestion } = candidate.prediction
+  const nearestCongestion = nearest.prediction.congestion
+  // 서버와 같게 혼잡도가 가장 가까운 곳보다 낮을 때만 덜 붐빈다고 표시
+  const isLessBusy =
+    congestion !== null &&
+    nearestCongestion !== null &&
+    CONGESTION_ORDER[congestion] < CONGESTION_ORDER[nearestCongestion]
+  // 더 멀면 몇 분 더 걸리는지, 아니면 이동 시간이 비슷하다고 표시
+  if (extraMinutes > 0) {
+    return isLessBusy
+      ? `${extraMinutes}분 더 걸리지만 덜 붐벼요`
+      : `가장 가까운 곳보다 ${extraMinutes}분 더 걸려요`
+  }
+  return isLessBusy ? '이동 시간은 비슷하고 덜 붐벼요' : '가장 가까운 곳과 이동 시간이 비슷해요'
 }
 
 /** 후보를 API 응답 형식(Recommendation)으로 바꾼다. rank는 정렬된 순서(1부터) */

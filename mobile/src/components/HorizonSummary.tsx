@@ -61,7 +61,7 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
           </View>
         ) : isAllUnknown ? (
           <View className="gap-1">
-            <Text className="font-bold text-lg text-text-secondary">상태 확인 불가</Text>
+            <Text className="font-bold text-lg text-text-secondary">상태를 확인할 수 없어요</Text>
             <NoteLines
               lines={[
                 '지금은 충전기 상태를 받아오지 못했어요',
@@ -112,7 +112,7 @@ export function HorizonSummary({ station, horizon }: HorizonSummaryProps) {
         {getHorizonWhen(horizon)} 예상 혼잡
       </Text>
       <View className="gap-1">
-        {/* 예측이 없으면 지금 출발의 상태 확인 불가처럼 작은 회색 글씨 */}
+        {/* 예측이 없으면 지금 출발의 상태를 확인할 수 없어요처럼 작은 회색 글씨 */}
         {prediction.congestion ? (
           <Text className="font-bold text-[28px] text-text-primary">
             {getCongestionLabel(prediction.congestion)}

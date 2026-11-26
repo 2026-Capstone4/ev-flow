@@ -23,8 +23,8 @@ import { RECOMMEND_CARD_HEIGHT, RecommendCard, RecommendCardSkeleton } from './R
 import { createShadow } from '../lib/shadow'
 
 const RECOMMEND_MESSAGE = {
-  error: '추천 충전소를 불러오지 못했습니다',
-  empty: '추천할 충전소가 없습니다',
+  error: '추천 충전소를 불러오지 못했어요',
+  empty: '추천할 충전소가 없어요',
   // 마포구 밖은 지금 출발만 추천하고 15 · 30분 탭에 이 문구를 띄움 (서버는 백엔드 #249부터 422를 보내지 않음)
   out_of_area: '15분 · 30분 후 추천은 현재 마포구만 지원해요',
   rate_limited: '요청이 많아 추천을 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.',
