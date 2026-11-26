@@ -8,8 +8,8 @@ import { LOCATE_BUTTON_SIZE } from './LocateButton'
 /** 현재 위치 버튼과 같은 그림자 · 크기 */
 const BUTTON_SHADOW = createShadow(2, 8, 0.15)
 
-/** 바늘을 그리는 칸 크기. 버튼 지름보다 작게 둠 */
-const ICON_SIZE = 26
+/** 바늘을 그리는 칸 크기. 버튼 지름(44)보다 조금 작게 둠 */
+const ICON_SIZE = 34
 
 type CompassButtonProps = {
   /** 지도가 돌아간 각도(도, 시계 방향). 바늘은 그 반대로 돌려 늘 북쪽을 가리킴 */
@@ -34,14 +34,14 @@ export function CompassButton({ bearing, onPress }: CompassButtonProps) {
       className="items-center justify-center rounded-full bg-bg-page active:opacity-80"
     >
       <Animated.View style={needleStyle}>
-        <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 26 26">
-          {/* 북쪽 바늘(빨강) · 남쪽 바늘(회색) */}
-          <Path d="M13 6 L17 13 L9 13 Z" fill={COLORS['congestion-busy']} />
-          <Path d="M13 20 L17 13 L9 13 Z" fill={COLORS['congestion-unknown']} />
+        <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 34 34">
+          {/* 북쪽 바늘(빨강) · 남쪽 바늘(회색). 가운데(17, 17)를 중심으로 돌아가고, 위쪽 N 글자와 2만큼 띄움 */}
+          <Path d="M17 11 L21.5 17 L12.5 17 Z" fill={COLORS['congestion-busy']} />
+          <Path d="M17 23 L21.5 17 L12.5 17 Z" fill={COLORS['congestion-unknown']} />
           <SvgText
-            x={13}
-            y={5}
-            fontSize={6}
+            x={17}
+            y={9}
+            fontSize={9}
             fontWeight="700"
             textAnchor="middle"
             fill={COLORS['text-primary']}
