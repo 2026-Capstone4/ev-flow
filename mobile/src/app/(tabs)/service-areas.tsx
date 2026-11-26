@@ -13,6 +13,7 @@ import { RouteBadge } from '../../components/RouteBadge'
 import { SegmentedControl } from '../../components/SegmentedControl'
 import { ServiceAreaRow } from '../../components/ServiceAreaRow'
 import { UpdateStatus } from '../../components/UpdateStatus'
+import { pushWithoutKeyboard } from '../../lib/navigation'
 
 /** 상태 표시줄 아래 제목까지 띄우는 여백 */
 const TOP_GAP = 16
@@ -26,6 +27,7 @@ const VIEW_OPTIONS: { value: ListView; label: string }[] = [
 
 // 전국 고속도로 휴게소 (하단 탭 두 번째). 노선별 · 지역별로 묶고, 누르면 노선 · 지역 화면으로 넘어감
 // 위 검색창에 입력하면 묶음 대신 검색 결과를 보여 주고, 결과를 누르면 바로 휴게소 상세로 감
+// 줄을 누르면 키보드를 먼저 내리고 넘어감 (pushWithoutKeyboard)
 export default function ServiceAreaListScreen() {
   // 노선 화면에서 돌아와도 고른 묶음이 유지되도록 화면 값(?view=)에 둠
   const params = useLocalSearchParams<{ view?: string }>()
@@ -104,7 +106,9 @@ export default function ServiceAreaListScreen() {
       {isSearching && searchResults ? (
         <SearchResults
           results={searchResults}
-          onPress={(id) => router.push({ pathname: '/service-areas/detail', params: { id } })}
+          onPress={(id) =>
+            pushWithoutKeyboard({ pathname: '/service-areas/detail', params: { id } })
+          }
         />
       ) : loadState === 'ready' && view === 'region' ? (
         <View className="overflow-hidden rounded-lg bg-bg-page">
@@ -115,7 +119,10 @@ export default function ServiceAreaListScreen() {
               count={region.areaCount}
               isFirst={index === 0}
               onPress={() =>
-                router.push({ pathname: '/service-areas/region', params: { code: region.code } })
+                pushWithoutKeyboard({
+                  pathname: '/service-areas/region',
+                  params: { code: region.code },
+                })
               }
             />
           ))}
@@ -137,7 +144,7 @@ export default function ServiceAreaListScreen() {
               count={route.areaCount}
               isFirst={index === 0}
               onPress={() =>
-                router.push({
+                pushWithoutKeyboard({
                   pathname: '/service-areas/route',
                   params: { name: route.routeName },
                 })
@@ -152,7 +159,7 @@ export default function ServiceAreaListScreen() {
               count={unmatchedCount}
               isFirst={false}
               onPress={() =>
-                router.push({
+                pushWithoutKeyboard({
                   pathname: '/service-areas/region',
                   params: { code: UNMATCHED_REGION_CODE },
                 })
