@@ -7,7 +7,7 @@ settings:
 packageExtensionsChecksum: sha256-xHmnrcq8IKEv5KW4RTALsifgug1r6qW6DqxXirzQsrs=
 
 patchedDependencies:
-  '@mj-studio/react-native-naver-map@2.11.0': 2a03e9f6a37927e35bec948ec61143fca842fbcb6191ebe60c01b44136c1509e
+  '@mj-studio/react-native-naver-map@2.11.0': dfcbd6dfa7c8300def89b885cd587cb6a6d608a15a023578d1de5b51990fbc16
 
 importers:
 
@@ -120,7 +120,7 @@ importers:
         version: 5.2.14(50dd6323713420dc6cb45b2c91b9913e)
       '@mj-studio/react-native-naver-map':
         specifier: ^2.11.0
-        version: 2.11.0(patch_hash=2a03e9f6a37927e35bec948ec61143fca842fbcb6191ebe60c01b44136c1509e)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
+        version: 2.11.0(patch_hash=dfcbd6dfa7c8300def89b885cd587cb6a6d608a15a023578d1de5b51990fbc16)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
       '@react-native-community/netinfo':
         specifier: 12.0.1
         version: 12.0.1(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
@@ -5805,7 +5805,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@mj-studio/react-native-naver-map@2.11.0(patch_hash=2a03e9f6a37927e35bec948ec61143fca842fbcb6191ebe60c01b44136c1509e)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)':
+  '@mj-studio/react-native-naver-map@2.11.0(patch_hash=dfcbd6dfa7c8300def89b885cd587cb6a6d608a15a023578d1de5b51990fbc16)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)':
     dependencies:
       ohash: 2.0.12
       react: 19.3.0

@@ -1,3 +1,88 @@
+diff --git a/android/src/main/java/com/mjstudio/reactnativenavermap/mapview/RNCNaverMapViewManager.kt b/android/src/main/java/com/mjstudio/reactnativenavermap/mapview/RNCNaverMapViewManager.kt
+index 8cbe53cd7f89655e05891013804fafd7ae01d2c2..4b9cfd8c33c1208a9b92f8ddfc3a45de5acabd2c 100644
+--- a/android/src/main/java/com/mjstudio/reactnativenavermap/mapview/RNCNaverMapViewManager.kt
++++ b/android/src/main/java/com/mjstudio/reactnativenavermap/mapview/RNCNaverMapViewManager.kt
+@@ -55,6 +55,7 @@ import com.naver.maps.geometry.LatLng
+ import com.naver.maps.geometry.LatLngBounds
+ import com.naver.maps.map.CameraPosition
+ import com.naver.maps.map.CameraUpdate
++import com.naver.maps.map.CameraUpdateParams
+ import com.naver.maps.map.LocationTrackingMode
+ import com.naver.maps.map.NaverMap
+ import com.naver.maps.map.NaverMap.LAYER_GROUP_BICYCLE
+@@ -873,6 +874,19 @@ class RNCNaverMapViewManager(
+       }
+   }
+ 
++  override fun animateCameraResetHeading(
++    view: RNCNaverMapViewWrapper?,
++    duration: Int,
++    easing: Int,
++  ) = view.withMap {
++    CameraUpdate
++      .withParams(CameraUpdateParams().rotateTo(0.0).tiltTo(0.0))
++      .animate(CameraAnimationUtil.numberToCameraAnimationEasing(easing), duration.toLong())
++      .run {
++        it.moveCamera(this)
++      }
++  }
++
+   override fun animateCameraBy(
+     view: RNCNaverMapViewWrapper?,
+     x: Double,
+diff --git a/ios/RNCNaverMapView.mm b/ios/RNCNaverMapView.mm
+index 6e1054f264acd6b16ec983cf58151985f80c5e42..16a6db7962789ece0a81658b1814db565ac9e25b 100644
+--- a/ios/RNCNaverMapView.mm
++++ b/ios/RNCNaverMapView.mm
+@@ -432,6 +432,18 @@ - (void)animateCameraTo:(double)latitude
+   [self.map moveCamera:update];
+ }
+ 
++- (void)animateCameraResetHeading:(NSInteger)duration easing:(NSInteger)easing {
++  NMFCameraUpdateParams* params = [NMFCameraUpdateParams cameraUpdateParams];
++  [params rotateTo:0];
++  [params tiltTo:0];
++  NMFCameraUpdate* update = [NMFCameraUpdate cameraUpdateWithParams:params];
++
++  update.animation = getEasingAnimation(easing);
++  update.animationDuration = (NSTimeInterval)((double)duration) / 1000;
++
++  [self.map moveCamera:update];
++}
++
+ - (void)animateCameraBy:(double)x
+                       y:(double)y
+                duration:(NSInteger)duration
+diff --git a/lib/typescript/commonjs/src/component/NaverMapView.d.ts b/lib/typescript/commonjs/src/component/NaverMapView.d.ts
+index eb3e14112994f2b0af2ccc0aec8b1f866275a0a1..0587d7df57575ff44b728454cb0eabbf9fc496ef 100644
+--- a/lib/typescript/commonjs/src/component/NaverMapView.d.ts
++++ b/lib/typescript/commonjs/src/component/NaverMapView.d.ts
+@@ -627,6 +627,10 @@ export interface NaverMapViewRef {
+      * 카메라를 특정 Region으로 애니메이션과 함께 이동시킵니다.
+      */
+     animateRegionTo: (params: Region & CameraMoveBaseParams) => void;
++    /**
++     * 카메라의 헤딩(bearing)과 틸트를 0으로 애니메이션과 함께 되돌립니다. 위치 · 줌은 그대로 둡니다.
++     */
++    animateCameraResetHeading: (params?: Omit<CameraMoveBaseParams, 'pivot'>) => void;
+     /**
+      * 카메라를 두 좌표가 모두 보이는 최대 줌 레벨로 애니메이션과 함께 이동시킵니다.
+      *
+diff --git a/lib/typescript/module/src/component/NaverMapView.d.ts b/lib/typescript/module/src/component/NaverMapView.d.ts
+index eb3e14112994f2b0af2ccc0aec8b1f866275a0a1..0587d7df57575ff44b728454cb0eabbf9fc496ef 100644
+--- a/lib/typescript/module/src/component/NaverMapView.d.ts
++++ b/lib/typescript/module/src/component/NaverMapView.d.ts
+@@ -627,6 +627,10 @@ export interface NaverMapViewRef {
+      * 카메라를 특정 Region으로 애니메이션과 함께 이동시킵니다.
+      */
+     animateRegionTo: (params: Region & CameraMoveBaseParams) => void;
++    /**
++     * 카메라의 헤딩(bearing)과 틸트를 0으로 애니메이션과 함께 되돌립니다. 위치 · 줌은 그대로 둡니다.
++     */
++    animateCameraResetHeading: (params?: Omit<CameraMoveBaseParams, 'pivot'>) => void;
+     /**
+      * 카메라를 두 좌표가 모두 보이는 최대 줌 레벨로 애니메이션과 함께 이동시킵니다.
+      *
 diff --git a/src/component/NaverMapPolylineOverlay.tsx b/src/component/NaverMapPolylineOverlay.tsx
 index b2ba7ac4c4c565db75df09e977e51b49271dd7b9..2afafcd25e99ef56a76d33f8455fc169ed518dc4 100644
 --- a/src/component/NaverMapPolylineOverlay.tsx
@@ -18,3 +103,60 @@ index b2ba7ac4c4c565db75df09e977e51b49271dd7b9..2afafcd25e99ef56a76d33f8455fc169
        onTapOverlay={onTap}
      />
    );
+diff --git a/src/component/NaverMapView.tsx b/src/component/NaverMapView.tsx
+index ae54fba959aaabd81f59800072995a59cf41f916..299313f9366737c4efbd32dfa9f0d05edb447c1a 100644
+--- a/src/component/NaverMapView.tsx
++++ b/src/component/NaverMapView.tsx
+@@ -670,6 +670,12 @@ export interface NaverMapViewRef {
+    * 카메라를 특정 Region으로 애니메이션과 함께 이동시킵니다.
+    */
+   animateRegionTo: (params: Region & CameraMoveBaseParams) => void;
++  /**
++   * 카메라의 헤딩(bearing)과 틸트를 0으로 애니메이션과 함께 되돌립니다. 위치 · 줌은 그대로 둡니다.
++   */
++  animateCameraResetHeading: (
++    params?: Omit<CameraMoveBaseParams, 'pivot'>
++  ) => void;
+   /**
+    * 카메라를 두 좌표가 모두 보이는 최대 줌 레벨로 애니메이션과 함께 이동시킵니다.
+    *
+@@ -1216,6 +1222,15 @@ export const NaverMapView = forwardRef(
+             );
+           }
+         },
++        animateCameraResetHeading: ({ duration, easing } = {}) => {
++          if (innerRef.current) {
++            Commands.animateCameraResetHeading(
++              innerRef.current,
++              duration ?? Const.DEFAULT_ANIM_DURATION,
++              cameraEasingToNumber(easing ?? Const.DEFAULT_EASING)
++            );
++          }
++        },
+         animateCameraBy: ({ duration, easing, x, y, pivot }) => {
+           if (innerRef.current) {
+             Commands.animateCameraBy(
+diff --git a/src/spec/RNCNaverMapViewNativeComponent.ts b/src/spec/RNCNaverMapViewNativeComponent.ts
+index 8a8e7f57a8f4b4b15f806dffcc7e9fe59fd03c77..b44d69ce26544f793cf9b00c8a4ed3a3bd273be8 100644
+--- a/src/spec/RNCNaverMapViewNativeComponent.ts
++++ b/src/spec/RNCNaverMapViewNativeComponent.ts
+@@ -320,6 +320,11 @@ interface NativeCommands {
+     pivotY?: Double
+   ) => void;
+   cancelAnimation: (ref: React.ElementRef<ComponentType>) => void;
++  animateCameraResetHeading: (
++    ref: React.ElementRef<ComponentType>,
++    duration?: Int32,
++    easing?: Int32
++  ) => void;
+   setLocationTrackingMode: (
+     ref: React.ElementRef<ComponentType>,
+     mode: string
+@@ -345,6 +350,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
+     'animateCameraTo',
+     'animateCameraBy',
+     'cancelAnimation',
++    'animateCameraResetHeading',
+     'animateRegionTo',
+     'setLocationTrackingMode',
+     'showInfoWindow',

@@ -1,4 +1,9 @@
-import { NaverMapView, type NaverMapViewRef, type Region } from '@mj-studio/react-native-naver-map'
+import {
+  NaverMapView,
+  type Camera,
+  type NaverMapViewRef,
+  type Region,
+} from '@mj-studio/react-native-naver-map'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
@@ -17,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChargerIssuesButton } from '../../components/ChargerIssuesButton'
+import { CompassButton } from '../../components/CompassButton'
 import { FilterPanel } from '../../components/FilterPanel'
 import { LOCATE_BUTTON_SIZE, LocateButton } from '../../components/LocateButton'
 import { MapNotice } from '../../components/MapNotice'
@@ -80,6 +86,19 @@ const MAP_TAP_MAX_MOVE = 10
 
 /** 현재 위치 버튼과 시트 위쪽 끝 사이 간격 (웹 mb-3) */
 const LOCATE_BUTTON_GAP = 12
+
+/** 나침반 버튼과 현재 위치 버튼 사이 간격 */
+const COMPASS_BUTTON_GAP = 8
+
+/** 이 각도(도)보다 덜 돌아가거나 기울었으면 정방향으로 보고 나침반을 숨김. 되돌리는 애니메이션 끝의 작은 오차를 무시함 */
+const COMPASS_HIDE_DEGREES = 0.5
+
+/** 지도가 돌아가거나 기울어 있는지 */
+const isMapRotated = ({ bearing = 0, tilt = 0 }: Pick<Camera, 'bearing' | 'tilt'>) => {
+  // bearing은 0~360이라 359.9도 거의 정방향으로 봄
+  const turned = Math.min(Math.abs(bearing), Math.abs(360 - bearing))
+  return turned > COMPASS_HIDE_DEGREES || tilt > COMPASS_HIDE_DEGREES
+}
 
 /** 카메라 상태. webZoomLevel은 core 줌 기준(점 · 숨김)에 넘기는 정수 단계 */
 type CameraState = { webZoomLevel: number; region: Region | null }
@@ -208,11 +227,26 @@ export default function MapHomeScreen() {
   const sheetPosition = useSharedValue(0)
   const sheetIndex = useSharedValue(1)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
+  // 지도 회전 각도는 바늘만 돌리면 돼서 UI 스레드 값에 두고, 보이기 · 숨기기만 화면 상태로 둠
+  const mapBearing = useSharedValue(0)
+  const [isCompassVisible, setIsCompassVisible] = useState(false)
+  // 나침반이 보이면 그 높이만큼 묶음을 올려서 현재 위치 버튼 자리는 그대로 둠
+  const compassSpace = isCompassVisible ? LOCATE_BUTTON_SIZE + COMPASS_BUTTON_GAP : 0
   const locateButtonStyle = useAnimatedStyle(() => ({
-    top: sheetPosition.value - LOCATE_BUTTON_SIZE - LOCATE_BUTTON_GAP,
+    top: sheetPosition.value - LOCATE_BUTTON_SIZE - LOCATE_BUTTON_GAP - compassSpace,
     // 접힘(1) → 펼침(2)으로 갈수록 0에 가까워짐. 최소 · 접힘에서는 그대로 보임
     opacity: interpolate(sheetIndex.value, [1, 2], [1, 0], Extrapolation.CLAMP),
   }))
+  const handleCameraChanged = useCallback(
+    ({ bearing, tilt }: Pick<Camera, 'bearing' | 'tilt'>) => {
+      mapBearing.set(bearing ?? 0)
+      // 같은 값이면 React가 다시 그리지 않아서, 정방향 ↔ 돌아감이 바뀔 때만 화면이 바뀜
+      setIsCompassVisible(isMapRotated({ bearing, tilt }))
+    },
+    [mapBearing],
+  )
+  /** 위치 · 줌은 그대로 두고 북쪽이 위로, 기울기는 평평하게 되돌림 */
+  const resetHeading = () => mapRef.current?.animateCameraResetHeading()
 
   // 마커는 시점이 바뀔 때마다 다시 그리지 않도록 최신 시점만 ref로 읽음
   const horizonRef = useRef(horizon)
@@ -323,6 +357,9 @@ export default function MapHomeScreen() {
           // 서비스 지역(서울) 밖으로 지도를 끌어가지 않게 지도 가운데를 서울 사각형 안으로 묶음
           extent={SEOUL_EXTENT}
           isShowZoomControls={false}
+          // SDK 나침반은 왼쪽 위 검색창에 가려서 끄고, 현재 위치 버튼 위에 따로 띄움
+          isShowCompass={false}
+          onCameraChanged={handleCameraChanged}
           onCameraIdle={handleCameraIdle}
           // Android만 지도 빈 곳 탭으로 시트를 최소로 내림. 마커 탭은 SDK가 먼저 받아서 여기로 오지 않음
           onTapMap={IS_MAP_TAP_BY_TOUCH ? undefined : minimizeSheet}
@@ -365,13 +402,15 @@ export default function MapHomeScreen() {
         />
       )}
 
-      {/* 현재 위치 버튼. 시트를 펼친 동안은 흐려지고 누를 수 없음 */}
+      {/* 현재 위치 버튼 · 나침반 버튼. 시트를 펼친 동안은 흐려지고 누를 수 없음 */}
       {containerHeight > 0 && (
         <Animated.View
           pointerEvents={isSheetExpanded ? 'none' : 'box-none'}
           accessibilityElementsHidden={isSheetExpanded}
-          style={[{ position: 'absolute', right: 16 }, locateButtonStyle]}
+          style={[{ position: 'absolute', right: 16, gap: COMPASS_BUTTON_GAP }, locateButtonStyle]}
         >
+          {/* 나침반은 지도를 돌리거나 기울였을 때만 현재 위치 버튼 바로 위에 띄우고, 시트를 따라 함께 움직임 */}
+          {isCompassVisible && <CompassButton bearing={mapBearing} onPress={resetHeading} />}
           <LocateButton isLocating={isLocating} onPress={handleLocate} />
         </Animated.View>
       )}
