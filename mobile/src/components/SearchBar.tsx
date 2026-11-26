@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react-native'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import { createShadow } from '../lib/shadow'
 

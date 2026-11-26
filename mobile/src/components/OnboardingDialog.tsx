@@ -1,6 +1,7 @@
 import { Car, MapPin, Search, Sparkles, Zap, type LucideIcon } from 'lucide-react-native'
 import { useState } from 'react'
-import { Modal, Pressable, Text, View } from 'react-native'
+import { Modal, Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import { Button } from './Button'
 import { createShadow } from '../lib/shadow'

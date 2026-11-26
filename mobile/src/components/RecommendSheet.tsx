@@ -15,7 +15,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { type LayoutChangeEvent, Pressable, Text, View } from 'react-native'
+import { type LayoutChangeEvent, Pressable, View } from 'react-native'
+import { Text } from './Text'
 import type { SharedValue } from 'react-native-reanimated'
 import { HorizonSelector } from './HorizonSelector'
 import { RECOMMEND_CARD_HEIGHT, RecommendCard, RecommendCardSkeleton } from './RecommendCard'

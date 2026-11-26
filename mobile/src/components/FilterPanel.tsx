@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 import { DEFAULT_FILTERS, isDefaultFilters, matchesFilters } from '@ev-flow/core/lib/stationFilter'
 import type { RecommendationFilters, Station } from '@ev-flow/core/types/station'
 import { Button } from './Button'

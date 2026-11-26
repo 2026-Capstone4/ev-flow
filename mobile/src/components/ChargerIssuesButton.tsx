@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react-native'
-import { Pressable, Text } from 'react-native'
+import { Pressable } from 'react-native'
+import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import { FLOATING_BUTTON_SHADOW } from './BackButton'
 

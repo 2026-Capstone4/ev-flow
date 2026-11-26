@@ -1,5 +1,6 @@
 import type { DimensionValue } from 'react-native'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 
 /** 축 최대값. 이보다 긴 대기는 끝 칸에 붙여 "40분+"로 읽음 */
 const MAX_MINUTES = 40

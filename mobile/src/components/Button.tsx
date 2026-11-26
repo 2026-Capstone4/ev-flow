@@ -1,4 +1,5 @@
-import { Pressable, Text } from 'react-native'
+import { Pressable } from 'react-native'
+import { Text } from './Text'
 
 const VARIANT_CLASS = {
   primary: { box: 'bg-brand-primary', text: 'text-text-on-brand' },

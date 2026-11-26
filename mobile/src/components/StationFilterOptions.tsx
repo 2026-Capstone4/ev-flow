@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 import { CONNECTOR_LABEL } from '@ev-flow/core/lib/charger'
 import type {
   ConnectorType,

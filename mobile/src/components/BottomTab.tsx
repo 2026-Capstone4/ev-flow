@@ -1,6 +1,7 @@
 import type { BottomTabBarProps } from 'expo-router/tabs'
 import { Menu, type LucideIcon } from 'lucide-react-native'
-import { Platform, Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
 
 /** 탭 화면 파일 이름별 글자. 순서는 (tabs)/_layout.tsx의 Tabs.Screen 순서를 따름 */
@@ -73,7 +74,10 @@ export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
                 color={isActive ? COLORS['brand-primary'] : COLORS['text-secondary']}
               />
             ) : (
+              // 한 줄로 고정하고, 칸보다 길면 잘리지 않게 글자를 칸에 맞춰 줄임
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={{ transform: [{ translateX: TAB_LABEL_SHIFT_X[route.name] ?? 0 }] }}
                 className={`text-[15px] ${
                   isActive ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'
