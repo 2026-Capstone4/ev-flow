@@ -50,6 +50,9 @@ const FLOATING_SELECTED_SHADOW = createShadow(1, 2, 0.1)
 export function HorizonSelector({ value, onChange, variant = 'floating' }: HorizonSelectorProps) {
   const style = VARIANT_CLASS[variant]
   const { width } = useWindowDimensions()
+  // floating은 추천 시트 헤더에 "추천 충전소"와 한 줄로 들어가야 해서 폰 글꼴 크기를 따르지 않음
+  // 1.2배만 돼도 좁은 화면에서 한 줄에 안 들어가 다음 줄로 내려감. inline은 공통 상한(1.2배)을 씀
+  const fontScaleCap = variant === 'floating' ? 1 : undefined
   // 좁은 화면이면 floating 칸 좌우 여백만 줄여 추천 시트 헤더 한 줄에 들어가게 함
   const optionClass =
     variant === 'floating' && width < NARROW_SCREEN_WIDTH ? NARROW_FLOATING_OPTION : style.option
@@ -92,6 +95,7 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
             <View style={{ minWidth: labelWidth }} className="items-center">
               <Text
                 aria-hidden
+                maxFontSizeMultiplier={fontScaleCap}
                 importantForAccessibility="no-hide-descendants"
                 onLayout={(event) => recordLabelWidth(index, event.nativeEvent.layout.width)}
                 className={`${style.text} self-center font-bold opacity-0`}
@@ -99,6 +103,7 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
                 {label}
               </Text>
               <Text
+                maxFontSizeMultiplier={fontScaleCap}
                 className={`absolute inset-0 text-center ${style.text} ${
                   isSelected ? `font-bold ${style.selectedText}` : 'font-medium text-text-secondary'
                 }`}

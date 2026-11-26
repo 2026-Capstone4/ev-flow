@@ -231,13 +231,18 @@ export function RecommendSheet({
         <View
           onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
           style={{ minHeight: DEFAULT_HEADER_HEIGHT }}
-          // 글자를 키워 한 줄에 안 들어가면 시점 선택을 다음 줄로 내림
+          // 제목 · 시점 선택은 폰 글꼴 크기를 따르지 않아 늘 한 줄. 화면 확대로 폭이 아주 좁을 때만 다음 줄로 내림
           className="flex-row flex-wrap items-center justify-between gap-y-2"
         >
           {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
           <View className="flex-row items-center gap-1.5">
             <View className="size-2.5 rounded-full bg-marker-recommended" />
-            <Text accessibilityRole="header" className="font-bold text-[18px] text-text-primary">
+            {/* 시점 선택과 한 줄에 두려고 글꼴 배율을 1로 고정 */}
+            <Text
+              accessibilityRole="header"
+              maxFontSizeMultiplier={1}
+              className="font-bold text-[18px] text-text-primary"
+            >
               추천 충전소
             </Text>
           </View>
