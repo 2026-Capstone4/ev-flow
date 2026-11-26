@@ -8,7 +8,7 @@ import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BackHandler, Pressable, View, type GestureResponderEvent } from 'react-native'
+import { BackHandler, Platform, Pressable, View, type GestureResponderEvent } from 'react-native'
 import Animated, {
   Extrapolation,
   interpolate,
@@ -72,7 +72,9 @@ const NOTICE_DURATION_MS = 3000
 /**
  * 지도를 '탭'으로 볼 기준. 손을 뗀 순간 바로 시트를 내림
  * SDK onTapMap은 두 번 탭(확대)인지 기다렸다 불려서 늦게 반응해서 직접 판단함
+ * Android는 지도 네이티브 뷰가 터치를 가져가 바깥 View에 손 뗀 순간이 오지 않아서 onTapMap을 씀
  */
+const IS_MAP_TAP_BY_TOUCH = Platform.OS !== 'android'
 const MAP_TAP_MAX_MS = 250
 const MAP_TAP_MAX_MOVE = 10
 
@@ -173,6 +175,8 @@ export default function MapHomeScreen() {
     // 짧고 거의 안 움직인 터치만 시트를 내림
     if (isShort && isStill) sheetRef.current?.minimize()
   }
+  /** Android 지도 탭(SDK 이벤트)에서 시트를 최소로 내림 */
+  const minimizeSheet = useCallback(() => sheetRef.current?.minimize(), [])
 
   const { locate, isLocating } = useCurrentLocation()
   // 위치 권한이 이미 있으면 앱이 켜져 있는 동안 위치를 따라감. 추천은 500m · 2분 · 5분 규칙으로만 다시 부름
@@ -301,7 +305,11 @@ export default function MapHomeScreen() {
       onLayout={(event) => setContainerHeight(event.nativeEvent.layout.height)}
     >
       {/* 지도를 탭하면 추천 시트를 최소로 내려 지도를 넓게 봄. 손가락 움직임만 보고 지도 터치는 막지 않음 */}
-      <View className="flex-1" onTouchStart={handleMapTouchStart} onTouchEnd={handleMapTouchEnd}>
+      <View
+        className="flex-1"
+        onTouchStart={IS_MAP_TAP_BY_TOUCH ? handleMapTouchStart : undefined}
+        onTouchEnd={IS_MAP_TAP_BY_TOUCH ? handleMapTouchEnd : undefined}
+      >
         <NaverMapView
           ref={mapRef}
           style={{ flex: 1 }}
@@ -316,13 +324,15 @@ export default function MapHomeScreen() {
           extent={SEOUL_EXTENT}
           isShowZoomControls={false}
           onCameraIdle={handleCameraIdle}
+          // Android만 지도 빈 곳 탭으로 시트를 최소로 내림. 마커 탭은 SDK가 먼저 받아서 여기로 오지 않음
+          onTapMap={IS_MAP_TAP_BY_TOUCH ? undefined : minimizeSheet}
           // 추천 · 검색 기준 위치 표시 (웹 내 위치 마커). 시연 위치이거나 현재 위치 버튼으로 바꾼 위치
           locationOverlay={{
             isVisible: true,
             position: { latitude: userLocation.lat, longitude: userLocation.lng },
           }}
         >
-          <CoverageMask />
+          <CoverageMask onTap={IS_MAP_TAP_BY_TOUCH ? undefined : minimizeSheet} />
           {visibleStations.map((station) => {
             const isRecommended = recommendedIds.has(station.stationId)
             return (
