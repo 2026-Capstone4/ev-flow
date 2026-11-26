@@ -1,4 +1,5 @@
 import type { Charger, Station } from '../types/station'
+import { compareKorean } from './compareKorean'
 
 /**
  * 원천 데이터 문제로 30분마다 사용 가능(2) ↔ 상태 미확인(9)을 반복하는 충전기 (docs/database.md 데이터 사용 시 주의)
@@ -83,8 +84,7 @@ export function groupChargerIssues(stations: Station[]): ChargerIssues {
     if (unknownChargers.length > 0) unknown.push({ ...base, chargers: unknownChargers })
   }
 
-  const byName = (a: StationChargerIssues, b: StationChargerIssues) =>
-    a.name.localeCompare(b.name, 'ko')
+  const byName = (a: StationChargerIssues, b: StationChargerIssues) => compareKorean(a.name, b.name)
   // 미확인은 많이 끊긴 충전소부터, 대수가 같으면 이름순
   unknown.sort((a, b) => b.chargers.length - a.chargers.length || byName(a, b))
   unstable.sort(byName)
@@ -120,7 +120,7 @@ export function countIssuesByDistrict(stations: Station[]): DistrictIssueCount[]
   }
   const districts = [...counts]
     .map(([district, count]) => ({ district, count }))
-    .sort((a, b) => a.district.localeCompare(b.district, 'ko'))
+    .sort((a, b) => compareKorean(a.district, b.district))
   return [{ district: ALL_DISTRICTS, count: total }, ...districts]
 }
 

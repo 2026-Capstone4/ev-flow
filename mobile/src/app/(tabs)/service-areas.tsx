@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { ChevronRight, Search, X } from 'lucide-react-native'
 import { type ReactNode, useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native'
+import { Text, TextInput } from '../../components/Text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { UNMATCHED_REGION_CODE } from '@ev-flow/core/hooks/useServiceAreaRegionData'
 import { useServiceAreaRoutesData } from '@ev-flow/core/hooks/useServiceAreaRoutesData'
@@ -13,6 +14,7 @@ import { RouteBadge } from '../../components/RouteBadge'
 import { SegmentedControl } from '../../components/SegmentedControl'
 import { ServiceAreaRow } from '../../components/ServiceAreaRow'
 import { UpdateStatus } from '../../components/UpdateStatus'
+import { pushWithoutKeyboard } from '../../lib/navigation'
 
 /** 상태 표시줄 아래 제목까지 띄우는 여백 */
 const TOP_GAP = 16
@@ -26,11 +28,13 @@ const VIEW_OPTIONS: { value: ListView; label: string }[] = [
 
 // 전국 고속도로 휴게소 (하단 탭 두 번째). 노선별 · 지역별로 묶고, 누르면 노선 · 지역 화면으로 넘어감
 // 위 검색창에 입력하면 묶음 대신 검색 결과를 보여 주고, 결과를 누르면 바로 휴게소 상세로 감
+// 줄을 누르면 키보드를 먼저 내리고 넘어감 (pushWithoutKeyboard)
 export default function ServiceAreaListScreen() {
   // 노선 화면에서 돌아와도 고른 묶음이 유지되도록 화면 값(?view=)에 둠
   const params = useLocalSearchParams<{ view?: string }>()
   const view: ListView = params.view === 'region' ? 'region' : 'route'
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   // 검색어는 한글 조합이 끊기지 않게 화면 안 상태로 받음. 상세에 갔다 와도 탭 화면이 살아 있어 유지됨
   const [searchText, setSearchText] = useState('')
   const {
@@ -93,7 +97,8 @@ export default function ServiceAreaListScreen() {
       {!isSearching && (
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={changeView} />
       )}
-      <View className="flex-row items-center justify-between gap-2">
+      {/* 갱신 알약 높이(28)를 미리 잡아 둬서, 목록이 들어와 알약이 생겨도 아래 패널이 밀려 내려가지 않음 */}
+      <View className="min-h-[28px] flex-row items-center justify-between gap-2">
         <UpdateStatus updatedAt={updatedAt} isError={isError} />
         <Text className="flex-shrink-0 font-medium text-xs text-text-secondary">
           {NO_FORECAST_SERVICE_AREA_LABEL}
@@ -104,7 +109,9 @@ export default function ServiceAreaListScreen() {
       {isSearching && searchResults ? (
         <SearchResults
           results={searchResults}
-          onPress={(id) => router.push({ pathname: '/service-areas/detail', params: { id } })}
+          onPress={(id) =>
+            pushWithoutKeyboard({ pathname: '/service-areas/detail', params: { id } })
+          }
         />
       ) : loadState === 'ready' && view === 'region' ? (
         <View className="overflow-hidden rounded-lg bg-bg-page">
@@ -115,7 +122,10 @@ export default function ServiceAreaListScreen() {
               count={region.areaCount}
               isFirst={index === 0}
               onPress={() =>
-                router.push({ pathname: '/service-areas/region', params: { code: region.code } })
+                pushWithoutKeyboard({
+                  pathname: '/service-areas/region',
+                  params: { code: region.code },
+                })
               }
             />
           ))}
@@ -137,7 +147,7 @@ export default function ServiceAreaListScreen() {
               count={route.areaCount}
               isFirst={index === 0}
               onPress={() =>
-                router.push({
+                pushWithoutKeyboard({
                   pathname: '/service-areas/route',
                   params: { name: route.routeName },
                 })
@@ -152,7 +162,7 @@ export default function ServiceAreaListScreen() {
               count={unmatchedCount}
               isFirst={false}
               onPress={() =>
-                router.push({
+                pushWithoutKeyboard({
                   pathname: '/service-areas/region',
                   params: { code: UNMATCHED_REGION_CODE },
                 })
@@ -161,7 +171,8 @@ export default function ServiceAreaListScreen() {
           )}
         </View>
       ) : loadState === 'loading' ? (
-        <View className="h-[240px] rounded-lg bg-bg-page" />
+        // 받아 올 목록(노선 30여 줄 · 지역 17줄)은 늘 화면보다 길어서, 빈 패널도 화면 높이만큼 잡아 화면 아래까지 채움
+        <View style={{ height: windowHeight }} className="rounded-lg bg-bg-page" />
       ) : (
         <Text className="py-12 text-center font-sans text-sm text-text-secondary">
           {loadState === 'error' ? '휴게소 정보를 불러오지 못했습니다' : '휴게소가 없습니다'}

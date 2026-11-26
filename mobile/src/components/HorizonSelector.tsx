@@ -1,4 +1,6 @@
-import { Pressable, Text, useWindowDimensions, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, useWindowDimensions, View } from 'react-native'
+import { Text } from './Text'
 import { getHorizonLabel, HORIZONS } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 import { createShadow } from '../lib/shadow'
@@ -14,8 +16,9 @@ type HorizonSelectorProps = {
 const VARIANT_CLASS = {
   floating: {
     // 네이버 지도 패널 탭처럼 묶음 높이 약 45 · 글자 15.5. 높이를 고정하지 않아 글자 크기를 키우면 함께 커짐
+    // 세 칸을 가장 긴 굵은 글자("지금 출발") 폭에 맞춰 같게 하므로 짧은 칸은 글자 옆이 남아서 좌우 여백을 px-4에서 줄임
     group: 'self-start p-1.5',
-    option: 'px-4 py-2.5',
+    option: 'px-2.5 py-2.5',
     text: 'text-[15.5px]',
     selectedBox: 'bg-bg-page',
     selectedText: 'text-text-primary',
@@ -37,8 +40,8 @@ const VARIANT_CLASS = {
  */
 const NARROW_SCREEN_WIDTH = 400
 
-/** 좁은 화면의 floating 칸 좌우 여백. px-4(14)보다 칸마다 7씩, 세 칸 합쳐 21 줄어듦 */
-const NARROW_FLOATING_OPTION = 'px-3 py-2.5'
+/** 좁은 화면의 floating 칸 좌우 여백. px-2.5보다 칸마다 7씩, 세 칸 합쳐 21 줄어듦 */
+const NARROW_FLOATING_OPTION = 'px-1.5 py-2.5'
 
 /** 웹 그림자(0 1px 2px 10%)를 RN 그림자 속성으로 옮김. floating에서 고른 칸만 띄움 */
 const FLOATING_SELECTED_SHADOW = createShadow(1, 2, 0.1)
@@ -47,21 +50,40 @@ const FLOATING_SELECTED_SHADOW = createShadow(1, 2, 0.1)
 export function HorizonSelector({ value, onChange, variant = 'floating' }: HorizonSelectorProps) {
   const style = VARIANT_CLASS[variant]
   const { width } = useWindowDimensions()
+  // floating은 추천 시트 헤더에 "추천 충전소"와 한 줄로 들어가야 해서 폰 글꼴 크기를 따르지 않음
+  // 1.2배만 돼도 좁은 화면에서 한 줄에 안 들어가 다음 줄로 내려감. inline은 공통 상한(1.2배)을 씀
+  const fontScaleCap = variant === 'floating' ? 1 : undefined
   // 좁은 화면이면 floating 칸 좌우 여백만 줄여 추천 시트 헤더 한 줄에 들어가게 함
   const optionClass =
     variant === 'floating' && width < NARROW_SCREEN_WIDTH ? NARROW_FLOATING_OPTION : style.option
+  // 칸마다 잰 굵은 글자 폭. 가장 넓은 값을 세 칸 모두의 글자 폭으로 써서 3등분함
+  const [labelWidths, setLabelWidths] = useState<number[]>([])
+  // 뒤 칸이 먼저 재지면 앞자리가 빈 칸으로 남으므로 잰 값만 골라 최댓값을 구함 (빈 칸이 섞이면 NaN)
+  const measuredWidths = labelWidths.filter((measured) => measured !== undefined)
+  const labelWidth = measuredWidths.length > 0 ? Math.max(...measuredWidths) : undefined
+  // 같은 값이면 상태를 바꾸지 않아 다시 그리기를 멈춤
+  const recordLabelWidth = (index: number, measured: number) => {
+    setLabelWidths((previous) => {
+      if (previous[index] === measured) return previous
+      const next = [...previous]
+      next[index] = measured
+      return next
+    })
+  }
   return (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel="예측 시점"
       className={`flex-row items-center gap-1 rounded-md bg-bg-subtle ${style.group}`}
     >
-      {HORIZONS.map((option) => {
+      {HORIZONS.map((option, index) => {
         const isSelected = option === value
+        const label = getHorizonLabel(option)
         return (
           <Pressable
             key={option}
             accessibilityRole="radio"
+            accessibilityLabel={label}
             accessibilityState={{ checked: isSelected }}
             onPress={() => onChange(option)}
             style={isSelected && variant === 'floating' ? FLOATING_SELECTED_SHADOW : undefined}
@@ -69,13 +91,26 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
               isSelected ? style.selectedBox : ''
             }`}
           >
-            <Text
-              className={`${style.text} ${
-                isSelected ? `font-bold ${style.selectedText}` : 'font-medium text-text-secondary'
-              }`}
-            >
-              {getHorizonLabel(option)}
-            </Text>
+            {/* 고르면 굵어져 글자 폭이 달라지므로 늘 굵은 글자 폭을 자리로 잡아 둠 (Android에서 칸 폭이 바뀌던 문제) */}
+            <View style={{ minWidth: labelWidth }} className="items-center">
+              <Text
+                aria-hidden
+                maxFontSizeMultiplier={fontScaleCap}
+                importantForAccessibility="no-hide-descendants"
+                onLayout={(event) => recordLabelWidth(index, event.nativeEvent.layout.width)}
+                className={`${style.text} self-center font-bold opacity-0`}
+              >
+                {label}
+              </Text>
+              <Text
+                maxFontSizeMultiplier={fontScaleCap}
+                className={`absolute inset-0 text-center ${style.text} ${
+                  isSelected ? `font-bold ${style.selectedText}` : 'font-medium text-text-secondary'
+                }`}
+              >
+                {label}
+              </Text>
+            </View>
           </Pressable>
         )
       })}

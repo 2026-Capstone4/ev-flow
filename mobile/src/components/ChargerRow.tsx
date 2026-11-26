@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 import {
   CHARGER_STATUS_LABEL,
   formatChargerSpec,

@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 import Svg, { Path } from 'react-native-svg'
 
 /**
@@ -88,8 +89,11 @@ export function RouteBadge({ routeNo, size = 'md' }: RouteBadgeProps) {
         }}
         className="items-center justify-center"
       >
+        {/* 방패 크기가 고정이라 숫자도 폰 글꼴 크기를 따르지 않음. 키우면 칸을 넘쳐 아래로 밀림 */}
+        {/* Android는 줄 높이를 글꼴보다 작게 고정하거나 글꼴 여백이 붙으면 숫자가 아래로 내려감. 줄 높이는 두지 않고 여백은 뺌 */}
         <Text
-          style={{ fontSize, lineHeight: fontSize * 1.15 }}
+          maxFontSizeMultiplier={1}
+          style={{ fontSize, includeFontPadding: false }}
           className="font-bold text-text-on-brand"
         >
           {routeNo}

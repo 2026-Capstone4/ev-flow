@@ -1,6 +1,7 @@
 import type { BottomTabBarProps } from 'expo-router/tabs'
 import { Menu, type LucideIcon } from 'lucide-react-native'
-import { Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
 
 /** 탭 화면 파일 이름별 글자. 순서는 (tabs)/_layout.tsx의 Tabs.Screen 순서를 따름 */
@@ -21,12 +22,26 @@ const TAB_ICON: Partial<Record<string, LucideIcon>> = {
   more: Menu,
 }
 
-/** 홈 표시줄 칸을 이만큼 덜 비워서 탭 영역 전체(윗선 · 글자)를 그만큼 아래로 내림 */
+/** iOS 홈 표시줄 칸을 이만큼 덜 비워서 탭 영역 전체(윗선 · 글자)를 그만큼 아래로 내림 */
 const BOTTOM_INSET_TRIM = 8
 
-/** 웹 BottomTab과 같은 글자 하단 탭 + 오른쪽 끝 더보기 아이콘. 아래 여백은 홈 표시줄 높이에서 조금 덜어 둠 */
+/**
+ * Android 아래 여백 최솟값. 제스처 내비게이션이면 앱이 받는 여백은 15dp쯤인데,
+ * 삼성 기기는 맨 아래 41dp쯤을 시스템 내비게이션 창이 덮어 그 안을 누르면 앱에 닿지 않음
+ * 탭 글자 가운데가 그 위로 오게 여백을 이만큼은 둠. 버튼 3개 내비게이션(48dp)은 원래 여백이 더 커서 그대로
+ */
+const ANDROID_MIN_BOTTOM_INSET = 24
+
+/** 탭 줄 아래 여백. iOS는 홈 표시줄 칸을 조금 덜고, Android는 시스템 내비게이션 창에 가리지 않을 만큼 둠 */
+function getBottomInset(insetBottom: number) {
+  // Android는 덜지 않고 최솟값만 맞춤
+  if (Platform.OS === 'android') return Math.max(insetBottom, ANDROID_MIN_BOTTOM_INSET)
+  return Math.max(insetBottom - BOTTOM_INSET_TRIM, 0)
+}
+
+/** 웹 BottomTab과 같은 글자 하단 탭 + 오른쪽 끝 더보기 아이콘. 아래 여백은 getBottomInset 참고 */
 export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
-  const bottomInset = Math.max(insets.bottom - BOTTOM_INSET_TRIM, 0)
+  const bottomInset = getBottomInset(insets.bottom)
   return (
     // 왼쪽에도 아이콘 탭 폭(w-16)만큼 여백을 둬서, 글자 탭 두 개가 화면 가운데를 기준으로 좌우 대칭이 되게 함
     // 글자 칸 높이(52)는 그대로 두고 아래 여백만 줄임. 홈 표시줄이 없는 기기(아래 여백 0)는 줄일 여백이 없어 그대로
@@ -59,7 +74,10 @@ export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
                 color={isActive ? COLORS['brand-primary'] : COLORS['text-secondary']}
               />
             ) : (
+              // 한 줄로 고정하고, 칸보다 길면 잘리지 않게 글자를 칸에 맞춰 줄임
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={{ transform: [{ translateX: TAB_LABEL_SHIFT_X[route.name] ?? 0 }] }}
                 className={`text-[15px] ${
                   isActive ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'

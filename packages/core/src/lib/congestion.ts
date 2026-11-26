@@ -21,7 +21,7 @@ export function isWaitUncertain(p90: number | null, congestion?: PredictedConges
   return p90 === 0 && congestion === 'high'
 }
 
-/** 대기 구간 (예: 5~15분, 대기 거의 없음). 값이 없으면 null */
+/** 대기 구간 (예: 5~15분, 거의 안 기다려요). 값이 없으면 null */
 export function formatWaitRange(
   p50: number | null,
   p90: number | null,
@@ -31,7 +31,7 @@ export function formatWaitRange(
   // 혼잡인데 P90이 0이면 0분이라고 말하지 않음
   if (isWaitUncertain(p90, congestion)) return '대기 예측 어려움'
   // P90이 0이어도 실제로 대기가 있던 경우가 있어 단정하지 않음
-  if (p90 === 0) return '대기 거의 없음'
+  if (p90 === 0) return '거의 안 기다려요'
   // P50과 P90이 같으면 "5~5분"이 되므로 한 번만 씀
   if (p50 === p90) return `${p90}분`
   return `${p50}~${p90}분`
@@ -44,7 +44,7 @@ export function formatWaitTime(
   congestion?: PredictedCongestion | null,
 ) {
   const range = formatWaitRange(p50, p90, congestion)
-  // 범위가 아니면 문구에 이미 '대기'가 들어 있음
+  // 범위가 아니면 문구만으로 뜻이 통해 '대기'를 붙이지 않음
   if (range === null || p90 === 0) return range
   return `대기 ${range}`
 }

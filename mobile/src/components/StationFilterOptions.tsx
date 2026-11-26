@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 import { CONNECTOR_LABEL } from '@ev-flow/core/lib/charger'
 import type {
   ConnectorType,
@@ -80,7 +81,12 @@ export function StationFilterOptions({ filters, onChange }: StationFilterOptions
 export function FilterRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="w-full flex-row items-start gap-2">
-      <Text className="w-[62px] flex-shrink-0 py-2 font-medium text-[14px] text-text-secondary">
+      {/* 칩 시작 위치를 맞추려고 이름 칸 폭은 고정하고, 글꼴을 키워 넘치면 한 줄 안에서 글자를 줄임 */}
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        className="w-[62px] flex-shrink-0 py-2 font-medium text-[14px] text-text-secondary"
+      >
         {label}
       </Text>
       <View className="flex-1 flex-row flex-wrap gap-2">{children}</View>

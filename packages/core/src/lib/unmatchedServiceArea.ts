@@ -1,6 +1,7 @@
 import { isDuplicateRegistrationArea } from './nationwideServiceArea'
 import type { NationwideServiceArea } from '../types/serviceArea'
 import type { ChargerStatus } from '../types/station'
+import { compareKorean } from './compareKorean'
 
 /**
  * 노선 미확인 휴게소 묶기
@@ -141,7 +142,7 @@ export function toDisplayAreas(areas: NationwideServiceArea[]): NationwideServic
   )
   const grouped = clusterByName(unmatched)
     .map(mergeCluster)
-    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    .sort((a, b) => compareKorean(a.name, b.name))
   return [...matched, ...grouped]
 }
 

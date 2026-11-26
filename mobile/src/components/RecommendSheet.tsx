@@ -15,15 +15,16 @@ import {
   useRef,
   useState,
 } from 'react'
-import { type LayoutChangeEvent, Pressable, Text, View } from 'react-native'
+import { type LayoutChangeEvent, Pressable, View } from 'react-native'
+import { Text } from './Text'
 import type { SharedValue } from 'react-native-reanimated'
 import { HorizonSelector } from './HorizonSelector'
 import { RECOMMEND_CARD_HEIGHT, RecommendCard, RecommendCardSkeleton } from './RecommendCard'
 import { createShadow } from '../lib/shadow'
 
 const RECOMMEND_MESSAGE = {
-  error: '추천 충전소를 불러오지 못했습니다',
-  empty: '추천할 충전소가 없습니다',
+  error: '추천 충전소를 불러오지 못했어요',
+  empty: '추천할 충전소가 없어요',
   // 마포구 밖은 지금 출발만 추천하고 15 · 30분 탭에 이 문구를 띄움 (서버는 백엔드 #249부터 422를 보내지 않음)
   out_of_area: '15분 · 30분 후 추천은 현재 마포구만 지원해요',
   rate_limited: '요청이 많아 추천을 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.',
@@ -230,13 +231,18 @@ export function RecommendSheet({
         <View
           onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
           style={{ minHeight: DEFAULT_HEADER_HEIGHT }}
-          // 글자를 키워 한 줄에 안 들어가면 시점 선택을 다음 줄로 내림
+          // 제목 · 시점 선택은 폰 글꼴 크기를 따르지 않아 늘 한 줄. 화면 확대로 폭이 아주 좁을 때만 다음 줄로 내림
           className="flex-row flex-wrap items-center justify-between gap-y-2"
         >
           {/* 앞의 형광 파란 점은 지도에서 추천 충전소 마커 색과 같음 (범례) */}
           <View className="flex-row items-center gap-1.5">
             <View className="size-2.5 rounded-full bg-marker-recommended" />
-            <Text accessibilityRole="header" className="font-bold text-[18px] text-text-primary">
+            {/* 시점 선택과 한 줄에 두려고 글꼴 배율을 1로 고정 */}
+            <Text
+              accessibilityRole="header"
+              maxFontSizeMultiplier={1}
+              className="font-bold text-[18px] text-text-primary"
+            >
               추천 충전소
             </Text>
           </View>

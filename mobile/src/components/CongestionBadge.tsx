@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
+import { Text } from './Text'
 import { getCongestionLabel } from '@ev-flow/core/lib/congestion'
 import type { CurrentCongestion } from '@ev-flow/core/types/station'
 

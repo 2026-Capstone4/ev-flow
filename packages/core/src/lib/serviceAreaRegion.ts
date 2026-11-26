@@ -1,5 +1,6 @@
 import { getRouteLabel } from './nationwideServiceArea'
 import type { NationwideServiceArea } from '../types/serviceArea'
+import { compareKorean } from './compareKorean'
 
 /**
  * 시도 코드(충전기 API zcode) → 목록 순서 · 짧은 이름. 수도권 → 강원 → 충청 → 전라 → 경상 → 제주 순
@@ -117,12 +118,12 @@ export function getRegionSections(areas: NationwideServiceArea[], code: string):
   }
   for (const section of sections.values()) {
     section.areas.sort(
-      (a, b) => (a.routeSeq ?? 0) - (b.routeSeq ?? 0) || a.name.localeCompare(b.name, 'ko'),
+      (a, b) => (a.routeSeq ?? 0) - (b.routeSeq ?? 0) || compareKorean(a.name, b.name),
     )
   }
   const routeNo = (section: AreaSection) => (section.routeNo ? Number(section.routeNo) : Infinity)
   return [...sections.values()].sort(
-    (a, b) => routeNo(a) - routeNo(b) || a.title.localeCompare(b.title, 'ko'),
+    (a, b) => routeNo(a) - routeNo(b) || compareKorean(a.title, b.title),
   )
 }
 
@@ -134,6 +135,6 @@ export function getUnmatchedSections(areas: NationwideServiceArea[]): AreaSectio
     routeNo: null,
     areas: unmatched
       .filter((area) => regionKey(area) === region.code)
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
+      .sort((a, b) => compareKorean(a.name, b.name)),
   }))
 }

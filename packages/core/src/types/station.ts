@@ -109,7 +109,7 @@ export type Recommendation = {
   distanceMeters: number
   /** estimate = Directions 실패로 직선거리 추정 (잠정) */
   travelTimeSource: 'directions' | 'estimate'
-  /** 추천 설명 문구 (예: 가장 가까운 곳보다 4분 더 이동, 대기 12분 감소) */
+  /** 추천 설명 문구 (예: 가장 가까운 곳보다 4분 더 걸려요, 4분 더 걸리지만 덜 붐벼요) */
   reason: string
 }
 

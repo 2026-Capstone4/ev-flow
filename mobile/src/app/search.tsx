@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { X } from 'lucide-react-native'
 import { useState } from 'react'
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native'
+import { FlatList, Pressable, View } from 'react-native'
+import { Text, TextInput } from '../components/Text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { useSearchData } from '@ev-flow/core/hooks/useSearchData'
@@ -14,6 +15,7 @@ import { FilterChip } from '../components/FilterChip'
 import { HorizonSelector } from '../components/HorizonSelector'
 import { SearchResultRow } from '../components/SearchResultRow'
 import { FilterRow, StationFilterOptions } from '../components/StationFilterOptions'
+import { pushWithoutKeyboard } from '../lib/navigation'
 
 const SORT_OPTIONS: { label: string; value: StationSortKey }[] = [
   { label: '추천순', value: 'recommended' },
@@ -136,7 +138,7 @@ export default function SearchScreen() {
             <SearchResultRow
               result={item}
               onPress={() =>
-                router.push({
+                pushWithoutKeyboard({
                   pathname: '/stations/[stationId]',
                   params: { stationId: item.station.stationId, horizon: String(horizon) },
                 })

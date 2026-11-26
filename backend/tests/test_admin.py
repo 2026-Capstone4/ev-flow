@@ -439,6 +439,13 @@ def test_chargers_today_redis_down_falls_back_to_db(monkeypatch, db_calls):
     assert res.chargers[0].today_occupancy_rate == 0.1
 
 
+def test_chargers_station_name_is_cleaned(fake_redis, monkeypatch, db_calls):
+    db = chargers_db(monkeypatch, ["HM100003"])
+    db.scalars(None)[0].name = "_루프스테이션 홍대"  # 원천 statNm 그대로인 DB 값
+    res = admin.get_chargers(db, "city", NOW)
+    assert {c.station_name for c in res.chargers} == {"루프스테이션 홍대"}
+
+
 # --- 충전기 상태 쿼리 (snapshot.load_charger_states) ---
 # CI에는 DB가 없어 PostgreSQL 방언으로 만든 SQL을 확인함
 

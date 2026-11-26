@@ -360,7 +360,10 @@ def test_nationwide_chargers_requires_id():
         (None, "워터 평택호휴게소 평택방향", "평택호휴게소 평택방향"),  # 노선 미확인 - 앞뒤만
         (None, "가평휴게소(서울방향) E-pit", "가평휴게소(서울방향)"),
         (None, "경기광주휴게소 상행선", "경기광주휴게소 상행선"),  # 상행선 · 하행선은 남김
+        # 밑줄은 띄어쓰기로 바꾼 뒤 사업자 표기를 지움
+        (None, "HK하이웨이 평택휴게소(하행_음성제천방향)", "평택휴게소(하행 음성제천방향)"),
         (None, "", "X"),  # 이름이 없으면 statId
+        (None, "_", "X"),  # 밑줄만 있어도 statId
     ],
 )
 def test_display_name(rest_area, name, expected):
