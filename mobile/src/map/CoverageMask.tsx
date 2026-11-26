@@ -34,8 +34,9 @@ const seoulOuter = [...seoulHole].reverse()
 /**
  * 서비스 범위를 지도에 칠함. 서울 밖은 진한 회색, 서울 안 마포구 밖은 옅은 회색, 마포구는 채우지 않고 테두리만
  * 마커보다 아래(zIndex 음수)에 그려 마커 누르기를 가로채지 않음
+ * Android SDK는 칠한 곳을 탭하면 지도 탭(onTapMap) 대신 이 오버레이가 받아서, 같은 동작을 onTap으로 넘겨받음
  */
-export function CoverageMask() {
+export function CoverageMask({ onTap }: { onTap?: () => void }) {
   return (
     <>
       <NaverMapPolygonOverlay
@@ -43,12 +44,14 @@ export function CoverageMask() {
         holes={[seoulHole]}
         color={OUTSIDE_COLOR}
         zIndex={-3}
+        onTap={onTap}
       />
       <NaverMapPolygonOverlay
         coords={seoulOuter}
         holes={[mapoHole]}
         color={SEOUL_COLOR}
         zIndex={-2}
+        onTap={onTap}
       />
       {/* 마포구는 채우지 않고 테두리 선만. 투명 채움 폴리곤은 색 값이 0이 되어 SDK가 흰색으로 칠함 */}
       <NaverMapPolylineOverlay
@@ -57,6 +60,7 @@ export function CoverageMask() {
         width={4}
         joinType="Round"
         zIndex={-1}
+        onTap={onTap}
       />
     </>
   )
