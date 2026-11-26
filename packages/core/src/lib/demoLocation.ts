@@ -3,7 +3,7 @@ import type { LatLng } from '../types/geo'
 
 /**
  * "위도,경도" 글자를 시연 위치로 바꿈 (앱 EXPO_PUBLIC_DEMO_LOCATION 값)
- * 숫자가 아니거나 마포구 밖이면 null. 마포구 밖은 서버가 추천을 거절해서(422) 시연 위치로 쓸 수 없음
+ * 숫자가 아니거나 마포구 밖이면 null. 마포구 밖은 지금 출발 추천만 오고 15 · 30분 추천이 없어서 시연 위치로 쓰지 않음
  */
 export function parseDemoLocation(text: string | undefined): LatLng | null {
   // 값을 안 넣었으면 기본 시연 위치를 쓰도록 null

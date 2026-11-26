@@ -60,9 +60,15 @@ def load_charger_states(
     run: CollectionRun,
     now: datetime,
     station_id: str | None = None,
+    station_ids: list[str] | None = None,
 ) -> dict[str, list[ChargerState]]:
-    """충전소별 충전기 현재 상태. 버스전용은 빼므로 버스전용만 있는 충전소는 결과에 없음"""
+    """충전소별 충전기 현재 상태. 버스전용은 빼므로 버스전용만 있는 충전소는 결과에 없음
+
+    station_ids: 그 충전소들만 읽음 (마포구 밖 추천이 가까운 곳만 읽을 때). None이면 전체
+    """
     charger, log = charger_model, log_model
+    if station_ids is not None and not station_ids:
+        return {}
     # collection_runs 도입 이전에는 FAILED 회차도 행을 남겼으므로 실행 id로 그 회차 행만 고름.
     # 시각 조건은 인덱스 범위를 좁히는 용도 - 행이 없으면 상태를 모르는 충전기
     if station_id is not None:
@@ -95,8 +101,10 @@ def load_charger_states(
             .where(log.collected_at >= run.started_at, log.collection_run_id == run.id)
             .distinct(log.station_id, log.charger_id)
             .order_by(log.station_id, log.charger_id, log.collected_at.desc())
-            .subquery()
         )
+        if station_ids is not None:
+            latest = latest.where(log.station_id.in_(station_ids))
+        latest = latest.subquery()
         on = and_(
             latest.c.station_id == charger.station_id, latest.c.charger_id == charger.charger_id
         )
@@ -117,6 +125,8 @@ def load_charger_states(
     )
     if station_id is not None:
         query = query.where(charger.station_id == station_id)
+    elif station_ids is not None:
+        query = query.where(charger.station_id.in_(station_ids))
 
     stale = is_stale(run.started_at, now)
     states: dict[str, list[ChargerState]] = {}

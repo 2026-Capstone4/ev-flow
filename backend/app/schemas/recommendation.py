@@ -18,7 +18,7 @@ class RecommendationFilters(CamelModel):
 
 
 class RecommendationRequest(CamelModel):
-    # 한국 범위 밖이면 422 VALIDATION_ERROR (길찾기와 같음). 마포구 밖은 서비스에서 422 OUT_OF_SERVICE_AREA
+    # 한국 범위 밖이면 422 VALIDATION_ERROR (길찾기와 같음). 마포구 밖은 지금 출발만 현재 상태로 추천 (임시)
     lat: float = Field(ge=33, le=39)
     lng: float = Field(ge=124, le=132)
     filters: RecommendationFilters = RecommendationFilters()
@@ -52,7 +52,8 @@ class Recommendation(CamelModel):
 
 class HorizonRecommendations(CamelModel):
     horizon_minutes: RecommendHorizon
-    recommendations: list[Recommendation]  # 최대 3개, 후보가 모자라면 짧거나 빈 배열
+    # 최대 3개, 후보가 모자라면 짧거나 빈 배열. 마포구 밖 출발이면 15 · 30은 늘 빈 배열
+    recommendations: list[Recommendation]
 
 
 class RecommendationsResponse(CamelModel):
