@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { ChevronRight, Search, X } from 'lucide-react-native'
 import { type ReactNode, useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { UNMATCHED_REGION_CODE } from '@ev-flow/core/hooks/useServiceAreaRegionData'
 import { useServiceAreaRoutesData } from '@ev-flow/core/hooks/useServiceAreaRoutesData'
@@ -33,6 +33,7 @@ export default function ServiceAreaListScreen() {
   const params = useLocalSearchParams<{ view?: string }>()
   const view: ListView = params.view === 'region' ? 'region' : 'route'
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   // 검색어는 한글 조합이 끊기지 않게 화면 안 상태로 받음. 상세에 갔다 와도 탭 화면이 살아 있어 유지됨
   const [searchText, setSearchText] = useState('')
   const {
@@ -95,7 +96,8 @@ export default function ServiceAreaListScreen() {
       {!isSearching && (
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={changeView} />
       )}
-      <View className="flex-row items-center justify-between gap-2">
+      {/* 갱신 알약 높이(28)를 미리 잡아 둬서, 목록이 들어와 알약이 생겨도 아래 패널이 밀려 내려가지 않음 */}
+      <View className="min-h-[28px] flex-row items-center justify-between gap-2">
         <UpdateStatus updatedAt={updatedAt} isError={isError} />
         <Text className="flex-shrink-0 font-medium text-xs text-text-secondary">
           {NO_FORECAST_SERVICE_AREA_LABEL}
@@ -168,7 +170,8 @@ export default function ServiceAreaListScreen() {
           )}
         </View>
       ) : loadState === 'loading' ? (
-        <View className="h-[240px] rounded-lg bg-bg-page" />
+        // 받아 올 목록(노선 30여 줄 · 지역 17줄)은 늘 화면보다 길어서, 빈 패널도 화면 높이만큼 잡아 화면 아래까지 채움
+        <View style={{ height: windowHeight }} className="rounded-lg bg-bg-page" />
       ) : (
         <Text className="py-12 text-center font-sans text-sm text-text-secondary">
           {loadState === 'error' ? '휴게소 정보를 불러오지 못했습니다' : '휴게소가 없습니다'}
