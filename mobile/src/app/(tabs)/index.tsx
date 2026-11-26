@@ -7,6 +7,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
+import { usePrefetchNationwideServiceAreas } from '@ev-flow/core/hooks/useServiceAreasQuery'
 import { isDotStation, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
@@ -133,6 +134,8 @@ export default function MapHomeScreen() {
     recommendedIds,
     recommendState,
   } = useMapHomeData(horizon, filters, isStartLocateDone)
+  // 지도 충전소를 받은 뒤 휴게소 목록도 미리 받아 둬서, 휴게소 탭을 열면 바로 목록이 보이게 함
+  usePrefetchNationwideServiceAreas(updatedAt !== null)
 
   const [camera, setCamera] = useState<CameraState>({
     webZoomLevel: INITIAL_WEB_ZOOM,
