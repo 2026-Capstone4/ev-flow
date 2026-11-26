@@ -190,7 +190,8 @@ export default function MapHomeScreen() {
   const [containerHeight, setContainerHeight] = useState(0)
 
   // 화면 범위(+ 주변 여유)에 든 충전소만 마커로 그림
-  // 웹은 웹 줌 11 이하에서 마커를 숨기지만, 앱은 최소 줌이 서울 전체라 멀리 봐도 모두 그림 (2026-11-21 실기기에서 확인)
+  // 웹은 웹 줌 11 이하에서 마커를 숨기지만, 앱은 멀리 봐도 모두 그림 (2026-11-21 실기기에서 서울 전체 넓이로 확인)
+  // 최소 줌 5.5(대한민국 전체)까지 멀어져도 충전소는 서울 안에만 있어, 그리는 개수는 서울 전체를 볼 때와 같음
   const visibleStations = useMemo(() => {
     // 처음 카메라 범위를 받기 전이면 그리지 않음
     if (!stations || !camera.region) return []
