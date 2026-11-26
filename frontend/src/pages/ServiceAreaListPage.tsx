@@ -2,6 +2,7 @@ import { ChevronRight, Search, X } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { BottomTab } from '@/components/BottomTab'
+import { CenteredPage } from '@/components/CenteredPage'
 import { RouteBadge } from '@/components/RouteBadge'
 import { ServiceAreaRow } from '@/components/ServiceAreaRow'
 import { TabSwitch } from '@/components/TabSwitch'
@@ -64,114 +65,112 @@ export function ServiceAreaListPage() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh max-w-[430px] flex-col bg-bg-subtle">
-      <main className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 pt-[56px] pb-6">
-        <header className="flex flex-col gap-0.5">
-          <h1 className="text-[22px] font-bold">고속도로 휴게소</h1>
-          <p className="text-[14px] text-text-secondary">
-            전국{totalCount !== undefined && ` ${totalCount}곳`} · 현재 충전기 현황
-          </p>
-        </header>
-        <div className="flex shrink-0 items-center gap-2 rounded-md bg-bg-page px-3.5">
-          <Search aria-hidden size={18} strokeWidth={2} className="shrink-0 text-text-secondary" />
-          <input
-            type="search"
-            value={searchText}
-            onChange={(event) => changeSearchText(event.target.value)}
-            placeholder="휴게소 · 고속도로 · 지역"
-            aria-label="휴게소 검색"
-            autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent py-3.5 text-[17px] font-medium outline-none placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
-          />
-          {/* 검색어가 있을 때만 지우기 버튼 */}
-          {searchText !== '' && (
-            <button
-              type="button"
-              aria-label="검색어 지우기"
-              onClick={() => changeSearchText('')}
-              className="shrink-0 text-text-secondary"
-            >
-              <X aria-hidden size={16} strokeWidth={2} />
-            </button>
-          )}
-        </div>
-        {/* 검색 중에는 묶음 탭이 결과와 상관없어서 숨김 */}
-        {!isSearching && (
-          <TabSwitch
-            options={VIEW_OPTIONS}
-            value={view}
-            onChange={(value) => updateParams({ view: value })}
-            label="휴게소 묶음"
-          />
-        )}
-        <div className="flex items-center justify-between gap-2">
-          <UpdateStatus updatedAt={updatedAt} isError={isError} />
-          <span className="shrink-0 text-xs font-medium text-text-secondary">
-            {NO_FORECAST_SERVICE_AREA_LABEL}
-          </span>
-        </div>
-
-        {/* 검색 중이면 검색 결과, 아니면 고른 묶음(노선별 · 지역별) */}
-        {isSearching && searchResults ? (
-          <SearchResults
-            results={searchResults}
-            onClick={(id) => navigate(toServiceAreaDetailPath(id))}
-          />
-        ) : loadState === 'ready' && view === 'region' ? (
-          <ul
-            // overflow-hidden(둥근 모서리 자르기)이 있으면 세로 flex에서 목록이 화면 높이로 줄어 잘림 → shrink-0으로 막아 바깥이 스크롤되게 함
-            className="shrink-0 overflow-hidden rounded-lg bg-bg-page"
+    <CenteredPage
+      bgClassName="bg-bg-subtle"
+      footer={<BottomTab />}
+      contentClassName="flex flex-col gap-3 px-4 pt-[56px] pb-6"
+    >
+      <header className="flex flex-col gap-0.5">
+        <h1 className="text-[22px] font-bold">고속도로 휴게소</h1>
+        <p className="text-[14px] text-text-secondary">
+          전국{totalCount !== undefined && ` ${totalCount}곳`} · 현재 충전기 현황
+        </p>
+      </header>
+      <div className="flex shrink-0 items-center gap-2 rounded-md bg-bg-page px-3.5">
+        <Search aria-hidden size={18} strokeWidth={2} className="shrink-0 text-text-secondary" />
+        <input
+          type="search"
+          value={searchText}
+          onChange={(event) => changeSearchText(event.target.value)}
+          placeholder="휴게소 · 고속도로 · 지역"
+          aria-label="휴게소 검색"
+          autoComplete="off"
+          className="min-w-0 flex-1 bg-transparent py-3.5 text-[17px] font-medium outline-none placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
+        />
+        {/* 검색어가 있을 때만 지우기 버튼 */}
+        {searchText !== '' && (
+          <button
+            type="button"
+            aria-label="검색어 지우기"
+            onClick={() => changeSearchText('')}
+            className="shrink-0 text-text-secondary"
           >
-            {regions?.map((region, index) => (
-              <GroupRow
-                key={region.code}
-                title={region.label}
-                count={region.areaCount}
-                isFirst={index === 0}
-                onClick={() => navigate(toServiceAreaRegionPath(region.code))}
-              />
-            ))}
-          </ul>
-        ) : loadState === 'ready' ? (
-          <ul className="shrink-0 overflow-hidden rounded-lg bg-bg-page">
-            {routes?.map((route, index) => (
-              <GroupRow
-                key={route.routeName}
-                // 세 자리 번호 배지만큼 자리를 잡아 두어 노선 이름이 줄마다 같은 위치에서 시작하게 함
-                badge={
-                  <span className="flex w-[36px] shrink-0 justify-center">
-                    <RouteBadge routeNo={route.routeNo} />
-                  </span>
-                }
-                title={route.label}
-                // 양 끝 도시는 방향 버튼이 있는 노선만 (순환선 등은 없음)
-                subtitle={route.ends && `${route.ends[0]}–${route.ends[1]}`}
-                count={route.areaCount}
-                isFirst={index === 0}
-                onClick={() => navigate(toServiceAreaRoutePath(route.routeName))}
-              />
-            ))}
-            {/* 노선을 못 붙인 휴게소(민자 노선 등)는 맨 아래 한 줄로 모아 시도별 화면으로 */}
-            {!!unmatchedCount && (
-              <GroupRow
-                title="노선 미확인"
-                subtitle="민자 고속도로 등"
-                count={unmatchedCount}
-                isFirst={false}
-                onClick={() => navigate(toServiceAreaRegionPath(UNMATCHED_REGION_CODE))}
-              />
-            )}
-          </ul>
-        ) : loadState === 'loading' ? (
-          <div className="h-[240px] shrink-0 animate-pulse rounded-lg bg-bg-page" />
-        ) : (
-          <p className="py-12 text-center text-sm text-text-secondary">
-            {loadState === 'error' ? '휴게소 정보를 불러오지 못했습니다' : '휴게소가 없습니다'}
-          </p>
+            <X aria-hidden size={16} strokeWidth={2} />
+          </button>
         )}
-      </main>
-      <BottomTab />
-    </div>
+      </div>
+      {/* 검색 중에는 묶음 탭이 결과와 상관없어서 숨김 */}
+      {!isSearching && (
+        <TabSwitch
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={(value) => updateParams({ view: value })}
+          label="휴게소 묶음"
+        />
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <UpdateStatus updatedAt={updatedAt} isError={isError} />
+        <span className="shrink-0 text-xs font-medium text-text-secondary">
+          {NO_FORECAST_SERVICE_AREA_LABEL}
+        </span>
+      </div>
+
+      {/* 검색 중이면 검색 결과, 아니면 고른 묶음(노선별 · 지역별) */}
+      {isSearching && searchResults ? (
+        <SearchResults
+          results={searchResults}
+          onClick={(id) => navigate(toServiceAreaDetailPath(id))}
+        />
+      ) : loadState === 'ready' && view === 'region' ? (
+        <ul className="overflow-hidden rounded-lg bg-bg-page">
+          {regions?.map((region, index) => (
+            <GroupRow
+              key={region.code}
+              title={region.label}
+              count={region.areaCount}
+              isFirst={index === 0}
+              onClick={() => navigate(toServiceAreaRegionPath(region.code))}
+            />
+          ))}
+        </ul>
+      ) : loadState === 'ready' ? (
+        <ul className="overflow-hidden rounded-lg bg-bg-page">
+          {routes?.map((route, index) => (
+            <GroupRow
+              key={route.routeName}
+              // 세 자리 번호 배지만큼 자리를 잡아 두어 노선 이름이 줄마다 같은 위치에서 시작하게 함
+              badge={
+                <span className="flex w-[36px] shrink-0 justify-center">
+                  <RouteBadge routeNo={route.routeNo} />
+                </span>
+              }
+              title={route.label}
+              // 양 끝 도시는 방향 버튼이 있는 노선만 (순환선 등은 없음)
+              subtitle={route.ends && `${route.ends[0]}–${route.ends[1]}`}
+              count={route.areaCount}
+              isFirst={index === 0}
+              onClick={() => navigate(toServiceAreaRoutePath(route.routeName))}
+            />
+          ))}
+          {/* 노선을 못 붙인 휴게소(민자 노선 등)는 맨 아래 한 줄로 모아 시도별 화면으로 */}
+          {!!unmatchedCount && (
+            <GroupRow
+              title="노선 미확인"
+              subtitle="민자 고속도로 등"
+              count={unmatchedCount}
+              isFirst={false}
+              onClick={() => navigate(toServiceAreaRegionPath(UNMATCHED_REGION_CODE))}
+            />
+          )}
+        </ul>
+      ) : loadState === 'loading' ? (
+        <div className="h-[240px] shrink-0 animate-pulse rounded-lg bg-bg-page" />
+      ) : (
+        <p className="py-12 text-center text-sm text-text-secondary">
+          {loadState === 'error' ? '휴게소 정보를 불러오지 못했습니다' : '휴게소가 없습니다'}
+        </p>
+      )}
+    </CenteredPage>
   )
 }
 
@@ -233,7 +232,7 @@ function SearchResults({ results, onClick }: SearchResultsProps) {
       <h2 className="px-1 text-[14px] font-medium text-text-secondary">
         검색 결과 {results.length}곳
       </h2>
-      <ul className="shrink-0 overflow-hidden rounded-lg bg-bg-page">
+      <ul className="overflow-hidden rounded-lg bg-bg-page">
         {results.map((area, index) => (
           <ServiceAreaRow
             key={area.id}
