@@ -1,4 +1,5 @@
 import type { NationwideServiceArea, ServiceAreaCharger } from '../types/serviceArea'
+import { compareKorean } from './compareKorean'
 
 /** 노선별 목록 한 줄 */
 export type RouteSummary = {
@@ -43,7 +44,7 @@ export function getRouteHeadings(areas: NationwideServiceArea[], routeName: stri
 function compareRoutes(a: RouteSummary, b: RouteSummary) {
   const aNo = a.routeNo ? Number(a.routeNo) : Infinity
   const bNo = b.routeNo ? Number(b.routeNo) : Infinity
-  return aNo - bNo || a.routeName.localeCompare(b.routeName, 'ko')
+  return aNo - bNo || compareKorean(a.routeName, b.routeName)
 }
 
 /**

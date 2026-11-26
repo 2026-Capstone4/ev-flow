@@ -1,4 +1,5 @@
 import type { Charger, Station } from '../types/station'
+import { compareKorean } from './compareKorean'
 
 /**
  * 원천 데이터 문제로 30분마다 사용 가능(2) ↔ 상태 미확인(9)을 반복하는 충전기 (docs/database.md 데이터 사용 시 주의)
@@ -23,12 +24,6 @@ export const UNSTABLE_CHARGER_KEYS: ReadonlySet<string> = new Set([
   'ME21B412-03',
   'ME21B412-04',
 ])
-
-/**
- * 한글 이름 비교. localeCompare(..., 'ko')와 같은 순서
- * Android Hermes에서 localeCompare(..., 'ko')는 한 번에 0.3ms쯤 걸려서(실기기에서 잼), 한 번 만든 Collator를 계속 씀
- */
-const koreanCollator = new Intl.Collator('ko')
 
 /** 구 선택 목록 맨 위 '전체'. 고르면 서울 전체 충전소를 보여 줌 (실제 구 이름과 겹치지 않음) */
 export const ALL_DISTRICTS = '전체'
@@ -89,8 +84,7 @@ export function groupChargerIssues(stations: Station[]): ChargerIssues {
     if (unknownChargers.length > 0) unknown.push({ ...base, chargers: unknownChargers })
   }
 
-  const byName = (a: StationChargerIssues, b: StationChargerIssues) =>
-    koreanCollator.compare(a.name, b.name)
+  const byName = (a: StationChargerIssues, b: StationChargerIssues) => compareKorean(a.name, b.name)
   // 미확인은 많이 끊긴 충전소부터, 대수가 같으면 이름순
   unknown.sort((a, b) => b.chargers.length - a.chargers.length || byName(a, b))
   unstable.sort(byName)
@@ -126,7 +120,7 @@ export function countIssuesByDistrict(stations: Station[]): DistrictIssueCount[]
   }
   const districts = [...counts]
     .map(([district, count]) => ({ district, count }))
-    .sort((a, b) => koreanCollator.compare(a.district, b.district))
+    .sort((a, b) => compareKorean(a.district, b.district))
   return [{ district: ALL_DISTRICTS, count: total }, ...districts]
 }
 
