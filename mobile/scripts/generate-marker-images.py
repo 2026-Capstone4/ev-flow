@@ -19,15 +19,16 @@ FONT = MOBILE / "node_modules" / "pretendard" / "dist" / "public" / "static" / "
 
 # 그림 배율. 파일 이름에 @3x를 붙여 RN이 화면 배율에 맞춰 크기를 계산하게 함
 SCALE = 3
-# 웹 StationMarker와 같은 값 (글자 13 · 좌우 여백 8 · 위아래 여백 4 · 흰 테두리 2)
+# 글자 13 · 좌우 여백 8 · 위아래 여백 4는 웹 StationMarker와 같은 값
+# 흰 테두리는 Figma 지도마커에 맞춰 1 (웹은 아직 2)
 TEXT_SIZE = 13
 PAD_X = 8
 PAD_Y = 4
-BORDER = 2
+BORDER = 1
 # 그림자를 그릴 여백 (웹 drop-shadow 0 2px 2px)
 SHADOW = 3
-# 웹 색 점과 같은 크기 (반지름 6, 안쪽 색 4)
-DOT_RADIUS = 6
+# 안쪽 색 크기(반지름 4)는 웹 색 점과 같고, 흰 테두리는 Figma에 맞춰 1 (웹은 아직 2)
+DOT_RADIUS = 5
 DOT_INNER_RADIUS = 4
 # 숫자 글자 수 ("3/5" = 3 … "120/120" = 7)
 TEXT_LENGTHS = range(3, 8)
