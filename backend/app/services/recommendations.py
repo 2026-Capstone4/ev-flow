@@ -69,7 +69,6 @@ DIRECTIONS_WAIT_SEC = 3
 # 자동차 길찾기로 이어 쓸 때 남아 있어야 하는 시간 - 이보다 적으면 결과를 못 기다려 예산만 쓰므로 바로 추정
 CAR_STAGE_MIN_SEC = 1
 CONGESTION_ORDER = {"low": 0, "medium": 1, "high": 2}
-CONGESTION_LABEL = {"low": "여유", "medium": "보통", "high": "혼잡"}
 # AI 채점 결과의 근거 단계 → 응답 basis
 FORECAST_SOURCES = ("model", "last_good_model")
 BOUNDARY_PATH = Path(__file__).resolve().parents[2] / "data" / "mapo_boundary.json"
@@ -421,19 +420,26 @@ def pick(evaluation, stations, travel, levels, filters) -> list[Picked]:
 
 
 def reason(item: Picked, nearest: Picked) -> str:
-    """가장 가까운 후보와 비교한 문구 (REC-003) - 대기를 숨기는 동안은 혼잡도로 비교"""
+    """가장 가까운 후보와 비교한 문구 (REC-003) - 대기를 숨기는 동안은 혼잡도로 비교
+    혼잡도 이름(혼잡 → 여유) 대신 '덜 붐벼요'로 비교만 말함 - 이 충전소 혼잡도는 카드 배지에 보임"""
     if item.station.station_id == nearest.station.station_id:
-        return "가장 가까운 충전소"
+        return "가장 가까운 충전소예요"
     extra = item.travel.display_minutes - nearest.travel.display_minutes
-    move = f"가장 가까운 곳보다 {extra}분 더 이동" if extra > 0 else "이동 시간은 비슷함"
-    if (
+    less_busy = (
         item.congestion in CONGESTION_ORDER
         and nearest.congestion in CONGESTION_ORDER
         and CONGESTION_ORDER[item.congestion] < CONGESTION_ORDER[nearest.congestion]
-    ):
-        before, after = CONGESTION_LABEL[nearest.congestion], CONGESTION_LABEL[item.congestion]
-        return f"{move}, {before} → {after}"
-    return move
+    )
+    # 화면 이동 분은 반올림이라 가장 가까운 곳보다 작을 수 없음 - 0이면 두 카드에 같은 분이 보여도 실제는 1분 안팎 차이
+    if extra > 0:
+        return (
+            f"{extra}분 더 걸리지만 덜 붐벼요"
+            if less_busy
+            else f"가장 가까운 곳보다 {extra}분 더 걸려요"
+        )
+    return (
+        "이동 시간은 비슷하고 덜 붐벼요" if less_busy else "가장 가까운 곳과 이동 시간이 비슷해요"
+    )
 
 
 def to_recommendations(picked: list[Picked]) -> list[Recommendation]:

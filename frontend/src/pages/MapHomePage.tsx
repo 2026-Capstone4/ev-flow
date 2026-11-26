@@ -37,9 +37,9 @@ import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 
 const RECOMMEND_MESSAGE = {
-  error: '추천 충전소를 불러오지 못했습니다',
-  empty: '추천할 충전소가 없습니다',
-  out_of_area: '현재 예측 서비스는 마포구만 지원해요',
+  error: '추천 충전소를 불러오지 못했어요',
+  empty: '추천할 충전소가 없어요',
+  out_of_area: '15분 · 30분 후 추천은 현재 마포구만 지원해요',
 }
 
 /** 추천 시트 단계. 위에서부터 펼침(Top 3) · 접힘(첫 카드) · 최소(헤더만) */

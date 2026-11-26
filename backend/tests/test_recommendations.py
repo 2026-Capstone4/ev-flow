@@ -158,7 +158,7 @@ def test_get_recommendations_outside_mapo_uses_now(monkeypatch):
     first, second = tabs[0]
     assert first.basis == "recent_observation" and first.source is None
     assert first.wait_time_p50_minutes is None and first.congestion == "low"
-    assert second.reason == "가장 가까운 곳보다 6분 더 이동"
+    assert second.reason == "가장 가까운 곳보다 6분 더 걸려요"
     # 기준 시각은 쓴 회차 중 오래된 쪽
     assert resp.updated_at == runs["city"].started_at
 
@@ -424,13 +424,15 @@ def test_reason_texts():
     near = rec.Picked(station("N"), travel(3), "forecast", "high", None, None)
     better = rec.Picked(station("B"), travel(7), "forecast", "low", None, None)
     same = rec.Picked(station("S"), travel(3.2), "forecast", "high", None, None)
+    same_better = rec.Picked(station("Q"), travel(3.4), "forecast", "medium", None, None)
     unknown = rec.Picked(station("U"), travel(9), "recent_observation", None, None, None)
-    assert rec.reason(near, near) == "가장 가까운 충전소"
-    assert rec.reason(better, near) == "가장 가까운 곳보다 4분 더 이동, 혼잡 → 여유"
-    assert rec.reason(same, near) == "이동 시간은 비슷함"
-    assert rec.reason(unknown, near) == "가장 가까운 곳보다 6분 더 이동"
+    assert rec.reason(near, near) == "가장 가까운 충전소예요"
+    assert rec.reason(better, near) == "4분 더 걸리지만 덜 붐벼요"
+    assert rec.reason(same, near) == "가장 가까운 곳과 이동 시간이 비슷해요"
+    assert rec.reason(same_better, near) == "이동 시간은 비슷하고 덜 붐벼요"
+    assert rec.reason(unknown, near) == "가장 가까운 곳보다 6분 더 걸려요"
     recs = rec.to_recommendations([better, near, same])
-    assert [r.rank for r in recs] == [1, 2, 3] and recs[0].reason.endswith("혼잡 → 여유")
+    assert [r.rank for r in recs] == [1, 2, 3] and recs[0].reason == "4분 더 걸리지만 덜 붐벼요"
 
 
 def test_missing_package_is_unavailable(tmp_path):
