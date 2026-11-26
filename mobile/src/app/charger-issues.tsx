@@ -77,7 +77,8 @@ type StationIssueCardProps = {
 
 /**
  * 충전소 한 곳의 상태 이상 충전기. 위쪽 충전소 이름을 누르면 충전소 상세로 감
- * 칩을 바꾸거나 갱신 시각이 바뀌어 화면이 다시 그려져도 같은 충전소 카드는 다시 그리지 않게 memo로 감쌈
+ * 칩을 바꿀 때처럼 데이터는 그대로인데 화면만 다시 그려지면 카드는 다시 그리지 않게 memo로 감쌈
+ * 폴링으로 새 데이터가 오면 충전소 객체가 새로 만들어져 카드도 다시 그림
  */
 const StationIssueCard = memo(function StationIssueCard({
   station,

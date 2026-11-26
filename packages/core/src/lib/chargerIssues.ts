@@ -26,7 +26,7 @@ export const UNSTABLE_CHARGER_KEYS: ReadonlySet<string> = new Set([
 
 /**
  * 한글 이름 비교. localeCompare(..., 'ko')와 같은 순서
- * Android Hermes는 localeCompare를 부를 때마다 비교기를 새로 만들어 한 번에 0.3ms쯤 걸려서, 한 번 만든 Collator를 계속 씀
+ * Android Hermes에서 localeCompare(..., 'ko')는 한 번에 0.3ms쯤 걸려서(실기기에서 잼), 한 번 만든 Collator를 계속 씀
  */
 const koreanCollator = new Intl.Collator('ko')
 
