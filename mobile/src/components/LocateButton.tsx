@@ -1,4 +1,4 @@
-import { LocateFixed } from 'lucide-react-native'
+import { Crosshair } from 'lucide-react-native'
 import { ActivityIndicator, Pressable } from 'react-native'
 import { COLORS } from '@ev-flow/core/lib/theme'
 import { createShadow } from '../lib/shadow'
@@ -32,7 +32,7 @@ export function LocateButton({ isLocating, onPress }: LocateButtonProps) {
       {isLocating ? (
         <ActivityIndicator size="small" color={COLORS['text-secondary']} />
       ) : (
-        <LocateFixed size={20} color={COLORS['text-primary']} />
+        <Crosshair size={22} color={COLORS['text-primary']} />
       )}
     </Pressable>
   )
