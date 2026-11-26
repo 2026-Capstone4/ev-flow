@@ -118,7 +118,10 @@ export function ServiceAreaListPage() {
             onClick={(id) => navigate(toServiceAreaDetailPath(id))}
           />
         ) : loadState === 'ready' && view === 'region' ? (
-          <ul className="overflow-hidden rounded-lg bg-bg-page">
+          <ul
+            // overflow-hidden(둥근 모서리 자르기)이 있으면 세로 flex에서 목록이 화면 높이로 줄어 잘림 → shrink-0으로 막아 바깥이 스크롤되게 함
+            className="shrink-0 overflow-hidden rounded-lg bg-bg-page"
+          >
             {regions?.map((region, index) => (
               <GroupRow
                 key={region.code}
@@ -130,7 +133,7 @@ export function ServiceAreaListPage() {
             ))}
           </ul>
         ) : loadState === 'ready' ? (
-          <ul className="overflow-hidden rounded-lg bg-bg-page">
+          <ul className="shrink-0 overflow-hidden rounded-lg bg-bg-page">
             {routes?.map((route, index) => (
               <GroupRow
                 key={route.routeName}
@@ -230,7 +233,7 @@ function SearchResults({ results, onClick }: SearchResultsProps) {
       <h2 className="px-1 text-[14px] font-medium text-text-secondary">
         검색 결과 {results.length}곳
       </h2>
-      <ul className="overflow-hidden rounded-lg bg-bg-page">
+      <ul className="shrink-0 overflow-hidden rounded-lg bg-bg-page">
         {results.map((area, index) => (
           <ServiceAreaRow
             key={area.id}

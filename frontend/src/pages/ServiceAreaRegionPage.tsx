@@ -52,7 +52,10 @@ export function ServiceAreaRegionPage() {
                 <h2 className="text-[16px] font-bold">{section.title}</h2>
                 <span className="text-[14px] text-text-secondary">{section.areas.length}곳</span>
               </div>
-              <ul className="overflow-hidden rounded-lg bg-bg-page">
+              <ul
+                // overflow-hidden(둥근 모서리 자르기)이 있으면 세로 flex에서 목록이 화면 높이로 줄어 잘림 → shrink-0으로 막아 바깥이 스크롤되게 함
+                className="shrink-0 overflow-hidden rounded-lg bg-bg-page"
+              >
                 {section.areas.map((area, index) => (
                   <ServiceAreaRow
                     key={area.id}

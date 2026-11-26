@@ -81,7 +81,10 @@ export function ServiceAreaRoutePage() {
 
         {/* 받은 목록 · 불러오는 중 · 실패 또는 이 노선에 휴게소 없음 */}
         {loadState === 'ready' ? (
-          <ul className="overflow-hidden rounded-lg bg-bg-page">
+          <ul
+            // overflow-hidden(둥근 모서리 자르기)이 있으면 세로 flex에서 목록이 화면 높이로 줄어 잘림 → shrink-0으로 막아 바깥이 스크롤되게 함
+            className="shrink-0 overflow-hidden rounded-lg bg-bg-page"
+          >
             {areas?.map((area, index) => (
               <ServiceAreaRow
                 key={area.id}
