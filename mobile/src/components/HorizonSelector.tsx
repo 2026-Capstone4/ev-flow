@@ -54,7 +54,9 @@ export function HorizonSelector({ value, onChange, variant = 'floating' }: Horiz
     variant === 'floating' && width < NARROW_SCREEN_WIDTH ? NARROW_FLOATING_OPTION : style.option
   // 칸마다 잰 굵은 글자 폭. 가장 넓은 값을 세 칸 모두의 글자 폭으로 써서 3등분함
   const [labelWidths, setLabelWidths] = useState<number[]>([])
-  const labelWidth = labelWidths.length > 0 ? Math.max(...labelWidths) : undefined
+  // 뒤 칸이 먼저 재지면 앞자리가 빈 칸으로 남으므로 잰 값만 골라 최댓값을 구함 (빈 칸이 섞이면 NaN)
+  const measuredWidths = labelWidths.filter((measured) => measured !== undefined)
+  const labelWidth = measuredWidths.length > 0 ? Math.max(...measuredWidths) : undefined
   // 같은 값이면 상태를 바꾸지 않아 다시 그리기를 멈춤
   const recordLabelWidth = (index: number, measured: number) => {
     setLabelWidths((previous) => {
