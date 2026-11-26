@@ -1,0 +1,92 @@
+{
+  "request": {
+    "run_id": 28873,
+    "candidates": [
+      {
+        "request_id": "3f2b9c1e8a7d4b6c9e0f1a2b3c4d5e6f",
+        "candidate_id": "3f2b9c1e8a7d4b6c9e0f1a2b3c4d5e6f:CV004090",
+        "station_id": "CV004090",
+        "request_at": "2026-11-12T09:05:01+00:00",
+        "requested_charger_ids": ["01", "02", "03", "04"],
+        "chargers": [
+          { "station_id": "CV004090", "charger_id": "01", "connectors": ["dc_combo"], "output_kw": 100.0, "accessible": true },
+          { "station_id": "CV004090", "charger_id": "02", "connectors": ["dc_combo"], "output_kw": 100.0, "accessible": true },
+          { "station_id": "CV004090", "charger_id": "03", "connectors": ["dc_combo"], "output_kw": 100.0, "accessible": true },
+          { "station_id": "CV004090", "charger_id": "04", "connectors": ["dc_combo"], "output_kw": 100.0, "accessible": true }
+        ],
+        "requirements": {
+          "connectors": ["dc_combo"],
+          "min_output_kw": null,
+          "require_accessible": true,
+          "available_now_only": false,
+          "exclude_current_congested": false
+        },
+        "station_accessible": true,
+        "distance_km": 0.343,
+        "route": {
+          "travel_minutes": 2.0,
+          "requested_at": "2026-11-12T09:05:01+00:00",
+          "source": "directions",
+          "distance_km": 0.343
+        },
+        "current_evidence": {
+          "station_id": "CV004090",
+          "charger_ids": ["01", "02", "03", "04"],
+          "member_observations": [
+            { "charger_id": "01", "observed_at": "2026-11-12T09:01:29.912489+00:00", "stat": "2", "known": true, "genuine": true, "boundary_after_observation": true },
+            { "charger_id": "02", "observed_at": "2026-11-12T09:01:29.912489+00:00", "stat": "2", "known": true, "genuine": true, "boundary_after_observation": true },
+            { "charger_id": "03", "observed_at": "2026-11-12T09:01:29.912489+00:00", "stat": "2", "known": true, "genuine": true, "boundary_after_observation": true },
+            { "charger_id": "04", "observed_at": "2026-11-12T09:01:29.912489+00:00", "stat": "2", "known": true, "genuine": true, "boundary_after_observation": true }
+          ]
+        }
+      }
+    ]
+  },
+  "result": {
+    "run_id": 28873,
+    "tabs": {
+      "leave_now": {
+        "candidate_evaluations": [
+          {
+            "station_id": "CV004090",
+            "eligible": true,
+            "sort_key": [0, 0.1347, 2.0, "CV004090"],
+            "recommendation_source": "model",
+            "selected_horizon_minutes": 15,
+            "p50_minutes": null,
+            "p90_minutes": null
+          }
+        ],
+        "exclusion_reasons": {}
+      },
+      "arrive_15": {
+        "candidate_evaluations": [
+          {
+            "station_id": "CV004090",
+            "eligible": true,
+            "sort_key": [0, 0.1347, 2.0, "CV004090"],
+            "recommendation_source": "model",
+            "selected_horizon_minutes": 15,
+            "p50_minutes": null,
+            "p90_minutes": null
+          }
+        ],
+        "exclusion_reasons": {}
+      },
+      "arrive_30": {
+        "candidate_evaluations": [
+          {
+            "station_id": "CV004090",
+            "eligible": true,
+            "sort_key": [0, 0.1889, 2.0, "CV004090"],
+            "recommendation_source": "model",
+            "selected_horizon_minutes": 30,
+            "p50_minutes": null,
+            "p90_minutes": null
+          }
+        ],
+        "exclusion_reasons": {}
+      }
+    }
+  }
+}

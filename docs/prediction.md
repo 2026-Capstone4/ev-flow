@@ -13,7 +13,7 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 
 ## ml (AI 패키지 그대로 실행)
 
-모델과 추론 코드는 AI 패키지(현재 v3.4 이력 검사 수정본 — `evflow_backend_runtime_v3_4_history_fix_20261122.zip`, 2026-11-22 교체 · 2026-11-21 원본은 서버 `ml/package_v34_20261121`에 보관)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)만 있다.
+모델과 추론 코드는 AI 패키지(현재 v3.4 이력 검사 수정본 — `evflow_backend_runtime_v3_4_history_fix_20261122.zip`, 2026-11-22 교체 · 2026-11-21 원본은 서버 `ml/package_v34_20261121`에 보관)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)과 패키지 검사 명령(`check_package.sh`)만 있다. 백엔드와 주고받는 값의 기준 · 검사 방법은 [contracts/](contracts/README.md).
 
 - 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
 - **api도 같은 폴더를 `/package`로 마운트**해 추천 순위를 패키지의 채점 함수(`run_recommendation.score_snapshot`)로 계산한다 (2026-11-22, `app/services/ai_ranking.py`). 채점 모듈은 표준 라이브러리만 써서 모델 · pandas를 올리지 않음. 규칙은 [api/user.md 3번 계산 규칙](api/user.md#계산-규칙)
