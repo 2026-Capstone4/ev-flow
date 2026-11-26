@@ -13,12 +13,15 @@ const MAPO_STROKE_COLOR = `${COLORS['brand-primary']}cc`
 
 type Coord = { latitude: number; longitude: number }
 
-/** 줌을 많이 줄여도 바깥 채움이 끊기지 않게 서울 주변을 덮는 사각형. SDK 규칙대로 시계 방향, 처음 = 끝 */
+/**
+ * 지도를 대한민국 끝(제주도 남쪽 · 독도)까지 끌어도 바깥 채움이 끊기지 않게 넉넉히 덮는 사각형
+ * SDK 규칙대로 시계 방향, 처음 = 끝
+ */
 const OUTER_BOUNDS: Coord[] = [
   { latitude: 42, longitude: 120 },
-  { latitude: 42, longitude: 134 },
-  { latitude: 33, longitude: 134 },
-  { latitude: 33, longitude: 120 },
+  { latitude: 42, longitude: 136 },
+  { latitude: 30, longitude: 136 },
+  { latitude: 30, longitude: 120 },
   { latitude: 42, longitude: 120 },
 ]
 

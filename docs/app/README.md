@@ -63,7 +63,7 @@ mobile/
     ├── components/      # 웹 컴포넌트와 같은 이름으로 새로 씀
     ├── hooks/           # useCurrentLocation · useLocationTracking
     ├── lib/             # config(환경 변수) · openMapApp · links · storage
-    └── map/             # 마커 · 서비스 범위 칠하기 · 경로 선 · 줌 · 서울 extent
+    └── map/             # 마커 · 서비스 범위 칠하기 · 경로 선 · 줌 · 대한민국 extent
 ```
 
 core를 같이 쓰려고 넣은 설정 세 가지 (빠지면 깨짐, 자세한 이유는 [migration-log 1 · 2단계](migration-log.md#1단계-공용-코드-분리---완료-2026-11-19))
