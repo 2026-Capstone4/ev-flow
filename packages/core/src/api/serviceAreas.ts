@@ -1,24 +1,8 @@
 import { api } from './client'
 import type {
-  Direction,
   NationwideServiceAreaChargersResponse,
   NationwideServiceAreasResponse,
-  ServiceAreaChargersResponse,
-  ServiceAreasResponse,
 } from '../types/serviceArea'
-
-export async function fetchServiceAreas() {
-  const { data } = await api.get<ServiceAreasResponse>('/service-areas')
-  return data
-}
-
-// 휴게소명이 한글이라 Axios params로 넘겨 URL 인코딩을 맡김
-export async function fetchServiceAreaChargers(name: string, direction: Direction) {
-  const { data } = await api.get<ServiceAreaChargersResponse>('/service-areas/chargers', {
-    params: { name, direction },
-  })
-  return data
-}
 
 /** 전국 고속도로 휴게소 목록 (15번). 노선별 · 지역별 화면이 모두 이 응답 하나로 만듦 */
 export async function fetchNationwideServiceAreas() {
