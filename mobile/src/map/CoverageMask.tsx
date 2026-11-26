@@ -6,7 +6,7 @@ import { COLORS } from '@ev-flow/core/lib/theme'
 
 /** 서울 밖 — 서비스 안 함 (웹 #374151, 50%) */
 const OUTSIDE_COLOR = 'rgba(55, 65, 81, 0.5)'
-/** 서울 안 마포구 밖 — 실시간만, 예측 · 추천 없음 (웹 #6b7280, 15%) */
+/** 서울 안 마포구 밖 — 실시간 · 지금 출발 추천만, 예측 없음 (웹 #6b7280, 15%) */
 const SEOUL_COLOR = 'rgba(107, 114, 128, 0.15)'
 /** 마포구 테두리. 브랜드 색 80% */
 const MAPO_STROKE_COLOR = `${COLORS['brand-primary']}cc`

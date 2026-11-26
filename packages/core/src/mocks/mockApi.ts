@@ -74,22 +74,10 @@ export async function respondRecommendations(
   const limited = checkRateLimit()
   // 호출 제한을 넘었으면 추천을 만들지 않고 429 그대로
   if (limited) return limited
-  // 출발 위치가 마포구 밖이면 실제 서버처럼 422 - 추천 시트에 마포구만 지원한다는 안내가 뜸
-  if (!isInMapo({ lat, lng })) {
-    await wait(300)
-    return {
-      status: 422,
-      body: {
-        error: {
-          code: 'OUT_OF_SERVICE_AREA',
-          message: '현재 충전소 추천 기능은 마포구만 지원해요',
-        },
-      },
-    }
-  }
   const stations = await getStations()
   // 충전소 목록을 못 받았으면 추천을 만들 수 없으니 503 - 추천 시트의 오류 상태로 이어짐
   if (!stations) return { status: 503, body: DATA_UNAVAILABLE }
+  const isMapo = isInMapo({ lat, lng })
   await wait(300)
   return {
     status: 200,
@@ -97,7 +85,10 @@ export async function respondRecommendations(
       updatedAt: toKstIso(new Date()),
       dataQuality: 'normal',
       results: HORIZONS.map((horizon) =>
-        buildRecommendations(stations, { lat, lng }, horizon, filters),
+        // 마포구 밖 출발이면 실제 서버처럼 지금(0분)만 추천하고 15 · 30분은 빈 배열 (백엔드 #249)
+        horizon !== 0 && !isMapo
+          ? { horizonMinutes: horizon, recommendations: [] }
+          : buildRecommendations(stations, { lat, lng }, horizon, filters),
       ),
     },
   }
