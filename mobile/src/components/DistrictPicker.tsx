@@ -1,6 +1,7 @@
 import { Check, ChevronDown } from 'lucide-react-native'
 import { useState } from 'react'
-import { FlatList, Modal, Pressable, Text, View } from 'react-native'
+import { FlatList, Modal, Pressable, View } from 'react-native'
+import { Text } from './Text'
 import Animated, { SlideInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { DistrictIssueCount } from '@ev-flow/core/lib/chargerIssues'

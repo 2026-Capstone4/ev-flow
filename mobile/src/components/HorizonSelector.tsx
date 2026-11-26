@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Pressable, Text, useWindowDimensions, View } from 'react-native'
+import { Pressable, useWindowDimensions, View } from 'react-native'
+import { Text } from './Text'
 import { getHorizonLabel, HORIZONS } from '@ev-flow/core/lib/horizon'
 import type { HorizonMinutes } from '@ev-flow/core/types/station'
 import { createShadow } from '../lib/shadow'

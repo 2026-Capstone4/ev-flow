@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router'
-import { ScrollView, Text, View } from 'react-native'
+import { ScrollView, View } from 'react-native'
+import { Text } from '../../components/Text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useServiceAreaRegionData } from '@ev-flow/core/hooks/useServiceAreaRegionData'
 import { NO_FORECAST_SERVICE_AREA_LABEL } from '@ev-flow/core/lib/serviceArea'

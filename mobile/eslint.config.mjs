@@ -10,6 +10,26 @@ export default tseslint.config(
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: { ecmaVersion: 2022 },
     plugins: { 'react-hooks': reactHooks },
-    rules: reactHooks.configs.recommended.rules,
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      // 글꼴 배율 상한이 들어간 components/Text를 쓰게 함. react-native에서 바로 가져오면 글꼴을 키운 폰에서 화면이 깨짐
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['Text', 'TextInput'],
+              message: '글꼴 배율 상한이 들어간 src/components/Text의 Text · TextInput을 쓰세요',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // 공통 Text 파일만 react-native Text를 직접 감쌈
+  {
+    files: ['src/components/Text.tsx'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 )

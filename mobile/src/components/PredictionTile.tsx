@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
+import { Text } from './Text'
 import { formatWaitTime } from '@ev-flow/core/lib/congestion'
 import { getHorizonLabel } from '@ev-flow/core/lib/horizon'
 import type { Prediction } from '@ev-flow/core/types/station'
