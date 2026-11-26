@@ -5,12 +5,25 @@ import {
   type Region,
 } from '@mj-studio/react-native-naver-map'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import {
+  Car,
+  Clock,
+  Map as MapIcon,
+  MapPin,
+  Navigation,
+  Route,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Timer,
+} from 'lucide-react-native'
 import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { usePrefetchNationwideServiceAreas } from '@ev-flow/core/hooks/useServiceAreasQuery'
 import { isDotStation, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
 import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
+import { RADIUS } from '@ev-flow/core/lib/theme'
 import type { LatLng } from '@ev-flow/core/types/geo'
 import type { Station } from '@ev-flow/core/types/station'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -36,7 +49,12 @@ import { CompassButton } from '../../components/CompassButton'
 import { FilterPanel } from '../../components/FilterPanel'
 import { LOCATE_BUTTON_SIZE, LocateButton } from '../../components/LocateButton'
 import { MapNotice } from '../../components/MapNotice'
-import { OnboardingDialog } from '../../components/OnboardingDialog'
+import { AppLogoMark } from '../../components/AppLogoMark'
+import {
+  ONBOARDING_SAMPLE_RECOMMENDATION,
+  OnboardingTour,
+  type TourStep,
+} from '../../components/OnboardingTour'
 import { RecommendSheet, type RecommendSheetHandle } from '../../components/RecommendSheet'
 import { SearchBar } from '../../components/SearchBar'
 import { UpdateStatus } from '../../components/UpdateStatus'
@@ -44,9 +62,15 @@ import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useC
 import { useLocationTracking } from '../../hooks/useLocationTracking'
 import { INITIAL_MAP_CENTER, IS_GEOLOCATION_ENABLED } from '../../lib/config'
 import { appStorage } from '../../lib/storage'
+import {
+  measureTourTarget,
+  tourTargetRef,
+  type TourRect,
+  type ViewInstance,
+} from '../../lib/tourTargets'
 import { CoverageMask } from '../../map/CoverageMask'
 import { SEOUL_EXTENT } from '../../map/seoulExtent'
-import { StationMarker } from '../../map/StationMarker'
+import { getPillSize, StationMarker } from '../../map/StationMarker'
 import { toAppZoom, toWebZoomLevel } from '../../map/zoom'
 
 /** 첫 화면 줌 (웹 기준). 웹 지도 홈과 같은 넓이가 보이게 앱 줌으로 바꿔 씀 */
@@ -112,6 +136,24 @@ const isMapRotated = ({ bearing = 0, tilt = 0 }: Pick<Camera, 'bearing' | 'tilt'
   const turned = Math.min(Math.abs(bearing), Math.abs(360 - bearing))
   return turned > COMPASS_HIDE_DEGREES || tilt > COMPASS_HIDE_DEGREES
 }
+
+/**
+ * 첫 방문 안내가 마커를 짚을 때 칸을 오른쪽으로 옮기는 만큼. 실제 마커 그림 위치에 맞춤
+ * Android는 지도 SDK가 마커를 화면 좌표보다 1dp 오른쪽에 그려서 그만큼 옮기고, iOS는 좌표 그대로 맞음 (11/26 화면 픽셀로 확인)
+ */
+const TOUR_MARKER_OFFSET_X = Platform.OS === 'android' ? 1 : 0
+
+/** 짚을 마커를 고를 때 화면 가장자리에서 이만큼 안쪽만 봄. 카드 · 버튼에 가리지 않게 함 */
+const TOUR_MARKER_EDGE = 48
+
+/** 짚을 마커 후보로 화면에 찍어 볼 충전소 수. 가운데에서 가까운 순 */
+const TOUR_MARKER_TRIES = 8
+
+/** View의 창 기준 위치 · 크기를 잼 */
+const measureView = (view: ViewInstance) =>
+  new Promise<TourRect>((resolve) => {
+    view.measureInWindow((x, y, width, height) => resolve({ x, y, width, height }))
+  })
 
 /** 카메라 상태. webZoomLevel은 core 줌 기준(점 · 숨김)에 넘기는 정수 단계 */
 type CameraState = { webZoomLevel: number; region: Region | null }
@@ -340,6 +382,13 @@ export default function MapHomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnboardingVisible])
 
+  // 안내를 열면 추천 시트를 접힘(첫 카드)으로 맞춤. 지도를 탭해 내려 둔 채 다시 보기로 열어도 예시 카드가 보이게 함
+  useEffect(() => {
+    // 안내가 닫혀 있으면 시트는 사용자가 둔 그대로
+    if (!isOnboardingVisible) return
+    sheetRef.current?.collapse()
+  }, [isOnboardingVisible])
+
   useEffect(() => {
     // 펼쳐 달라는 값이 없으면 그대로 둠
     if (expandSheet !== '1') return
@@ -375,8 +424,155 @@ export default function MapHomeScreen() {
     [openStation],
   )
 
+  // 첫 방문 안내가 짚을 칸을 잴 때 쓰는 최신 값. 안내 단계 목록을 한 번만 만들려고 ref로 읽음
+  const containerRef = useRef<ViewInstance>(null)
+  const tourStateRef = useRef({ visibleStations, recommendedIds, camera })
+  useEffect(() => {
+    tourStateRef.current = { visibleStations, recommendedIds, camera }
+  }, [visibleStations, recommendedIds, camera])
+
+  /**
+   * 화면에 보이는 숫자 마커 중 가운데에서 가까운 하나의 칸을 잼
+   * 검색창 아래 · 추천 시트 위에 온전히 보이는 마커만 고르고, 없으면 null (가운데 카드로 대신 보여 줌)
+   */
+  const measureNearMarker = useCallback(async (): Promise<TourRect | null> => {
+    const map = mapRef.current
+    const container = containerRef.current
+    const { visibleStations: shown, recommendedIds: picked, camera: current } = tourStateRef.current
+    // 지도 · 카메라 범위를 아직 못 받았으면 고를 마커가 없음
+    if (!map || !container || !current.region) return null
+    const { latitude, longitude, latitudeDelta, longitudeDelta } = current.region
+    const center = { lat: latitude + latitudeDelta / 2, lng: longitude + longitudeDelta / 2 }
+    const candidates = shown
+      .filter(
+        (station) => !isDotMarker(current.webZoomLevel, station, picked.has(station.stationId)),
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.lat - center.lat, a.lng - center.lng) -
+          Math.hypot(b.lat - center.lat, b.lng - center.lng),
+      )
+      .slice(0, TOUR_MARKER_TRIES)
+    const origin = await measureView(container)
+    const searchBar = await measureTourTarget('search-bar')
+    // 검색창 · 갱신 상태 줄 아래부터, 추천 시트 위쪽 끝 바로 위까지만 봄
+    const minY = (searchBar ? searchBar.y + searchBar.height : origin.y) + TOUR_MARKER_EDGE
+    const maxY = origin.y + sheetPosition.get() - TOUR_MARKER_EDGE
+    for (const station of candidates) {
+      const point = await map.coordinateToScreen({ latitude: station.lat, longitude: station.lng })
+      // 화면 밖이라 위치를 못 받으면 다음 후보로
+      if (!point.isValid) continue
+      const x = origin.x + point.screenX
+      const y = origin.y + point.screenY
+      const isInside =
+        x >= origin.x + TOUR_MARKER_EDGE &&
+        x <= origin.x + origin.width - TOUR_MARKER_EDGE &&
+        y >= minY &&
+        y <= maxY
+      // 가려지는 자리에 있으면 다음 후보로
+      if (!isInside) continue
+      // 마커 알약은 가운데가 충전소 위치라, 그 둘레로 알약 크기만큼 잡음
+      const pill = getPillSize(station)
+      // Android 지도 SDK는 마커 그림을 오른쪽으로 조금 치우쳐 그려서 칸도 그만큼 옮김
+      return { x: x - pill.width / 2 + TOUR_MARKER_OFFSET_X, y: y - pill.height / 2, ...pill }
+    }
+    return null
+    // sheetPosition은 같은 공유 값이 계속 이어져서 한 번만 만들면 됨
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /** 추천 시트가 지금 보이는 칸(시트 위쪽 끝 ~ 지도 영역 아래 끝)을 잼 */
+  const measureSheet = useCallback(async (): Promise<TourRect | null> => {
+    const container = containerRef.current
+    // 지도 영역이 아직 없으면 잴 수 없음
+    if (!container) return null
+    const origin = await measureView(container)
+    const top = sheetPosition.get()
+    return { x: origin.x, y: origin.y + top, width: origin.width, height: origin.height - top }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 첫 방문 안내 5장. 첫 장은 서비스 소개, 나머지는 실제 화면을 한 곳씩 짚음
+  // 장 목록이 바뀌면 안내가 칸을 다시 재서 한 번만 만듦 (짚을 칸은 잴 때 ref로 최신 값을 읽음)
+  const tourSteps = useMemo<TourStep[]>(
+    () => [
+      {
+        // 앱 아이콘의 E + 번개를 브랜드 색 한 가지로 그림
+        icon: AppLogoMark,
+        title: 'EV Flow',
+        body: 'AI 전기차 충전소 추천',
+        points: [
+          { icon: Clock, text: '출발 전에 혼잡도를 미리 확인해요' },
+          { icon: Sparkles, text: '도착할 때 덜 붐빌 곳을 골라 드려요' },
+        ],
+        isIntro: true,
+      },
+      {
+        icon: MapPin,
+        title: '충전소 혼잡도를 한눈에',
+        body: '지도 위 숫자와 색으로\n지금 얼마나 붐비는지 보여 줘요.',
+        markerExample: {
+          text: '3/4',
+          className: 'bg-congestion-free',
+          caption: '빈 충전기 3대 / 전체 4대',
+        },
+        legend: [
+          { label: '여유', className: 'bg-congestion-free' },
+          { label: '보통', className: 'bg-congestion-normal' },
+          { label: '혼잡', className: 'bg-congestion-busy' },
+        ],
+        measure: measureNearMarker,
+        // 알약 모양이라 높이의 절반만큼 둥글게. 알약 높이는 글자 수와 상관없이 같음
+        holeRadius: getPillSize({ availableChargers: 0, totalChargers: 0 }).height / 2,
+      },
+      {
+        icon: Sparkles,
+        title: '덜 붐빌 곳을 추천해요',
+        body: '도착 시점에 맞춰 고른\n추천 충전소 3곳이 이렇게 떠요.',
+        markerExample: {
+          text: '2/2',
+          className: 'bg-marker-recommended',
+          caption: '지도에서는 이 색으로 표시해요',
+        },
+        points: [
+          // 15 · 30분 후 추천은 서버가 마포구만 지원함 (추천 시트 out_of_area 문구와 같은 범위)
+          { icon: Timer, text: '15분 · 30분 후 출발도 비교해요', note: '지금은 마포구만 지원해요' },
+          { icon: Navigation, text: '길찾기로 바로 출발해요' },
+        ],
+        measure: measureSheet,
+        // 시트는 위쪽 모서리만 둥글고 아래는 하단 탭에 붙어 있음
+        holeRadius: RADIUS.lg,
+        holeBottomRadius: 0,
+      },
+      {
+        icon: Search,
+        title: '원하는 충전소만 골라 보기',
+        body: '검색창과 필터로\n필요한 충전소만 남겨요.',
+        points: [
+          { icon: Search, text: '충전소 이름 · 주소로 찾기' },
+          { icon: SlidersHorizontal, text: '급속 · 커넥터 · 사용 가능만 보기' },
+        ],
+        measure: () => measureTourTarget('search-bar'),
+        holeRadius: RADIUS.md,
+      },
+      {
+        icon: Car,
+        title: '고속도로 휴게소도 한눈에',
+        body: '이 탭에서 전국 고속도로 휴게소\n충전소의 혼잡도를 볼 수 있어요.',
+        points: [
+          { icon: Route, text: '고속도로 노선별로 보기' },
+          { icon: MapIcon, text: '시 · 도 지역별로 모아 보기' },
+        ],
+        measure: () => measureTourTarget('service-areas-tab'),
+        holeRadius: RADIUS.md,
+      },
+    ],
+    [measureNearMarker, measureSheet],
+  )
+
   return (
     <View
+      ref={containerRef}
       className="flex-1 bg-bg-map"
       onLayout={(event) => setContainerHeight(event.nativeEvent.layout.height)}
     >
@@ -431,8 +627,11 @@ export default function MapHomeScreen() {
       {containerHeight > 0 && (
         <RecommendSheet
           ref={sheetRef}
-          recommendations={recommendations}
-          recommendState={recommendState}
+          // 안내를 보는 동안은 예시 추천 1곳을 보여 줌. 안내를 닫으면 실제 추천으로 돌아감
+          recommendations={
+            isOnboardingVisible ? [ONBOARDING_SAMPLE_RECOMMENDATION] : recommendations
+          }
+          recommendState={isOnboardingVisible ? 'ready' : recommendState}
           horizon={horizon}
           onHorizonChange={setHorizon}
           onSelect={openStation}
@@ -485,7 +684,8 @@ export default function MapHomeScreen() {
         className="absolute inset-x-0 top-0 items-start gap-2 px-4"
       >
         {/* 패널은 검색창 기준으로 띄워서 아래 갱신 상태 · 안내를 밀어내지 않고 덮음 */}
-        <View className="z-10 w-full">
+        {/* 첫 방문 안내가 검색창 칸을 짚을 수 있게 이름을 붙여 둠 */}
+        <View ref={tourTargetRef('search-bar')} className="z-10 w-full">
           <SearchBar
             activeFilterCount={countActiveFilters(filters)}
             isFilterOpen={isFilterOpen}
@@ -515,8 +715,8 @@ export default function MapHomeScreen() {
         </View>
         {notice && <MapNotice key={notice.id} message={notice.message} />}
       </View>
-      {/* 처음 들어왔거나, 더보기의 "첫 방문 안내 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
-      {isOnboardingVisible && <OnboardingDialog onClose={closeOnboarding} />}
+      {/* 처음 들어왔거나, 더보기의 "사용법 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
+      {isOnboardingVisible && <OnboardingTour steps={tourSteps} onClose={closeOnboarding} />}
     </View>
   )
 }

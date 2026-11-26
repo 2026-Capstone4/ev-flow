@@ -3,6 +3,7 @@ import { Menu, type LucideIcon } from 'lucide-react-native'
 import { Platform, Pressable, View } from 'react-native'
 import { Text } from './Text'
 import { COLORS } from '@ev-flow/core/lib/theme'
+import { tourTargetRef } from '../lib/tourTargets'
 
 /** 탭 화면 파일 이름별 글자. 순서는 (tabs)/_layout.tsx의 Tabs.Screen 순서를 따름 */
 const TAB_LABEL: Record<string, string> = {
@@ -59,6 +60,8 @@ export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
         return (
           <Pressable
             key={route.key}
+            // 첫 방문 안내가 휴게소 탭 칸을 짚을 수 있게 이름을 붙여 둠
+            ref={route.name === 'service-areas' ? tourTargetRef('service-areas-tab') : undefined}
             accessibilityRole="tab"
             accessibilityLabel={label}
             accessibilityState={{ selected: isActive }}
