@@ -21,6 +21,7 @@ from app.schemas.service_area import (
     StatusCounts,
 )
 from app.services.snapshot import ChargerState, latest_success_run, load_charger_states
+from app.services.stations import clean_station_name
 from app.services.status import elapsed_quality, station_quality
 
 # DB 방향(service_area_stations.direction)은 한글 - 응답 · 요청은 up · down
@@ -208,11 +209,11 @@ NAME_SUFFIX = re.compile(r"\s*(?:E-pit|\(급\)|전기차충전소)\s*$")
 
 def display_name(s: ServiceAreaStation) -> str:
     """화면 이름 - 노선이 붙은 곳은 표준데이터 휴게소명 '음성(남이)' → '음성휴게소 (남이 방향)', 양방향 '덕평' → '덕평휴게소'.
-    못 붙인 곳은 충전소 이름에서 앞뒤 사업자 표기만 지움 '워터 평택호휴게소 평택방향' → '평택호휴게소 평택방향'"""
+    못 붙인 곳은 충전소 이름에서 밑줄을 정리하고 앞뒤 사업자 표기만 지움 '워터 평택호휴게소 평택방향' → '평택호휴게소 평택방향'"""
     if s.rest_area:
         m = re.fullmatch(r"(.+?)\((.+)\)", s.rest_area)
         return f"{m.group(1)}휴게소 ({m.group(2)} 방향)" if m else f"{s.rest_area}휴게소"
-    name = s.name or ""
+    name = clean_station_name(s.name) or ""
     while True:
         trimmed = NAME_SUFFIX.sub("", NAME_PREFIX.sub("", name))
         if trimmed == name:

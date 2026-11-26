@@ -8,6 +8,7 @@ from types import SimpleNamespace
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test")
 os.environ.setdefault("EV_SERVICE_KEY", "test")
 
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.db.session import get_db  # noqa: E402
@@ -47,6 +48,30 @@ class FakeDb:
 
     def scalars(self, _query):
         return self.places
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("_루프스테이션 홍대", "루프스테이션 홍대"),  # 앞 밑줄은 지움 (HM100003)
+        ("평택휴게소(상행_서울인천 방향)", "평택휴게소(상행 서울인천 방향)"),  # 중간은 띄어쓰기
+        ("망원_ _공영주차장", "망원 공영주차장"),  # 밑줄 · 공백이 붙어 있으면 한 칸
+        ("홍대입구__", "홍대입구"),  # 끝 밑줄도 지움
+        ("망원동 공영주차장1", "망원동 공영주차장1"),  # 밑줄 없으면 그대로
+        (None, None),
+    ],
+)
+def test_clean_station_name(name, expected):
+    assert stations.clean_station_name(name) == expected
+
+
+def test_station_name_is_cleaned_in_response():
+    raw = SimpleNamespace(**{**vars(place("HM100003")), "name": "_루프스테이션 홍대"})
+    built = stations.build_station(
+        stations.Station, stations.Charger, raw, [state("HM100003")], NOW, NOW, None, None, True
+    )
+    assert built.name == "루프스테이션 홍대"
+    assert raw.name == "_루프스테이션 홍대"  # 원본(DB 값)은 그대로
 
 
 def test_seoul_stations_ignore_model_and_baseline(monkeypatch):

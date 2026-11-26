@@ -1,4 +1,5 @@
 import gzip
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -50,6 +51,18 @@ GZIP_LEVEL = 6  # 목록 압축본 - nginx 기본(1)보다 높게. 캐시를 만
 _stations_cache: tuple[tuple, float, "StationsPayload"] | None = None
 _stations_lock = threading.Lock()
 
+# 밑줄 · 공백 덩어리 - 앞뒤는 지우고 중간은 띄어쓰기 하나로 (clean_station_name)
+NAME_GAPS = re.compile(r"[\s_]+")
+
+
+def clean_station_name(name: str | None) -> str | None:
+    """화면에 내보낼 충전소 이름 - 원천 statNm에 섞인 밑줄을 정리함. DB에는 원본을 그대로 둠
+    (import를 다시 돌려도 덮어써지지 않고, 원본 API와 대조할 수 있게).
+    '_루프스테이션 홍대' → '루프스테이션 홍대', '평택휴게소(하행_음성제천방향)' → '평택휴게소(하행 음성제천방향)'"""
+    if name is None:
+        return None
+    return NAME_GAPS.sub(" ", name).strip()
+
 
 def build_station(
     schema,
@@ -67,7 +80,7 @@ def build_station(
     quality = station_quality(statuses, updated_at, now)
     return schema(
         station_id=station.station_id,
-        name=station.name,
+        name=clean_station_name(station.name),
         address=station.addr,
         lat=station.lat,
         lng=station.lng,
