@@ -147,8 +147,8 @@ type ListRow =
 /** 줄마다 FlatList가 쓰는 키 */
 const keyOfRow = (row: ListRow) => row.key
 
-/** 이만큼(dp) 넘게 내리면 맨 위로 버튼을 띄움. 칸 머리 · 첫 카드가 거의 다 가려지는 정도 */
-const SCROLL_TOP_THRESHOLD = 600
+/** 이만큼(dp) 넘게 내리면 맨 위로 버튼을 띄움 */
+const SCROLL_TOP_THRESHOLD = 500
 
 // 상태 이상 충전기 목록. 지도 홈 검색창 아래 '상태 이상' 버튼으로 들어옴
 // 미확인 = 지금 상태를 알 수 없는 충전기, 불안정 = 원천 데이터 문제로 상태가 계속 바뀌는 정해진 충전기 중 지금 확인 불가인 것
