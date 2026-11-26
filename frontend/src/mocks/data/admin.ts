@@ -1,4 +1,7 @@
-import { findServiceAreaChargers, SERVICE_AREAS } from '@ev-flow/core/mocks/serviceAreas'
+import {
+  findNationwideServiceAreaChargers,
+  NATIONWIDE_SERVICE_AREAS,
+} from '@ev-flow/core/mocks/serviceAreas'
 import { STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
 import type {
   AdminCharger,
@@ -52,8 +55,8 @@ export function buildAdminChargers(region: AdminRegion, now: Date): AdminCharger
         status: c.status,
       })),
     )
-  const serviceArea = SERVICE_AREAS.flatMap((area) =>
-    (findServiceAreaChargers(area.name, area.direction, now)?.chargers ?? []).map((c) => ({
+  const serviceArea = NATIONWIDE_SERVICE_AREAS.flatMap((area) =>
+    (findNationwideServiceAreaChargers(area.id, now)?.chargers ?? []).map((c) => ({
       region: 'service_area' as const,
       stationId: c.stationId,
       stationName: area.name,

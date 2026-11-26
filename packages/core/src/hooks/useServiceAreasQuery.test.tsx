@@ -1,14 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchServiceAreas } from '../api/serviceAreas'
+import { fetchNationwideServiceAreas } from '../api/serviceAreas'
 import { ScreenActiveContext } from '../app/screenActive'
-import { useServiceAreasQuery } from './useServiceAreasQuery'
+import { useNationwideServiceAreasQuery } from './useServiceAreasQuery'
 
 // 서버 대신 부른 횟수만 세는 가짜 호출 함수
 vi.mock('../api/serviceAreas', () => ({
-  fetchServiceAreas: vi.fn(async () => ({ serviceAreas: [] })),
-  fetchServiceAreaChargers: vi.fn(),
+  fetchNationwideServiceAreas: vi.fn(async () => ({ serviceAreas: [] })),
+  fetchNationwideServiceAreaChargers: vi.fn(),
 }))
 
 /** 테스트에서 기다릴 짧은 폴링 주기 */
@@ -17,12 +17,12 @@ const TEST_POLLING_MS = 30
 // vitest globals를 안 켜서 testing-library가 자동으로 안 치움 → 이전 테스트 화면이 계속 폴링하지 않게 직접 내림
 afterEach(() => {
   cleanup()
-  vi.mocked(fetchServiceAreas).mockClear()
+  vi.mocked(fetchNationwideServiceAreas).mockClear()
 })
 
 // 쿼리 훅을 쓰는 가짜 화면. 받은 값을 글자로 그려서 화면이 가려져도 값이 남는지 봄
 function Probe() {
-  const { data } = useServiceAreasQuery()
+  const { data } = useNationwideServiceAreasQuery()
   return <span>{data ? '받음' : '없음'}</span>
 }
 
@@ -56,7 +56,7 @@ describe('화면 활성(ScreenActiveContext)에 따른 폴링', () => {
   it('Provider가 없으면(웹) 기본값 true로 폴링함', async () => {
     render(<Screen client={createClient()} />)
     await waitFor(() =>
-      expect(vi.mocked(fetchServiceAreas).mock.calls.length).toBeGreaterThanOrEqual(3),
+      expect(vi.mocked(fetchNationwideServiceAreas).mock.calls.length).toBeGreaterThanOrEqual(3),
     )
   })
 
@@ -66,10 +66,10 @@ describe('화면 활성(ScreenActiveContext)에 따른 폴링', () => {
     await waitFor(() => expect(container.textContent).toBe('받음'))
 
     rerender(<Screen client={client} active={false} />)
-    const callsWhenHidden = vi.mocked(fetchServiceAreas).mock.calls.length
+    const callsWhenHidden = vi.mocked(fetchNationwideServiceAreas).mock.calls.length
     await wait(TEST_POLLING_MS * 4)
 
-    expect(fetchServiceAreas).toHaveBeenCalledTimes(callsWhenHidden)
+    expect(fetchNationwideServiceAreas).toHaveBeenCalledTimes(callsWhenHidden)
     expect(container.textContent).toBe('받음')
   })
 
@@ -78,11 +78,11 @@ describe('화면 활성(ScreenActiveContext)에 따른 폴링', () => {
     const { rerender } = render(<Screen client={client} active={false} />)
     await wait(TEST_POLLING_MS * 3)
     // 처음부터 가려진 화면이면 한 번도 부르지 않음
-    expect(fetchServiceAreas).not.toHaveBeenCalled()
+    expect(fetchNationwideServiceAreas).not.toHaveBeenCalled()
 
     rerender(<Screen client={client} active />)
     await waitFor(() =>
-      expect(vi.mocked(fetchServiceAreas).mock.calls.length).toBeGreaterThanOrEqual(2),
+      expect(vi.mocked(fetchNationwideServiceAreas).mock.calls.length).toBeGreaterThanOrEqual(2),
     )
   })
 })
