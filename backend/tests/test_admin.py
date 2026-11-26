@@ -33,6 +33,9 @@ class FakeRedis:
     def mget(self, keys):
         return [self.values.get(k) for k in keys]
 
+    def get(self, key):
+        return self.values.get(key)
+
     def pipeline(self):
         return FakePipeline(self)
 
@@ -71,6 +74,12 @@ class BrokenRedis:
     def hgetall(self, key):
         raise redis.ConnectionError("down")
 
+    def get(self, key):
+        raise redis.ConnectionError("down")
+
+    def set(self, key, value, ex=None):
+        raise redis.ConnectionError("down")
+
     def pipeline(self):
         raise redis.ConnectionError("down")
 
@@ -80,6 +89,14 @@ def fake_redis(monkeypatch):
     fake = FakeRedis()
     monkeypatch.setattr(admin, "_redis", fake)
     return fake
+
+
+@pytest.fixture(autouse=True)
+def finished_run(monkeypatch):
+    """마지막으로 끝난 회차 대역 - 기본은 회차 없음(진행 중인 시간대를 저장하지 않음). value를 바꿔 씀"""
+    run = SimpleNamespace(value=None)
+    monkeypatch.setattr(admin, "last_finished_run_id", lambda db, target, now: run.value)
+    return run
 
 
 def fake_hour_charger(start, end):
@@ -458,6 +475,51 @@ def test_charger_states_for_one_station_look_up_each_charger():
     sql, params = charger_state_sql(station_id="S1")
     assert "LEFT OUTER JOIN LATERAL" in sql and "DISTINCT ON" not in sql
     assert params["station_id_1"] == "S1" and params["collection_run_id_1"] == 42
+
+
+def test_open_hours_shared_by_requests_until_next_run(
+    fake_redis, monkeypatch, db_calls, finished_run
+):
+    finished_run.value = 7
+    db = chargers_db(monkeypatch, ["S1"])
+    admin.get_utilization(db, "city", "day", NOW)  # 끝난 시간대(0 ~ 12시)를 저장
+    db_calls.clear()
+    # 화면이 함께 보내는 세 요청 - 진행 중인 13시 ~ 지금은 회차 7 기준으로 한 번만 셈
+    week = admin.get_utilization(db, "city", "week", NOW)
+    chargers = admin.get_chargers(db, "city", NOW)
+    day = admin.get_utilization(db, "city", "day", NOW)
+    assert sorted(c[0] for c in db_calls) == ["date", "hour_charger"]
+    assert ("hour_charger", kst(TODAY, 13), NOW) in db_calls
+    assert fake_redis.ttls["admin:occ-open:v1:city:2026-11-16:13:7"] == admin.OPEN_CACHE_TTL_SEC
+    assert day.series[13].observation_count == 20 and week.series[0].observation_count > 0
+    assert chargers.chargers[0].today_occupancy_rate == 0.1
+    # 다음 회차가 끝나면 새로 셈
+    finished_run.value = 8
+    db_calls.clear()
+    admin.get_utilization(db, "city", "day", NOW)
+    assert db_calls == [("hour_charger", kst(TODAY, 13), NOW)]
+
+
+def test_open_hours_not_cached_without_finished_run(fake_redis, db_calls):
+    admin.get_utilization(None, "city", "day", NOW)
+    db_calls.clear()
+    admin.get_utilization(None, "city", "day", NOW)
+    assert db_calls == [("hour_charger", kst(TODAY, 13), NOW)]
+    assert not any(k.startswith("admin:occ-open:") for k in fake_redis.values)
+
+
+def test_open_hours_redis_down_falls_back_to_db(monkeypatch, db_calls, finished_run):
+    finished_run.value = 7
+    monkeypatch.setattr(admin, "_redis", BrokenRedis())
+    res = admin.get_utilization(None, "city", "day", NOW)
+    assert res.series[14].observation_count == 20
+
+
+def test_warm_open_hours_fills_current_run(fake_redis, db_calls, finished_run):
+    finished_run.value = 7
+    admin.warm_open_hours(None, "live", NOW)
+    assert "admin:occ-open:v1:live:2026-11-16:00:7" in fake_redis.values
+    assert "admin:occ-hour:v1:live:2026-11-16:12" in fake_redis.hashes  # 끝난 시간대도 함께 저장
 
 
 def test_chargers_filtered_by_district(monkeypatch, db_calls):

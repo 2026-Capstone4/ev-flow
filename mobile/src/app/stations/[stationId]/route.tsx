@@ -20,6 +20,7 @@ import { StationMarker } from '../../../map/StationMarker'
 import { toAppZoom } from '../../../map/zoom'
 import { createShadow } from '../../../lib/shadow'
 import { KoreanText } from '../../../components/KoreanText'
+import { getFooterPaddingBottom } from '../../../lib/footerPadding'
 
 /** 경로를 받기 전 첫 화면 줌 (웹 기준 14) */
 const INITIAL_WEB_ZOOM = 14
@@ -31,7 +32,7 @@ const TOP_BUTTON_SIZE = 40
 /** 경로를 화면에 맞출 때 위 버튼 · 아래 시트 · 좌우 가장자리와 띄우는 간격 (웹 fitBounds 여백 40) */
 const FIT_MARGIN = 40
 
-/** 아래 시트의 최소 여백. 홈 표시줄이 있으면 그 높이만큼 띄움 (웹 max(16px, safe-area)) */
+/** 아래 시트의 최소 여백 (웹 max(16px, safe-area)). 플랫폼별 계산은 lib/footerPadding.ts getFooterPaddingBottom */
 const SHEET_MIN_PADDING = 16
 
 /** 웹 시트 그림자(0 -2px 12px 12%)를 RN 그림자 속성으로 옮김 */
@@ -165,8 +166,11 @@ export default function RouteScreen() {
 
       <View
         onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
-        style={[SHEET_SHADOW, { paddingBottom: Math.max(SHEET_MIN_PADDING, insets.bottom) }]}
-        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-[20px] bg-bg-page px-4 pt-5"
+        style={[
+          SHEET_SHADOW,
+          { paddingBottom: getFooterPaddingBottom(insets.bottom, SHEET_MIN_PADDING) },
+        ]}
+        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-lg bg-bg-page px-4 pt-5"
       >
         {station ? (
           <View className="gap-1">

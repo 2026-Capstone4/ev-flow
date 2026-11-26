@@ -55,7 +55,7 @@ export function DistrictPicker({ value, districts, onChange }: DistrictPickerPro
           {/* 열릴 때 목록만 아래에서 올라옴. 닫을 때는 창 전체가 함께 흐려짐 */}
           <Animated.View
             entering={SlideInDown.duration(250)}
-            className="max-h-[70%] rounded-t-[20px] bg-bg-page pt-4"
+            className="max-h-[70%] rounded-t-lg bg-bg-page pt-4"
             style={{ paddingBottom: insets.bottom }}
           >
             <Text className="px-5 pb-2 font-bold text-base text-text-primary">지역 선택</Text>

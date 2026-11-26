@@ -272,6 +272,12 @@ class RegionCollector:
                 status_changed,
                 info_changed,
             )
+            # 운영자 화면이 이번 회차 기준 집계를 바로 쓰게 미리 채움 - 실패해도 이 회차를 FAILED로 바꾸지 않음
+            try:
+                admin_service.warm_open_hours(db, self.target)
+            except Exception:
+                db.rollback()
+                logger.exception("운영자 진행 중인 시간대 집계 미리 계산 실패 [%s]", self.label)
             # 도심만 예측함 (휴게소는 대조군 - DATA-003). 커밋 뒤에 불러야 예측 실패가 수집 기록에 섞이지 않음.
             # refresh_predictions는 예외를 밖으로 내지 않음 - 아래 except가 이 회차를 FAILED로 바꾸면 안 됨
             if self.target == "city":
