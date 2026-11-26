@@ -444,8 +444,11 @@ export default function MapHomeScreen() {
     const { latitude, longitude, latitudeDelta, longitudeDelta } = current.region
     const center = { lat: latitude + latitudeDelta / 2, lng: longitude + longitudeDelta / 2 }
     const candidates = shown
+      // 추천 마커(하늘색)는 빼고 혼잡도 색 숫자 마커만 고름. 이 장은 여유 · 보통 · 혼잡 색을 설명함
+      // 다시 보기로 열면 실제 추천 결과가 남아 있어서 추천 마커가 가운데에 있을 수 있음
       .filter(
-        (station) => !isDotMarker(current.webZoomLevel, station, picked.has(station.stationId)),
+        (station) =>
+          !picked.has(station.stationId) && !isDotMarker(current.webZoomLevel, station, false),
       )
       .sort(
         (a, b) =>

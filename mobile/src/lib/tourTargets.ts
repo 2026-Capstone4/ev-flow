@@ -13,11 +13,13 @@ export type TourTargetId = 'search-bar' | 'service-areas-tab'
 /** 이름별로 붙여 둔 View. 화면에서 빠지면 지움 */
 const targets = new Map<TourTargetId, ViewInstance>()
 
+/** 이름별로 만들어 둔 ref 함수. 같은 이름에는 늘 같은 함수를 돌려줌 */
+const refCallbacks = new Map<TourTargetId, (view: ViewInstance | null) => void>()
+
 /**
  * 짚을 요소에 ref로 붙이는 함수를 만듦. <View ref={tourTargetRef('search-bar')}>처럼 씀
  * 이름마다 같은 함수를 돌려줘서 다시 그릴 때마다 ref가 떼었다 붙지 않게 함
  */
-const refCallbacks = new Map<TourTargetId, (view: ViewInstance | null) => void>()
 export function tourTargetRef(id: TourTargetId) {
   const saved = refCallbacks.get(id)
   // 이미 만든 함수가 있으면 그대로 씀
