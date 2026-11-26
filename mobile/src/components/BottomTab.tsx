@@ -21,6 +21,9 @@ const TAB_ICON: Partial<Record<string, LucideIcon>> = {
   more: Menu,
 }
 
+/** 폰 글꼴 크기 설정을 따르되 이 배수까지만 키움. 더 커지면 좁은 폰에서 탭 글자가 두 줄로 넘어가 잘림 */
+const TAB_LABEL_MAX_FONT_SCALE = 1.2
+
 /** 홈 표시줄 칸을 이만큼 덜 비워서 탭 영역 전체(윗선 · 글자)를 그만큼 아래로 내림 */
 const BOTTOM_INSET_TRIM = 8
 
@@ -59,7 +62,11 @@ export function BottomTab({ state, navigateToTab, insets }: BottomTabBarProps) {
                 color={isActive ? COLORS['brand-primary'] : COLORS['text-secondary']}
               />
             ) : (
+              // 한 줄로 고정하고, 칸보다 길면 잘리지 않게 글자를 칸에 맞춰 줄임
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                maxFontSizeMultiplier={TAB_LABEL_MAX_FONT_SCALE}
                 style={{ transform: [{ translateX: TAB_LABEL_SHIFT_X[route.name] ?? 0 }] }}
                 className={`text-[15px] ${
                   isActive ? 'font-bold text-brand-primary' : 'font-medium text-text-secondary'
