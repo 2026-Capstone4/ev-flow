@@ -3,8 +3,10 @@ import { useMapView } from './useMapView'
 import { useRecommendationOrigin } from './useRecommendationOrigin'
 import { getApiErrorCode } from '../api/errors'
 import { useRecommendationsQuery, useStationsQuery } from './useStationsQuery'
+import { isInMapo } from '../lib/coverage'
 import { getListLoadState, type ListLoadState } from '../lib/loadState'
 import { matchesFilters } from '../lib/stationFilter'
+import type { LatLng } from '../types/geo'
 import type { HorizonMinutes, RecommendationFilters } from '../types/station'
 
 /**
@@ -77,6 +79,8 @@ export function useMapHomeData(
         : getRecommendState(
             getListLoadState(recommendations, recommendationsQuery.isError),
             recommendationsQuery.error,
+            horizon,
+            recommendOrigin,
           ),
   }
 }
@@ -84,8 +88,17 @@ export function useMapHomeData(
 /**
  * 추천 오류를 서버 code로 나눠 일반 오류와 다른 안내를 띄움.
  * 마포구 밖(422 OUT_OF_SERVICE_AREA) · 호출 제한(429 RATE_LIMITED)
+ * 마포구 밖 출발이면 서버가 지금 출발만 추천하고 15 · 30분은 늘 빈 배열을 줌 (2026-11-26, #249).
+ * 응답만으로는 후보가 없어 빈 건지 구분할 수 없어 기준 위치로 판정함
  */
-export function getRecommendState(listState: ListLoadState, error: unknown): RecommendState {
+export function getRecommendState(
+  listState: ListLoadState,
+  error: unknown,
+  horizon: HorizonMinutes,
+  origin: LatLng,
+): RecommendState {
+  // 마포구 밖에서 15 · 30분 탭을 보면 빈 목록 대신 마포구만 지원한다는 안내
+  if (listState === 'empty' && horizon !== 0 && !isInMapo(origin)) return 'out_of_area'
   // 오류가 아니면(마지막 정상값이 있는 경우 포함) 목록 상태 그대로
   if (listState !== 'error') return listState
   const code = getApiErrorCode(error)

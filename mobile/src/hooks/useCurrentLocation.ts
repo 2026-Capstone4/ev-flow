@@ -6,7 +6,7 @@ import type { LatLng } from '@ev-flow/core/types/geo'
 
 /**
  * 앱에서 생길 수 있는 실패 이유. 'insecure'(HTTP 주소)는 브라우저에만 있는 경우라 뺌
- * 'out-of-area'도 뺌 - 앱은 마포구 밖 위치도 그대로 씀 (11/24 결정, 추천 시트가 마포구만 지원한다고 알려 줌)
+ * 'out-of-area'도 뺌 - 앱은 마포구 밖 위치도 그대로 씀 (11/24 결정, 11/26부터 지금 출발 추천도 받음)
  */
 export type AppLocateFailure = Exclude<LocateFailure, 'insecure' | 'out-of-area'>
 
@@ -87,7 +87,7 @@ export function useCurrentLocation() {
       // 거부했으면 다시 물을 수 없어서 설정 앱 안내를 띄움
       if (!granted) return { ok: false, reason: 'denied' }
 
-      // 마포구 밖이어도 기준 위치로 씀. 추천은 서버가 마포구만 지원한다고 답해 시트에 안내가 뜸
+      // 마포구 밖이어도 기준 위치로 씀. 추천은 지금 출발만 오고 15 · 30분 탭은 마포구만 지원한다고 안내함
       const location = await readPosition()
       setUserLocation(location)
       return { ok: true, location }
