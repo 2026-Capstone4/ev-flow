@@ -33,7 +33,12 @@ import {
   toUtilizationRows,
   type OccupancyLevel,
 } from '@/lib/admin/charts'
-import { formatPercent, STAT_UPDATED_NOTE, type AdminRegionChoice } from '@/lib/admin/common'
+import {
+  formatPercent,
+  STAT_UPDATED_NOTE,
+  DEFAULT_ADMIN_REGION,
+  type AdminRegionChoice,
+} from '@/lib/admin/common'
 
 const STATUS_VIEW_OPTIONS = (['station', 'charger'] as const).map((value) => ({
   value,
@@ -160,7 +165,7 @@ type SelectedStation = StationReturnPoint & { stationName: string }
 /** 충전 현황 표 높이 (AdminStationTable · AdminChargerTable의 h-[480px]과 같게) */
 const TABLE_HEIGHT = 480
 export function AdminStatusPage() {
-  const [region, setRegion] = useState<AdminRegionChoice>('all')
+  const [region, setRegion] = useState<AdminRegionChoice>(DEFAULT_ADMIN_REGION)
   const [district, setDistrict] = useState('all')
   // 충전 현황 패널: 충전소별 · 충전기별 보기와 보기마다 따로 기억하는 정렬
   const [statusView, setStatusView] = useState<StatusView>('station')

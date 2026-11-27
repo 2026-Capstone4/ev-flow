@@ -22,6 +22,11 @@ import { RoutePage } from '@/pages/RoutePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { StationDetailPage } from '@/pages/StationDetailPage'
 import { SupportPage } from '@/pages/SupportPage'
+import {
+  loadAdminChargerIssuesPage,
+  loadAdminCollectionPage,
+  loadAdminStatusPage,
+} from '@/app/adminPages'
 
 // 운영자 화면은 차트 라이브러리(Recharts)가 커서 운영자가 들어올 때만 따로 받음 — 사용자 화면 첫 로딩에 포함하지 않음
 // 오픈소스 라이선스 목록(수백 줄 JSON)도 그 화면에 들어올 때만 받음
@@ -29,15 +34,13 @@ const LicensesPage = lazy(() =>
   import('@/pages/more/LicensesPage').then((module) => ({ default: module.LicensesPage })),
 )
 const AdminStatusPage = lazy(() =>
-  import('@/pages/AdminStatusPage').then((module) => ({ default: module.AdminStatusPage })),
+  loadAdminStatusPage().then((module) => ({ default: module.AdminStatusPage })),
 )
 const AdminChargerIssuesPage = lazy(() =>
-  import('@/pages/AdminChargerIssuesPage').then((module) => ({
-    default: module.AdminChargerIssuesPage,
-  })),
+  loadAdminChargerIssuesPage().then((module) => ({ default: module.AdminChargerIssuesPage })),
 )
 const AdminCollectionPage = lazy(() =>
-  import('@/pages/AdminCollectionPage').then((module) => ({ default: module.AdminCollectionPage })),
+  loadAdminCollectionPage().then((module) => ({ default: module.AdminCollectionPage })),
 )
 
 export function App() {

@@ -9,7 +9,7 @@ import { UpdateStatus } from '@/components/UpdateStatus'
 import { useAdminCollectionData } from '@/hooks/useAdminCollectionData'
 import { formatPeriodRange, MISSING_WARNING_RATE, toMissingRows } from '@/lib/admin/charts'
 import { MISSING_RATE_TOOLTIP } from '@/lib/admin/collection'
-import { formatPercent, type AdminRegionChoice } from '@/lib/admin/common'
+import { formatPercent, DEFAULT_ADMIN_REGION, type AdminRegionChoice } from '@/lib/admin/common'
 import type { AdminPeriod } from '@/types/admin'
 
 const PERIOD_OPTIONS: { value: AdminPeriod; label: string }[] = [
@@ -32,7 +32,7 @@ const staleClass = (isStale: boolean) => (isStale ? 'opacity-40' : '')
 const TARGET_CARDS_HEIGHT_CLASS = 'h-[434px] lg:h-[492px] xl:h-[434px]'
 
 export function AdminCollectionPage() {
-  const [region, setRegion] = useState<AdminRegionChoice>('all')
+  const [region, setRegion] = useState<AdminRegionChoice>(DEFAULT_ADMIN_REGION)
   const [district, setDistrict] = useState('all')
   const [period, setPeriod] = useState<AdminPeriod>('day')
   const data = useAdminCollectionData(region, period)
