@@ -15,7 +15,7 @@ import {
   listChargerIssues,
   type ChargerIssueKind,
 } from '@/lib/admin/chargerIssues'
-import { toDistrictParam, type AdminRegionChoice } from '@/lib/admin/common'
+import { toDistrictParam, DEFAULT_ADMIN_REGION, type AdminRegionChoice } from '@/lib/admin/common'
 
 /** 요약 카드 숫자 색 (표 종류 글자색과 같음). 0기면 기본 글자색 */
 const CARD_VALUE_CLASS: Record<ChargerIssueKind, string> = {
@@ -40,7 +40,7 @@ type IssueFilter = 'all' | ChargerIssueKind
  * 데이터는 운영 현황과 같은 /admin/chargers — 같은 쿼리 키라 두 화면을 오가도 다시 받지 않음
  */
 export function AdminChargerIssuesPage() {
-  const [region, setRegion] = useState<AdminRegionChoice>('all')
+  const [region, setRegion] = useState<AdminRegionChoice>(DEFAULT_ADMIN_REGION)
   const [district, setDistrict] = useState('all')
   const [filter, setFilter] = useState<IssueFilter>('all')
   const query = useAdminChargersQuery(region, toDistrictParam(region, district))

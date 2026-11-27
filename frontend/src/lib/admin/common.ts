@@ -10,6 +10,9 @@ export const ADMIN_REGION_LABEL: Record<AdminRegion, string> = {
 /** 화면에서 고르는 지역 (전체 · 도심 · 휴게소). 도심은 서울 전체(seoul)로 요청 — 마포구(city)는 구 선택으로 고름 */
 export type AdminRegionChoice = Exclude<AdminRegion, 'city'>
 
+/** 운영자 화면이 처음 보여 주는 지역 — 미리 불러오기(prefetchAdminPage)도 이 값으로 요청 */
+export const DEFAULT_ADMIN_REGION: AdminRegionChoice = 'all'
+
 /**
  * 서울 구 코드(충전기 API zscode) → 이름. 백엔드 SEOUL_DISTRICTS(backend/app/schemas/admin.py)와 같아야 함
  * 마포구(11440)만 city 대상, 나머지는 live 대상

@@ -1,9 +1,12 @@
 import { LogOut } from 'lucide-react'
-import { Suspense } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Suspense, useEffect } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { isUnauthorized } from '@ev-flow/core/api/errors'
+import { ADMIN_PAGE_LOADERS } from '@/app/adminPages'
 import { Button } from '@/components/Button'
 import { useAuthMeQuery, useLogoutMutation } from '@/hooks/useAdminAuth'
+import { prefetchAdminPage } from '@/hooks/useAdminQueries'
 import { formatClock } from '@ev-flow/core/lib/formatUpdatedAt'
 import type { AdminLoginState } from '@/pages/AdminLoginPage'
 
@@ -24,6 +27,16 @@ export function AdminLayout() {
   const location = useLocation()
   const me = useAuthMeQuery()
   const logoutMutation = useLogoutMutation()
+  const queryClient = useQueryClient()
+
+  // 처음 들어온 화면의 코드 · 데이터를 로그인 확인(/auth/me)과 동시에 받기 시작 — 확인이 끝난 뒤 시작하면 그만큼 늦음
+  // 로그인 안 된 상태면 401로 끝나고 로그인 화면으로 가므로 해가 없음. 로그인 직후 들어올 때도 이 자리에서 시작
+  useEffect(() => {
+    const pathname = location.pathname.replace(/\/$/, '')
+    void ADMIN_PAGE_LOADERS[pathname]?.()
+    prefetchAdminPage(queryClient, pathname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 레이아웃이 처음 열릴 때 한 번만 (메뉴 이동은 각 화면이 부름)
+  }, [])
 
   // 401이면 로그인 화면으로. 이전 로그인 응답이 남아 있으면 쓰다가 만료된 것
   if (me.isError && isUnauthorized(me.error)) {
