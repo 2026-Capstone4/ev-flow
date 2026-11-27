@@ -116,6 +116,12 @@ const IS_HIDE_COLLIDED = false
 const NOTICE_DURATION_MS = 3000
 
 /**
+ * 첫 방문 안내를 닫은 뒤 새 버전 안내 창을 띄우기까지 기다리는 시간
+ * iOS는 앞 Modal이 fade로 닫히는 중에 다음 Modal을 열면 조용히 안 뜰 수 있어, 닫힘(약 0.3초)이 끝난 뒤 띄움
+ */
+const UPDATE_NOTICE_DELAY_MS = 500
+
+/**
  * 지도를 '탭'으로 볼 기준. 손을 뗀 순간 바로 시트를 내림
  * SDK onTapMap은 두 번 탭(확대)인지 기다렸다 불려서 늦게 반응해서 직접 판단함
  * Android는 지도 네이티브 뷰가 터치를 가져가 바깥 View에 손 뗀 순간이 오지 않아서 onTapMap을 씀
@@ -385,6 +391,20 @@ export default function MapHomeScreen() {
   // 성공 · 실패와 상관없이 끝나면 첫 추천을 부름 (찾았으면 그 위치, 못 찾았으면 시연 위치)
   const hasLocatedOnStartRef = useRef(false)
   const isOnboardingVisible = isOnboardingOpen || showOnboarding === '1'
+
+  // 새 버전 안내는 첫 방문 안내가 완전히 닫힌 뒤에만 띄움. 안내를 다시 열면 그동안 바로 숨김
+  // 닫힌 상태가 0.5초 이어졌는지를 따로 두고, 지금 안내가 떠 있는지와 함께 봄
+  const [isOnboardingSettledHidden, setIsOnboardingSettledHidden] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setIsOnboardingSettledHidden(!isOnboardingVisible),
+      // 닫혔을 때만 기다리고, 열렸을 때는 바로 기록함
+      isOnboardingVisible ? 0 : UPDATE_NOTICE_DELAY_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [isOnboardingVisible])
+  const isUpdateNoticeReady = isOnboardingSettledHidden && !isOnboardingVisible
+
   useEffect(() => {
     // 위치 기능이 꺼진 빌드 · 안내를 보는 중 · 이미 한 번 잰 경우는 건너뜀
     if (!IS_GEOLOCATION_ENABLED || isOnboardingVisible || hasLocatedOnStartRef.current) return
@@ -737,8 +757,8 @@ export default function MapHomeScreen() {
       </View>
       {/* 처음 들어왔거나, 더보기의 "사용법 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
       {isOnboardingVisible && <OnboardingTour steps={tourSteps} onClose={closeOnboarding} />}
-      {/* 새 버전 안내는 사용법 안내를 닫은 뒤에 띄워 두 창이 겹치지 않게 함 */}
-      {updateNotice && !isOnboardingVisible && (
+      {/* 새 버전 안내는 사용법 안내가 완전히 닫힌 뒤에 띄워 두 창이 겹치지 않게 함 */}
+      {updateNotice && isUpdateNoticeReady && (
         <UpdateNoticeModal
           notice={updateNotice}
           currentVersion={currentVersion}

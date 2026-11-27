@@ -22,7 +22,8 @@ const CURRENT_VERSION = Constants.expoConfig?.version ?? ''
 
 /**
  * 스토어에 새 버전이 나왔는지 확인해 안내할 내용을 돌려줌
- * 앱을 켤 때 한 번, 앞으로 다시 가져왔을 때는 6시간이 지났을 때만 확인함. 못 받으면 조용히 넘어감
+ * 앱을 켤 때 한 번, 앞으로 다시 가져왔을 때는 마지막으로 확인을 마친 뒤 6시간이 지났을 때만 확인함
+ * 못 받으면 조용히 넘어가고, 다음에 앞으로 가져올 때 다시 확인함
  */
 export function useAppUpdateNotice() {
   const [notice, setNotice] = useState<UpdateNotice | null>(null)
@@ -35,7 +36,6 @@ export function useAppUpdateNotice() {
     let isCancelled = false
 
     const check = async () => {
-      lastCheckedAtRef.current = Date.now()
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
       try {
@@ -45,9 +45,11 @@ export function useAppUpdateNotice() {
         const info = parseAppVersionInfo(await response.json(), platform)
         // 모양이 틀린 파일이거나 확인하는 사이 화면이 사라졌으면 바꾸지 않음
         if (!info || isCancelled) return
+        // 받아서 확인을 마쳤을 때만 시각을 남김. 실패하면 앱을 다시 앞으로 가져올 때 바로 다시 확인함
+        lastCheckedAtRef.current = Date.now()
         setNotice(getUpdateNotice(CURRENT_VERSION, info, getDismissedUpdateVersion(appStorage)))
       } catch {
-        // 오프라인 · 시간 초과 · JSON이 아닌 응답이면 다음에 다시 확인함
+        // 오프라인 · 시간 초과 · JSON이 아닌 응답이면 앱을 다시 앞으로 가져올 때 다시 확인함
       } finally {
         clearTimeout(timer)
       }
