@@ -9,8 +9,8 @@ import { UpdateStatus } from '@/components/UpdateStatus'
 import { useAdminCollectionData } from '@/hooks/useAdminCollectionData'
 import { formatPeriodRange, MISSING_WARNING_RATE, toMissingRows } from '@/lib/admin/charts'
 import { MISSING_RATE_TOOLTIP } from '@/lib/admin/collection'
-import { formatPercent } from '@/lib/admin/common'
-import type { AdminPeriod, AdminRegion } from '@/types/admin'
+import { formatPercent, type AdminRegionChoice } from '@/lib/admin/common'
+import type { AdminPeriod } from '@/types/admin'
 
 const PERIOD_OPTIONS: { value: AdminPeriod; label: string }[] = [
   { value: 'day', label: '오늘' },
@@ -26,13 +26,13 @@ const missingColor = (rate: number) =>
 const staleClass = (isStale: boolean) => (isStale ? 'opacity-40' : '')
 
 /**
- * 수집 상태 카드 2장(간격 12px 포함) 높이 — 처음 불러오는 동안 자리 표시용 (CollectionTargetCard 실제 크기)
- * lg ~ xl 사이는 칸이 좁아 'API 응답' 줄이 두 줄이 되어 더 높음
+ * 수집 상태 카드 3장(간격 12px 포함) 높이 — 처음 불러오는 동안 자리 표시용 (CollectionTargetCard 실제 크기)
+ * 전체를 고르면 마포구 · 서울(마포구 외) · 휴게소 3장. lg ~ xl 사이는 칸이 좁아 'API 응답' 줄이 두 줄이 되어 더 높음
  */
-const TARGET_CARDS_HEIGHT_CLASS = 'h-[285px] lg:h-[324px] xl:h-[285px]'
+const TARGET_CARDS_HEIGHT_CLASS = 'h-[434px] lg:h-[492px] xl:h-[434px]'
 
 export function AdminCollectionPage() {
-  const [region, setRegion] = useState<AdminRegion>('all')
+  const [region, setRegion] = useState<AdminRegionChoice>('all')
   const [district, setDistrict] = useState('all')
   const [period, setPeriod] = useState<AdminPeriod>('day')
   const data = useAdminCollectionData(region, period)
@@ -47,6 +47,8 @@ export function AdminCollectionPage() {
           district={district}
           onRegionChange={setRegion}
           onDistrictChange={setDistrict}
+          // 서울은 API 한 번으로 받아 수집 상태 · 결측이 구로 나뉘지 않음 (docs/api/admin.md 대시보드 공통)
+          isDistrictLocked
         />
         {/* 운영 현황과 같은 두 줄 · 고정 폭 — 다시 불러오다 실패하면 마지막 정상값 시각과 함께 경고
             아무것도 못 받았을 때는 각 패널이 실패 안내를 하므로 여기서는 경고하지 않음 */}
@@ -63,15 +65,16 @@ export function AdminCollectionPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <AdminPanel title="수집 상태">
           {data.targets ? (
-            // 같은 높이 두 줄로 나눠서 도심 · 휴게소만 골라 카드가 1장이어도 2장일 때와 높이가 같게 함
-            // (빈 둘째 줄도 첫째 줄 카드 높이만큼 자리를 차지 — 패널 · 옆 차트 크기가 지역마다 바뀌지 않음)
-            <div className={`grid grid-rows-2 gap-3 px-5 ${staleClass(data.isTargetsStale)}`}>
+            // 넓은 화면(lg 이상)에서만 같은 높이 세 줄로 나눠서 휴게소만 골라 카드가 1장이어도 3장일 때와 높이가 같게 함
+            // (빈 줄도 첫째 줄 카드 높이만큼 자리를 차지 — 옆 차트 크기가 지역마다 바뀌지 않음)
+            // 좁은 화면은 차트가 아래로 내려가 맞출 높이가 없어서 카드 수만큼만 차지
+            <div className={`grid gap-3 px-5 lg:grid-rows-3 ${staleClass(data.isTargetsStale)}`}>
               {data.targets.map((target) => (
                 <CollectionTargetCard key={target.target} target={target} now={data.now} />
               ))}
             </div>
           ) : (
-            // 지역과 상관없이 카드 2장 높이만큼 자리를 잡음 (불러온 뒤에도 늘 2장 높이)
+            // 처음 지역(전체)의 카드 3장 높이만큼 자리를 잡음 (넓은 화면은 불러온 뒤에도 늘 3장 높이)
             <AdminPlaceholder
               isError={data.isCollectionError}
               heightClassName={TARGET_CARDS_HEIGHT_CLASS}

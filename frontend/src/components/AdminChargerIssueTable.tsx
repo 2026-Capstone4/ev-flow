@@ -1,6 +1,8 @@
 import { CHARGER_ISSUE_LABEL, type ChargerIssue } from '@/lib/admin/chargerIssues'
 import type { ChargerIssueKind } from '@/lib/admin/chargerIssues'
-import { CHARGER_REGION_LABEL } from '@/lib/admin/common'
+import { TableMoreRow } from '@/components/TableMoreRow'
+import { useShownCount } from '@/hooks/useShownCount'
+import { chargerRegionLabel } from '@/lib/admin/common'
 import { formatClock } from '@ev-flow/core/lib/formatUpdatedAt'
 
 /**
@@ -30,10 +32,18 @@ type AdminChargerIssueTableProps = {
   issues: ChargerIssue[]
   /** 목록 기준 시각 — 상태 갱신 시각이 다른 날이면 날짜를 붙이는 기준 */
   updatedAt: Date
+  /** 이 값이 바뀌면(지역 · 구 · 종류 칩) 더보기로 늘린 줄 수를 처음으로 되돌림 */
+  resetKey: string
 }
 
 /** 상태 이상 충전기 표. 정렬 · 거르기는 바깥에서 해서 넘겨줌 (운영 현황 충전기 표와 같은 모양) */
-export function AdminChargerIssueTable({ issues, updatedAt }: AdminChargerIssueTableProps) {
+export function AdminChargerIssueTable({
+  issues,
+  updatedAt,
+  resetKey,
+}: AdminChargerIssueTableProps) {
+  // 아래 빈 목록 안내보다 먼저 불러야 함 (훅은 조건 없이 늘 같은 순서로)
+  const { shown, remaining, showMore } = useShownCount(issues.length, resetKey)
   // 고른 종류에 충전기가 없으면 표 대신 안내
   if (issues.length === 0) {
     return (
@@ -59,16 +69,14 @@ export function AdminChargerIssueTable({ issues, updatedAt }: AdminChargerIssueT
             </tr>
           </thead>
           <tbody>
-            {issues.map(({ charger, kind }) => {
+            {issues.slice(0, shown).map(({ charger, kind }) => {
               const at = charger.statUpdatedAt ? new Date(charger.statUpdatedAt) : null
               return (
                 <tr
                   key={`${charger.region}-${charger.stationId}-${charger.chargerId}`}
                   className="border-t border-border-default first:border-t-0"
                 >
-                  <td className="px-5 py-3 text-text-secondary">
-                    {CHARGER_REGION_LABEL[charger.region]}
-                  </td>
+                  <td className="px-5 py-3 text-text-secondary">{chargerRegionLabel(charger)}</td>
                   <td className="px-5 py-3">{charger.stationName}</td>
                   <td className="px-5 py-3 text-text-secondary">{charger.chargerId}번</td>
                   <td className={`px-5 py-3 font-bold ${KIND_CLASS[kind]}`}>
@@ -85,6 +93,7 @@ export function AdminChargerIssueTable({ issues, updatedAt }: AdminChargerIssueT
                 </tr>
               )
             })}
+            <TableMoreRow colSpan={6} shown={shown} remaining={remaining} onMore={showMore} />
           </tbody>
         </table>
       </div>

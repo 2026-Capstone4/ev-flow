@@ -11,18 +11,20 @@ import type { AdminPeriod, AdminRegion } from '@/types/admin'
 // 폴링 · 캐시 설정은 queryClient 기본값 사용
 // 지역 · 기간을 바꾸는 동안 이전 값을 그대로 보여 줘서 차트 · 표가 깜빡이지 않게 함 (keepPreviousData)
 
-export function useUtilizationQuery(region: AdminRegion, period: AdminPeriod) {
+// district는 서울 구 코드 — 구를 고르지 않았으면 undefined (toDistrictParam)
+
+export function useUtilizationQuery(region: AdminRegion, period: AdminPeriod, district?: string) {
   return useQuery({
-    queryKey: [...ADMIN_QUERY_KEY, 'utilization', region, period],
-    queryFn: () => fetchUtilization(region, period),
+    queryKey: [...ADMIN_QUERY_KEY, 'utilization', region, period, district ?? 'all'],
+    queryFn: () => fetchUtilization(region, period, district),
     placeholderData: keepPreviousData,
   })
 }
 
-export function useAdminChargersQuery(region: AdminRegion) {
+export function useAdminChargersQuery(region: AdminRegion, district?: string) {
   return useQuery({
-    queryKey: [...ADMIN_QUERY_KEY, 'chargers', region],
-    queryFn: () => fetchAdminChargers(region),
+    queryKey: [...ADMIN_QUERY_KEY, 'chargers', region, district ?? 'all'],
+    queryFn: () => fetchAdminChargers(region, district),
     placeholderData: keepPreviousData,
   })
 }

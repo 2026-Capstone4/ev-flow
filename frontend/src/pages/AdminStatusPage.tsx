@@ -33,8 +33,7 @@ import {
   toUtilizationRows,
   type OccupancyLevel,
 } from '@/lib/admin/charts'
-import { formatPercent, STAT_UPDATED_NOTE } from '@/lib/admin/common'
-import type { AdminRegion } from '@/types/admin'
+import { formatPercent, STAT_UPDATED_NOTE, type AdminRegionChoice } from '@/lib/admin/common'
 
 const STATUS_VIEW_OPTIONS = (['station', 'charger'] as const).map((value) => ({
   value,
@@ -161,7 +160,7 @@ type SelectedStation = StationReturnPoint & { stationName: string }
 /** 충전 현황 표 높이 (AdminStationTable · AdminChargerTable의 h-[480px]과 같게) */
 const TABLE_HEIGHT = 480
 export function AdminStatusPage() {
-  const [region, setRegion] = useState<AdminRegion>('all')
+  const [region, setRegion] = useState<AdminRegionChoice>('all')
   const [district, setDistrict] = useState('all')
   // 충전 현황 패널: 충전소별 · 충전기별 보기와 보기마다 따로 기억하는 정렬
   const [statusView, setStatusView] = useState<StatusView>('station')
@@ -177,7 +176,7 @@ export function AdminStatusPage() {
   const [searchQuery, setSearchQuery] = useState('')
   // 충전소별 표에서 누른 충전소. 충전기별 보기에서는 그 충전소만 거르고, 돌아온 뒤에는 돌아갈 줄 위치로 씀
   const [selectedStation, setSelectedStation] = useState<SelectedStation | null>(null)
-  const data = useAdminStatusData(region, chargerSort, stationSort)
+  const data = useAdminStatusData(region, district, chargerSort, stationSort)
 
   // 충전기별 보기에서 충전소를 골라 들어왔으면 그 충전소의 충전기만 보여 줌
   const isStationPicked = statusView === 'charger' && selectedStation !== null
@@ -190,6 +189,9 @@ export function AdminStatusPage() {
   const visibleCount = statusView === 'station' ? visibleStations.length : visibleChargers.length
   const caption = SORT_CAPTION[statusView === 'station' ? stationSort.key : chargerSort.key]
   const { summary } = data
+  // 지역 · 구 · 정렬 · 검색이 바뀌면 표의 더보기를 처음 줄 수로 되돌림
+  const sort = statusView === 'station' ? stationSort : chargerSort
+  const tableResetKey = `${region}-${district}-${sort.key}-${sort.direction}-${searchQuery.trim()}`
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
@@ -202,7 +204,11 @@ export function AdminStatusPage() {
             setSelectedStation(null)
             setRegion(next)
           }}
-          onDistrictChange={setDistrict}
+          onDistrictChange={(next) => {
+            // 구를 바꿔도 고른 충전소가 목록에서 빠질 수 있어서 선택을 풂
+            setSelectedStation(null)
+            setDistrict(next)
+          }}
         />
         {/* 늘 두 줄로 보여 주고 폭을 고정해, 문구가 바뀌어도(방금 · 59분 전 · 갱신 실패) 왼쪽 버튼이 밀리지 않게 함
             처음 불러오는 동안 문구가 없어도 같은 크기의 자리를 비워 둠 */}
@@ -216,7 +222,10 @@ export function AdminStatusPage() {
         </div>
       </AdminPageHeader>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      {/* 지역 · 구를 바꾼 뒤 새 값을 기다리는 동안 이전 값을 흐리게 (다른 운영자 화면과 같게) */}
+      <div
+        className={`grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 ${data.isSummaryStale ? 'opacity-40' : ''}`}
+      >
         <StatCard
           label="전체 충전기"
           value={summary && `${summary.total}기`}
@@ -245,7 +254,8 @@ export function AdminStatusPage() {
           }
         />
         <StatCard
-          label="데이터 수집"
+          // 수집 상태 · 결측은 구로 나뉘지 않아서, 구를 골랐으면 서울 전체 기준이라고 제목에 붙임
+          label={data.isDistrictSelected ? '데이터 수집 (서울 전체)' : '데이터 수집'}
           value={data.collectionHealth && <CollectionHealthLabel health={data.collectionHealth} />}
           caption={
             data.missingToday
@@ -268,7 +278,7 @@ export function AdminStatusPage() {
           }
         >
           {data.hourly ? (
-            <div className="px-5">
+            <div className={`px-5 ${data.isHourlyStale ? 'opacity-40' : ''}`}>
               <RateBarChart
                 data={toUtilizationRows(data.hourly.series)}
                 getColor={occupancyColor}
@@ -291,7 +301,7 @@ export function AdminStatusPage() {
           }
         >
           {data.weekly ? (
-            <div className="px-5">
+            <div className={`px-5 ${data.isWeeklyStale ? 'opacity-40' : ''}`}>
               <RateBarChart
                 data={toUtilizationRows(data.weekly.series)}
                 getColor={occupancyColor}
@@ -352,29 +362,38 @@ export function AdminStatusPage() {
         {caption && <p className="-mt-1 px-5 text-[13px] text-text-secondary">{caption}</p>}
         {data.chargersLoadState === 'ready' && data.updatedAt ? (
           // 검색 결과가 없으면 빈 표 대신 안내 문구
-          visibleCount === 0 ? (
-            // 표와 같은 높이로 둬서 결과가 없어도 패널 크기가 바뀌지 않게
-            <p className="flex h-[480px] items-center justify-center border-y border-border-default px-5 text-center text-sm text-text-secondary">
-              '{searchQuery.trim()}'이(가) 들어간 충전소가 없습니다
-            </p>
-          ) : statusView === 'station' ? (
-            <AdminStationTable
-              stations={visibleStations}
-              updatedAt={data.updatedAt}
-              returnTo={selectedStation}
-              onSelect={(station, rowOffset) => {
-                // 충전소를 누르면 충전기별 보기로 넘어가서 그 충전소의 충전기만 보여 줌. 검색어는 건드리지 않음
-                setSelectedStation({
-                  stationId: station.stationId,
-                  stationName: station.stationName,
-                  rowOffset,
-                })
-                setStatusView('charger')
-              }}
-            />
-          ) : (
-            <AdminChargerTable chargers={visibleChargers} updatedAt={data.updatedAt} />
-          )
+          // 지역 · 구를 바꾼 뒤 새 목록을 기다리는 동안 이전 목록을 흐리게
+          <div className={data.isChargersStale ? 'opacity-40' : ''}>
+            {visibleCount === 0 ? (
+              // 표와 같은 높이로 둬서 결과가 없어도 패널 크기가 바뀌지 않게
+              <p className="flex h-[480px] items-center justify-center border-y border-border-default px-5 text-center text-sm text-text-secondary">
+                '{searchQuery.trim()}'이(가) 들어간 충전소가 없습니다
+              </p>
+            ) : statusView === 'station' ? (
+              <AdminStationTable
+                stations={visibleStations}
+                updatedAt={data.updatedAt}
+                returnTo={selectedStation}
+                resetKey={tableResetKey}
+                onSelect={(station, rowOffset) => {
+                  // 충전소를 누르면 충전기별 보기로 넘어가서 그 충전소의 충전기만 보여 줌. 검색어는 건드리지 않음
+                  setSelectedStation({
+                    stationId: station.stationId,
+                    stationName: station.stationName,
+                    rowOffset,
+                  })
+                  setStatusView('charger')
+                }}
+              />
+            ) : (
+              <AdminChargerTable
+                chargers={visibleChargers}
+                updatedAt={data.updatedAt}
+                // 충전소를 골라 들어왔으면 그 충전소가 바뀔 때도 처음 줄 수로
+                resetKey={`${tableResetKey}-${isStationPicked ? selectedStation.stationId : ''}`}
+              />
+            )}
+          </div>
         ) : data.chargersLoadState === 'empty' ? (
           // 표와 같은 높이 — 불러오는 중 · 없음 · 표 모두 패널 크기가 같게
           <p className="flex h-[480px] items-center justify-center border-y border-border-default px-5 text-center text-sm text-text-secondary">

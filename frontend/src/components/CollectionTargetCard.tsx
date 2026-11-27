@@ -1,6 +1,6 @@
 import { CollectionHealthLabel } from '@/components/CollectionHealthLabel'
 import { type CollectionHealth } from '@/lib/admin/collection'
-import { CHARGER_REGION_LABEL } from '@/lib/admin/common'
+import { COLLECTION_TARGET_LABEL } from '@/lib/admin/common'
 import { formatClock, formatElapsed } from '@ev-flow/core/lib/formatUpdatedAt'
 import type { CollectionTarget } from '@/types/admin'
 
@@ -9,7 +9,7 @@ type CollectionTargetCardProps = {
   now: Date
 }
 
-/** 수집 대상(도심 · 휴게소) 하나의 마지막 수집 · 실패 · 응답 지연 (ADM-003) */
+/** 수집 대상(마포구 · 서울 · 휴게소) 하나의 마지막 수집 · 실패 · 응답 지연 (ADM-003) */
 export function CollectionTargetCard({ target, now }: CollectionTargetCardProps) {
   const lastSuccess = target.lastSuccessAt ? new Date(target.lastSuccessAt) : null
   const rows = [
@@ -29,7 +29,7 @@ export function CollectionTargetCard({ target, now }: CollectionTargetCardProps)
   return (
     <section className="flex flex-col gap-3 rounded-md border border-border-default px-4 py-4">
       <header className="flex items-center justify-between">
-        <h3 className="text-sm font-bold">{CHARGER_REGION_LABEL[target.target]} 수집</h3>
+        <h3 className="text-sm font-bold">{COLLECTION_TARGET_LABEL[target.target]} 수집</h3>
         <span className="text-[13px]">
           <CollectionHealthLabel health={target.health} />
         </span>

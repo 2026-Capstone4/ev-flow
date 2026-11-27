@@ -1,6 +1,8 @@
 import { InfoTooltip } from '@/components/InfoTooltip'
+import { TableMoreRow } from '@/components/TableMoreRow'
+import { useShownCount } from '@/hooks/useShownCount'
 import { getAdminChargerStatusLabel, TODAY_OCCUPANCY_TOOLTIP } from '@/lib/admin/chargerStatus'
-import { CHARGER_REGION_LABEL, formatPercent, formatStatUpdated } from '@/lib/admin/common'
+import { chargerRegionLabel, formatPercent, formatStatUpdated } from '@/lib/admin/common'
 import type { AdminCharger } from '@/types/admin'
 import type { ChargerStatus } from '@ev-flow/core/types/station'
 
@@ -17,10 +19,13 @@ type AdminChargerTableProps = {
   chargers: AdminCharger[]
   /** 목록 기준 시각 — 상태 갱신 시각이 다른 날이면 날짜를 붙이는 기준 */
   updatedAt: Date
+  /** 이 값이 바뀌면(지역 · 구 · 정렬 · 검색) 더보기로 늘린 줄 수를 처음으로 되돌림 */
+  resetKey: string
 }
 
 /** 충전기 상태 표 (ADM-002). 정렬은 바깥에서 해서 넘겨줌 */
-export function AdminChargerTable({ chargers, updatedAt }: AdminChargerTableProps) {
+export function AdminChargerTable({ chargers, updatedAt, resetKey }: AdminChargerTableProps) {
+  const { shown, remaining, showMore } = useShownCount(chargers.length, resetKey)
   return (
     // 표 높이를 10줄 정도로 고정하고 안에서 스크롤 — 검색으로 줄 수가 바뀌어도 패널 크기는 그대로. 머리글은 위에 고정
     <div className="h-[480px] overflow-auto border-y border-border-default">
@@ -42,16 +47,14 @@ export function AdminChargerTable({ chargers, updatedAt }: AdminChargerTableProp
           </tr>
         </thead>
         <tbody>
-          {chargers.map((charger) => {
+          {chargers.slice(0, shown).map((charger) => {
             const at = charger.statUpdatedAt ? new Date(charger.statUpdatedAt) : null
             return (
               <tr
                 key={`${charger.stationId}-${charger.chargerId}`}
                 className="border-t border-border-default first:border-t-0"
               >
-                <td className="px-5 py-3 text-text-secondary">
-                  {CHARGER_REGION_LABEL[charger.region]}
-                </td>
+                <td className="px-5 py-3 text-text-secondary">{chargerRegionLabel(charger)}</td>
                 <td className="px-5 py-3">{charger.stationName}</td>
                 <td className="px-5 py-3 text-text-secondary">{charger.chargerId}번</td>
                 <td className={`px-5 py-3 font-bold ${STATUS_CLASS[charger.status]}`}>
@@ -65,6 +68,7 @@ export function AdminChargerTable({ chargers, updatedAt }: AdminChargerTableProp
               </tr>
             )
           })}
+          <TableMoreRow colSpan={6} shown={shown} remaining={remaining} onMore={showMore} />
         </tbody>
       </table>
     </div>
