@@ -9,6 +9,13 @@ import type { LatLng } from '@ev-flow/core/types/geo'
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://evflowkr.app/api/v1'
 
 /**
+ * 새 버전 안내 파일 주소. Nginx가 backend/nginx/app-meta 폴더를 바로 보여 줌 (웹 빌드와 상관없음)
+ * 시험할 때만 .env.local에서 바꿈. 이미 설치된 앱이 계속 부르는 주소라 운영 값은 바꾸지 않음
+ */
+export const APP_VERSION_URL =
+  process.env.EXPO_PUBLIC_APP_VERSION_URL || 'https://evflowkr.app/app-version.json'
+
+/**
  * 현재 위치(GPS) 사용 여부 (웹 VITE_USE_GEOLOCATION과 같음). 꺼져 있어도 버튼은 보이고, 누르면 시연 위치로 지도만 옮김
  * 앱스토어 빌드는 켜고(.env.local의 EXPO_PUBLIC_USE_GEOLOCATION=true), 시연 영상 빌드는 비워서 시연 위치에 고정함
  */

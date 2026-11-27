@@ -17,6 +17,7 @@
 - [7. NCP 콘솔 등록](#7-ncp-콘솔-등록)
 - [8. 지도 앱 딥링크](#8-지도-앱-딥링크)
 - [9. 알려진 문제 · 우회](#9-알려진-문제--우회)
+- [10. 새 버전 안내](#10-새-버전-안내)
 
 ---
 
@@ -108,6 +109,7 @@ core를 같이 쓰려고 넣은 설정 세 가지 (빠지면 깨짐, 자세한 �
 |---|---|
 | `EXPO_PUBLIC_API_BASE_URL` | API 주소. 비우면 `https://evflowkr.app/api/v1` |
 | `EXPO_PUBLIC_USE_GEOLOCATION` | `true`면 GPS를 씀. 비우면 시연 위치 고정 |
+| `EXPO_PUBLIC_APP_VERSION_URL` | 새 버전 안내 파일 주소. 비우면 `https://evflowkr.app/app-version.json`. 안내 창을 시험할 때만 바꿈 |
 | `EXPO_PUBLIC_DEMO_LOCATION` | 시연 위치 `"위도,경도"`. 비우거나 마포구 밖이면 합정역 근처 |
 | `NAVER_MAP_CLIENT_ID` | 네이버 지도 Client ID (웹과 같은 값). 비면 지도가 회색 격자 |
 | `APPLE_TEAM_ID` | 실기기 빌드 서명용. 비면 시뮬레이터 빌드만 |
@@ -176,3 +178,22 @@ App Store 빌드
 - **`@types/react` 두 벌**: 앱(React 19) 패키지가 공용 위치의 `@types/react`를 바꿔 웹 타입 검사가 깨졌음 → `pnpm-workspace.yaml` `packageExtensions`로 react-router에 `@types/react`를 적음
 - **시트 단계 번호**: 추천 오류로 시트 단계 수가 바뀐 직후 `snapToIndex(n)`을 부르면 앱이 멈춤 → `expand()` · `snapToIndex(1)`만 씀 (`RecommendSheet`)
 - **휴게소 이중 등록**: 현대엔지니어링(HY) 충전소가 현대자동차(HD) 충전기를 한 번 더 등록한 것으로 보이고 늘 확인 불가 → 앱이 HD 짝이 있는 HY를 뺌. 백엔드가 HY를 빼고 보내면 조건에 맞는 곳이 없어 저절로 꺼짐 (앱 다시 배포 필요 없음). 2026-11-25부터 백엔드가 뺌 — 서버 배포 뒤에는 우회 코드를 지워도 됨
+
+## 10. 새 버전 안내
+
+앱을 켤 때 `https://evflowkr.app/app-version.json`을 읽어, 지금 버전(`app.config.ts` `version`)이 낮으면 안내 창을 띄움. 백엔드 API는 없음.
+
+- 파일: `backend/nginx/app-meta/app-version.json` — Nginx가 이 폴더를 바로 보여 줘서 **웹 빌드 · 배포가 필요 없음**. 서버에서 `git pull`(= `infra/deploy.sh`)만 하면 바뀜
+- `latest`보다 낮으면 "나중에 · 업데이트" 창. 나중에를 누르면 같은 `latest`는 다시 안 띄움
+- `min`보다 낮으면 나중에 버튼이 없는 창 (업데이트 전까지 못 씀). 평소에는 `min`을 올리지 않음
+- 비교는 `version`으로만 함. `ios.buildNumber` · `android.versionCode`만 올린 빌드는 안내 대상이 아님
+- 이 기능이 들어간 버전부터 동작함. 그 전에 설치한 버전(1.0.0) 사용자에게는 안내가 뜨지 않음
+- 첫 방문 안내는 앱 전용 키(`evflow:onboarding-seen:app-v2`)를 씀. 모든 앱 사용자에게 다시 보여 줄 때만 키 끝을 올림 (웹 키 `v1`과 따로)
+
+출시 순서
+1. `app.config.ts` `version`을 올리고(예: 1.0.0 → 1.0.1) 스토어에 제출
+2. **심사를 통과하고 출시된 뒤에** 그 플랫폼의 `latest`를 올림 — 먼저 올리면 스토어에 아직 없는 업데이트를 안내하게 됨
+3. `develop` → `main` 병합 뒤 서버에서 `bash infra/deploy.sh`
+4. 확인: `curl -s https://evflowkr.app/app-version.json`
+
+iOS · Android 출시일이 다르면 플랫폼 칸을 따로 올림. 문구(`title` · `message`)는 두 플랫폼이 같이 씀.
