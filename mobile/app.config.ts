@@ -134,7 +134,8 @@ const withAndroidReleaseSigning: ConfigPlugin = (config) =>
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
-  version: '1.0.0',
+  // 스토어에 보이는 버전 (iOS CFBundleShortVersionString · Android versionName). 출시된 버전엔 새 빌드를 못 넣어서 출시 뒤 업데이트마다 올림
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon.png',
   // 딥링크로 우리 앱을 열 때 쓰는 주소 이름 (evflow://…)

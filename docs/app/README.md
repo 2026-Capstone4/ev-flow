@@ -28,7 +28,7 @@
 
 | 플랫폼 | 상태 |
 |---|---|
-| iOS | App Store 1.0.0 (5) 제출 (2026-11-24). 앱 이름 `EV Flow - AI 충전소 추천`, 번들 ID `app.evflowkr.evflow`, SKU `evflow-ios` |
+| iOS | App Store 1.0.0 (5) 제출 (2026-11-24) · 출시, 1.0.1 (6) 업데이트 (2026-11-27). 앱 이름 `EV Flow - AI 충전소 추천`, 번들 ID `app.evflowkr.evflow`, SKU `evflow-ios` |
 | Android | 2026-11-25 시작 — [android-plan.md](android-plan.md) |
 
 | 결정 | 내용 |
@@ -136,6 +136,7 @@ App Store 빌드의 GPS 값은 `.env.local`을 바꾸지 않고 빌드 명령 �
 
 App Store 빌드
 1. `app.config.ts` `ios.buildNumber`를 1 올림 (같은 버전에서 올릴 때마다)
+   - 지금 버전이 이미 출시됐으면 `version`도 올림 (예: 1.0.0 → 1.0.1). 출시된 버전엔 새 빌드를 못 넣음
 2. `npx expo prebuild --platform ios` — Info.plist에 빌드 번호 반영 (Xcode General 탭의 Build 칸이 1로 보여도 Info.plist 값이 쓰임)
 3. GPS 켜고 Xcode Archive → Organizer에서 App Store Connect 업로드
    - "Upload Symbols Failed" 경고 6개(NMapsMap · React · hermesvm 등 dSYM 없음)는 무시해도 됨. 업로드는 성공
