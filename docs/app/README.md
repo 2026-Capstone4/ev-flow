@@ -143,6 +143,7 @@ App Store 빌드
 3. GPS 켜고 Xcode Archive → Organizer에서 App Store Connect 업로드
    - "Upload Symbols Failed" 경고 6개(NMapsMap · React · hermesvm 등 dSYM 없음)는 무시해도 됨. 업로드는 성공
 4. 빌드 번호 PR은 `chore(app): 빌드 번호 N - …`
+5. 업데이트 노트(App Store · Play)는 [release-notes.md](release-notes.md) 방식대로 쓰고, 낸 글을 그 문서에 버전별로 더함
 
 그 밖
 - 패키지를 추가 · 업데이트하면 `pnpm --dir mobile run licenses`로 오픈소스 라이선스 목록(`assets/licenses.json`)을 다시 만듦
