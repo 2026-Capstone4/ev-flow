@@ -83,10 +83,10 @@ import { toAppZoom, toWebZoomLevel } from '../../map/zoom'
 const INITIAL_WEB_ZOOM = 14
 
 /**
- * 가장 멀리 볼 수 있는 앱 줌. 서울 전체(가로 약 37km)가 화면 가로에 겨우 들어오는 넓이
- * 앱 줌 14 = 가로 약 1.5km라 줌 9.3 = 약 39km (zoom.ts 측정 기준)
+ * 가장 멀리 볼 수 있는 앱 줌. 독도까지 대한민국 전체(가로 약 520km)가 화면 가로에 들어오는 넓이
+ * 앱 줌 14 = 가로 약 1.5km라 줌 5.5 = 약 540km (zoom.ts 측정 기준)
  */
-const MIN_APP_ZOOM = 9.3
+const MIN_APP_ZOOM = 5.5
 
 /** 화면 위아래 · 좌우로 화면 크기의 50%씩 더 넓게 마커를 미리 그림. 지도를 끌 때 마커가 늦게 뜨지 않게 함 (웹은 30%) */
 const VIEW_MARGIN_RATIO = 0.5
@@ -202,7 +202,8 @@ export default function MapHomeScreen() {
   const [containerHeight, setContainerHeight] = useState(0)
 
   // 화면 범위(+ 주변 여유)에 든 충전소만 마커로 그림
-  // 웹은 웹 줌 11 이하에서 마커를 숨기지만, 앱은 최소 줌이 서울 전체라 멀리 봐도 모두 그림 (2026-11-21 실기기에서 확인)
+  // 웹은 웹 줌 11 이하에서 마커를 숨기지만, 앱은 멀리 봐도 모두 그림 (2026-11-21 실기기에서 서울 전체 넓이로 확인)
+  // 최소 줌 5.5(대한민국 전체)까지 멀어져도 충전소는 서울 안에만 있어, 그리는 개수는 서울 전체를 볼 때와 같음
   const visibleStations = useMemo(() => {
     // 처음 카메라 범위를 받기 전이면 그리지 않음
     if (!stations || !camera.region) return []

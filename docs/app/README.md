@@ -29,7 +29,7 @@
 
 | 플랫폼 | 상태 |
 |---|---|
-| iOS | App Store 1.0.0 (5) 제출 (2026-11-24). 앱 이름 `EV Flow - AI 충전소 추천`, 번들 ID `app.evflowkr.evflow`, SKU `evflow-ios` |
+| iOS | App Store 1.0.0 (5) 제출 (2026-11-24) · 출시, 1.0.1 (6) 업데이트 (2026-11-27). 앱 이름 `EV Flow - AI 충전소 추천`, 번들 ID `app.evflowkr.evflow`, SKU `evflow-ios` |
 | Android | 2026-11-25 시작 — [android-plan.md](android-plan.md) |
 
 | 결정 | 내용 |
@@ -97,7 +97,7 @@ core를 같이 쓰려고 넣은 설정 세 가지 (빠지면 깨짐, 자세한 �
 | 위치 권한 | 첫 방문 안내를 닫으면 바로 물음. 이미 허용했으면 열 때 창 없이 현재 위치로 | 현재 위치 버튼을 누를 때 |
 | 마포구 밖 현재 위치 | 기준 위치로 씀 (추천은 서버 422 → "마포구만 지원" 안내) | 마포구 안만 기준 위치로 |
 | 첫 추천 | 처음 위치 재기가 끝난 뒤 1번 (성공이면 그 위치, 실패 · 거부면 시연 위치) | 열 때 바로 |
-| 지도 범위 | 최소 줌 9.3(서울 전체), 대한민국 사각형 밖으로 못 감, 멀리 봐도 마커 표시 | 멀리 보면 마커 숨김 |
+| 지도 범위 | 최소 줌 5.5(대한민국 전체), 대한민국 사각형 밖으로 못 감, 멀리 봐도 마커 표시 | 멀리 보면 마커 숨김 |
 
 추천 호출 기준(5분 · 500m + 2분, 현재 위치 버튼은 지도만)은 앱 · 웹 같음 — [decisions.md 데이터 갱신](../decisions.md#데이터-갱신--)
 
@@ -138,10 +138,12 @@ App Store 빌드의 GPS 값은 `.env.local`을 바꾸지 않고 빌드 명령 �
 
 App Store 빌드
 1. `app.config.ts` `ios.buildNumber`를 1 올림 (같은 버전에서 올릴 때마다)
+   - 지금 버전이 이미 출시됐으면 `version`도 올림 (예: 1.0.0 → 1.0.1). 출시된 버전엔 새 빌드를 못 넣음
 2. `npx expo prebuild --platform ios` — Info.plist에 빌드 번호 반영 (Xcode General 탭의 Build 칸이 1로 보여도 Info.plist 값이 쓰임)
 3. GPS 켜고 Xcode Archive → Organizer에서 App Store Connect 업로드
    - "Upload Symbols Failed" 경고 6개(NMapsMap · React · hermesvm 등 dSYM 없음)는 무시해도 됨. 업로드는 성공
 4. 빌드 번호 PR은 `chore(app): 빌드 번호 N - …`
+5. 업데이트 노트(App Store · Play)는 [release-notes.md](release-notes.md) 방식대로 쓰고, 낸 글을 그 문서에 버전별로 더함
 
 그 밖
 - 패키지를 추가 · 업데이트하면 `pnpm --dir mobile run licenses`로 오픈소스 라이선스 목록(`assets/licenses.json`)을 다시 만듦

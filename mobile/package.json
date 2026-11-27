@@ -1,7 +1,7 @@
 {
   "name": "ev-flow-mobile",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "EV-flow iOS · Android 앱 (Expo). 화면 밖 로직은 @ev-flow/core를 씀",
   "main": "expo-router/entry",
   "scripts": {

@@ -134,7 +134,8 @@ const withAndroidReleaseSigning: ConfigPlugin = (config) =>
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
-  version: '1.0.0',
+  // 스토어에 보이는 버전 (iOS CFBundleShortVersionString · Android versionName). 출시된 버전엔 새 빌드를 못 넣어서 출시 뒤 업데이트마다 올림
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon.png',
   // 딥링크로 우리 앱을 열 때 쓰는 주소 이름 (evflow://…)
@@ -144,7 +145,7 @@ const config: ExpoConfig = {
     // NCP 콘솔에 등록한 값과 글자 하나까지 같아야 지도 인증이 됨 (docs/app/README.md 7번)
     bundleIdentifier: 'app.evflowkr.evflow',
     // App Store Connect 빌드 번호 (CFBundleVersion). 같은 버전 안에서 올릴 때마다 1씩 올려야 업로드됨
-    buildNumber: '5',
+    buildNumber: '6',
     config: {
       // HTTPS 같은 기본 암호화만 써서 수출 규정 면제 대상. 적어 두면 빌드마다 암호화 질문을 안 받음
       usesNonExemptEncryption: false,
@@ -167,7 +168,7 @@ const config: ExpoConfig = {
     // iOS 번들 ID와 같은 값. NCP 콘솔에 등록한 패키지 이름과 같아야 지도 인증이 되고, Play에 올리면 못 바꿈
     package: 'app.evflowkr.evflow',
     // Play에 올리는 빌드 번호. iOS buildNumber처럼 올릴 때마다 1씩 올림
-    versionCode: 1,
+    versionCode: 2,
     // 런처마다 원 · 둥근 사각형으로 잘라 그리는 아이콘. 앞 그림 원본은 assets/adaptive-icon.svg, 바탕은 icon.svg와 같은 파랑
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
