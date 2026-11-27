@@ -1,0 +1,14 @@
+{
+  "ios": {
+    "latest": "1.0.0",
+    "min": "1.0.0",
+    "storeUrl": "https://apps.apple.com/kr/app/id0000000000"
+  },
+  "android": {
+    "latest": "1.0.0",
+    "min": "1.0.0",
+    "storeUrl": "https://play.google.com/store/apps/details?id=app.evflowkr.evflow"
+  },
+  "title": "새 버전이 나왔어요",
+  "message": "더 편한 사용을 위해 업데이트하세요."
+}

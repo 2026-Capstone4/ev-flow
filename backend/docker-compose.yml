@@ -150,6 +150,9 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       # 프론트 빌드 결과 (INF-05) - 맥에서 빌드 후 rsync로 서버 frontend/dist에 복사, git에는 없음
       - ../frontend/dist:/usr/share/nginx/html:ro
+      # 앱 새 버전 안내 파일 - git에 있어서 deploy.sh의 git pull로 바뀜
+      # 파일 하나가 아니라 폴더째 마운트해야 git이 파일을 새로 만들어도 컨테이너가 새 파일을 봄
+      - ./nginx/app-meta:/usr/share/nginx/app-meta:ro
       # 인증서는 서버의 certbot이 발급 · 갱신함 (CI-06) - live/가 archive/를 가리키는 링크라 폴더 전체를 마운트
       - /etc/letsencrypt:/etc/letsencrypt:ro
       # 발급 · 갱신 확인 파일 - certbot이 쓰고 nginx는 읽기만 함
