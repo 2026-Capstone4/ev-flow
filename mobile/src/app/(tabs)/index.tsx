@@ -21,7 +21,11 @@ import { useMapHomeData } from '@ev-flow/core/hooks/useMapHomeData'
 import { useMapView } from '@ev-flow/core/hooks/useMapView'
 import { usePrefetchNationwideServiceAreas } from '@ev-flow/core/hooks/useServiceAreasQuery'
 import { isDotStation, isInView, toViewBounds } from '@ev-flow/core/lib/mapMarkers'
-import { hasSeenOnboarding, markOnboardingSeen } from '@ev-flow/core/lib/onboarding'
+import {
+  APP_ONBOARDING_STORAGE_KEY,
+  hasSeenOnboarding,
+  markOnboardingSeen,
+} from '@ev-flow/core/lib/onboarding'
 import { countActiveFilters } from '@ev-flow/core/lib/stationFilter'
 import { RADIUS } from '@ev-flow/core/lib/theme'
 import type { LatLng } from '@ev-flow/core/types/geo'
@@ -57,7 +61,9 @@ import {
 } from '../../components/OnboardingTour'
 import { RecommendSheet, type RecommendSheetHandle } from '../../components/RecommendSheet'
 import { SearchBar } from '../../components/SearchBar'
+import { UpdateNoticeModal } from '../../components/UpdateNoticeModal'
 import { UpdateStatus } from '../../components/UpdateStatus'
+import { useAppUpdateNotice } from '../../hooks/useAppUpdateNotice'
 import { APP_LOCATE_FAILURE_MESSAGE, useCurrentLocation } from '../../hooks/useCurrentLocation'
 import { useLocationTracking } from '../../hooks/useLocationTracking'
 import { INITIAL_MAP_CENTER, IS_GEOLOCATION_ENABLED } from '../../lib/config'
@@ -108,6 +114,12 @@ const IS_HIDE_COLLIDED = false
 
 /** 안내 문구를 띄워 두는 시간 */
 const NOTICE_DURATION_MS = 3000
+
+/**
+ * 첫 방문 안내를 닫은 뒤 새 버전 안내 창을 띄우기까지 기다리는 시간
+ * iOS는 앞 Modal이 fade로 닫히는 중에 다음 Modal을 열면 조용히 안 뜰 수 있어, 닫힘(약 0.3초)이 끝난 뒤 띄움
+ */
+const UPDATE_NOTICE_DELAY_MS = 500
 
 /**
  * 지도를 '탭'으로 볼 기준. 손을 뗀 순간 바로 시트를 내림
@@ -213,14 +225,25 @@ export default function MapHomeScreen() {
   }, [])
 
   // 처음 들어온 사용자에게만 사용법 안내를 띄움. 본 기록은 기기 저장소(expo-sqlite)에 남김
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !hasSeenOnboarding(appStorage))
+  // 앱 전용 키(app-v2)라 안내가 바뀌기 전에 본 사용자도 한 번 더 봄
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(
+    () => !hasSeenOnboarding(appStorage, APP_ONBOARDING_STORAGE_KEY),
+  )
   /** 안내를 닫으면 본 것으로 기록해서 다음에 앱을 열 때부터는 띄우지 않음 */
   const closeOnboarding = useCallback(() => {
-    markOnboardingSeen(appStorage)
+    markOnboardingSeen(appStorage, APP_ONBOARDING_STORAGE_KEY)
     setIsOnboardingOpen(false)
     // 더보기에서 다시 보기로 열었으면 그 값도 지워서, 탭을 오가도 다시 뜨지 않게 함
     router.setParams({ showOnboarding: undefined })
   }, [])
+
+  // 스토어에 새 버전이 나왔으면 안내함 (evflowkr.app/app-version.json)
+  const {
+    notice: updateNotice,
+    currentVersion,
+    dismiss: dismissUpdate,
+    openStore,
+  } = useAppUpdateNotice()
 
   // 같은 문구가 연달아 와도 다시 3초를 세도록 띄울 때마다 id를 새로 붙임
   const [notice, setNotice] = useState<{ id: number; message: string } | null>(null)
@@ -368,6 +391,20 @@ export default function MapHomeScreen() {
   // 성공 · 실패와 상관없이 끝나면 첫 추천을 부름 (찾았으면 그 위치, 못 찾았으면 시연 위치)
   const hasLocatedOnStartRef = useRef(false)
   const isOnboardingVisible = isOnboardingOpen || showOnboarding === '1'
+
+  // 새 버전 안내는 첫 방문 안내가 완전히 닫힌 뒤에만 띄움. 안내를 다시 열면 그동안 바로 숨김
+  // 닫힌 상태가 0.5초 이어졌는지를 따로 두고, 지금 안내가 떠 있는지와 함께 봄
+  const [isOnboardingSettledHidden, setIsOnboardingSettledHidden] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setIsOnboardingSettledHidden(!isOnboardingVisible),
+      // 닫혔을 때만 기다리고, 열렸을 때는 바로 기록함
+      isOnboardingVisible ? 0 : UPDATE_NOTICE_DELAY_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [isOnboardingVisible])
+  const isUpdateNoticeReady = isOnboardingSettledHidden && !isOnboardingVisible
+
   useEffect(() => {
     // 위치 기능이 꺼진 빌드 · 안내를 보는 중 · 이미 한 번 잰 경우는 건너뜀
     if (!IS_GEOLOCATION_ENABLED || isOnboardingVisible || hasLocatedOnStartRef.current) return
@@ -720,6 +757,15 @@ export default function MapHomeScreen() {
       </View>
       {/* 처음 들어왔거나, 더보기의 "사용법 다시 보기"로 왔으면(?showOnboarding=1) 안내를 띄움 */}
       {isOnboardingVisible && <OnboardingTour steps={tourSteps} onClose={closeOnboarding} />}
+      {/* 새 버전 안내는 사용법 안내가 완전히 닫힌 뒤에 띄워 두 창이 겹치지 않게 함 */}
+      {updateNotice && isUpdateNoticeReady && (
+        <UpdateNoticeModal
+          notice={updateNotice}
+          currentVersion={currentVersion}
+          onDismiss={dismissUpdate}
+          onUpdate={openStore}
+        />
+      )}
     </View>
   )
 }

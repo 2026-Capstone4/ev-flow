@@ -101,10 +101,10 @@ const DIM_OPACITY = 0.55
  * 안내 카드 바탕색. 흰 지도 화면 위에서 안내 카드인 게 드러나게 아주 연한 파스텔 파랑을 씀
  * brand-primary-bg(#eff6ff)보다 옅어서, 카드 안의 아이콘 원 · 이전 버튼은 흰색으로 바꿔 구분함
  */
-const CARD_BG = '#f5f8ff'
+export const CARD_BG = '#f5f8ff'
 
 /** 웹 그림자(0 8px 24px 18%)를 RN 그림자 속성으로 옮김 */
-const CARD_SHADOW = createShadow(8, 24, 0.18)
+export const CARD_SHADOW = createShadow(8, 24, 0.18)
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 
