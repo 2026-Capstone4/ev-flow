@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { InfoTooltip } from '@/components/InfoTooltip'
+import { TableMoreRow } from '@/components/TableMoreRow'
+import { SHOWN_STEP, useShownCount } from '@/hooks/useShownCount'
 import {
   CURRENT_OCCUPANCY_TOOLTIP,
   formatStationIssues,
   formatStationOccupancy,
   type AdminStation,
 } from '@/lib/admin/chargerStatus'
-import { CHARGER_REGION_LABEL, formatStatUpdated } from '@/lib/admin/common'
+import { chargerRegionLabel, formatStatUpdated } from '@/lib/admin/common'
 
 type AdminStationTableProps = {
   stations: AdminStation[]
@@ -19,6 +21,8 @@ type AdminStationTableProps = {
   onSelect: (station: AdminStation, rowOffset: number) => void
   /** 충전기를 보고 돌아왔을 때 — 그 줄을 떠날 때 자리로 스크롤하고 잠깐 강조함 */
   returnTo?: StationReturnPoint | null
+  /** 이 값이 바뀌면(지역 · 구 · 정렬 · 검색) 더보기로 늘린 줄 수를 처음으로 되돌림 */
+  resetKey: string
 }
 
 /** 충전기별 보기에서 돌아올 때 다시 찾아갈 충전소 줄과 그 줄의 화면 위치 */
@@ -33,9 +37,18 @@ export function AdminStationTable({
   updatedAt,
   onSelect,
   returnTo,
+  resetKey,
 }: AdminStationTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [highlightedId, setHighlightedId] = useState(returnTo?.stationId ?? null)
+  // 돌아온 충전소 줄은 더보기 뒤쪽에 있어도 그려져야 스크롤로 찾아갈 수 있음
+  // 떠날 때처럼 더보기 단위로 올려 그려서, 아래 줄이 모자라 스크롤이 덜 내려가는 일이 없게 함
+  const returnIndex = returnTo
+    ? stations.findIndex((station) => station.stationId === returnTo.stationId)
+    : -1
+  const returnMinCount =
+    returnIndex >= 0 ? Math.ceil((returnIndex + 1) / SHOWN_STEP) * SHOWN_STEP : 0
+  const { shown, remaining, showMore } = useShownCount(stations.length, resetKey, returnMinCount)
 
   // 돌아왔으면 그 줄이 떠날 때와 같은 높이에 오도록 스크롤. 화면에 그려지기 전에 맞춰서 튀지 않게
   // 표가 새로 그려질 때(충전소별 보기로 돌아올 때) 한 번만 맞춤
@@ -87,7 +100,7 @@ export function AdminStationTable({
           </tr>
         </thead>
         <tbody>
-          {stations.map((station) => {
+          {stations.slice(0, shown).map((station) => {
             const at = station.statUpdatedAt ? new Date(station.statUpdatedAt) : null
             const issues = formatStationIssues(station)
             return (
@@ -100,9 +113,7 @@ export function AdminStationTable({
                   station.stationId === highlightedId ? 'bg-brand-primary-bg' : 'hover:bg-bg-subtle'
                 }`}
               >
-                <td className="px-5 py-3 text-text-secondary">
-                  {CHARGER_REGION_LABEL[station.region]}
-                </td>
+                <td className="px-5 py-3 text-text-secondary">{chargerRegionLabel(station)}</td>
                 <td className="px-5 py-3">
                   <button
                     type="button"
@@ -134,6 +145,7 @@ export function AdminStationTable({
               </tr>
             )
           })}
+          <TableMoreRow colSpan={6} shown={shown} remaining={remaining} onMore={showMore} />
         </tbody>
       </table>
     </div>

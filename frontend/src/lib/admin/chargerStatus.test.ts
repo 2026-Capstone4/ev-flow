@@ -20,6 +20,8 @@ function charger(overrides: Partial<AdminCharger>): AdminCharger {
     region: 'city',
     stationId: 'S1',
     stationName: '가 충전소',
+    district: '11440',
+    districtName: '마포구',
     chargerId: '01',
     status: 'available',
     stat: '2',
@@ -45,12 +47,13 @@ describe('getAdminChargerStatusLabel', () => {
 
 describe('summarizeChargers', () => {
   it('구분별 · 고장 수를 세고, 이용률 분모에서 운영 불가 · 확인 불가를 뺌', () => {
+    // 서울(live)도 마포구(city)와 같이 도심으로 셈
     const summary = summarizeChargers([
       charger({ status: 'charging' }),
-      charger({ status: 'available' }),
+      charger({ status: 'available', region: 'live' }),
       charger({ status: 'available', region: 'service_area' }),
       charger({ status: 'charging', region: 'service_area' }),
-      charger({ status: 'stopped' }),
+      charger({ status: 'stopped', region: 'live' }),
       charger({ status: 'maintenance', region: 'service_area' }),
       charger({ status: 'unknown' }),
     ])

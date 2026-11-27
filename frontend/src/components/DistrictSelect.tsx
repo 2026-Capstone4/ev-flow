@@ -25,7 +25,7 @@ export function DistrictSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-24 appearance-none rounded-md border border-border-default bg-bg-page pr-9 pl-3 text-[13px] font-medium text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-28 appearance-none rounded-md border border-border-default bg-bg-page pr-9 pl-3 text-[13px] font-medium text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
