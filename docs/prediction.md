@@ -13,7 +13,7 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 
 ## ml (AI 패키지 그대로 실행)
 
-모델과 추론 코드는 AI 패키지(현재 v2.2 — `backend_xgb_v2_2_20261126.zip`, 배포 이름 `backend_xgb_v2_2_20261126`, 2026-11-26 교체. v3.4 이력 검사 수정본에 혼잡 2차 모델을 연결한 것으로 대기 모델은 v3.4 그대로. 이전 패키지는 서버 `ml/package_v34_fix_20261122` · `ml/package_v34_20261121`에 보관)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)과 패키지 검사 명령(`check_package.sh`)만 있다. 백엔드와 주고받는 값의 기준 · 검사 방법은 [contracts/](contracts/README.md).
+모델과 추론 코드는 AI 패키지(현재 v3.6 만차 확률 추천 — `evflow_backend_runtime_v3_6_probability_score_20261128.zip`, 2026-11-28 교체. 혼잡 2차 모델 그대로 · 대기 모델 v3.6(P55 · P90, 11/27 인계본과 같은 파일이라 ml `deployment_id`는 `evflow_backend_runtime_v3_6_p55_p90_20261127`) · 추천 점수가 이동시간/30 + 만차 확률. 이전 패키지는 서버 `ml/package_backend_xgb_v2_2_20261126` · `ml/package_v34_fix_20261122` · `ml/package_v34_20261121`에 보관)를 고치지 않고 쓴다. 저장소 `ml/`에는 이미지 설정(Dockerfile · requirements)과 패키지 검사 명령(`check_package.sh`)만 있다. 백엔드와 주고받는 값의 기준 · 검사 방법은 [contracts/](contracts/README.md).
 
 - 패키지는 서버 `ml/package/`에 풀어 둔다 (저장소 · 이미지에 없음). producer와 **같은 폴더**를 `/package`에 읽기 전용으로 마운트 — 체크포인트 형식이 패키지 버전에 묶여 있어 둘이 항상 같은 버전이어야 함
 - **api도 같은 폴더를 `/package`로 마운트**해 추천 순위를 패키지의 채점 함수(`run_recommendation.score_snapshot`)로 계산한다 (2026-11-22, `app/services/ai_ranking.py`). 채점 모듈은 표준 라이브러리만 써서 모델 · pandas를 올리지 않음. 규칙은 [api/user.md 3번 계산 규칙](api/user.md#계산-규칙)
@@ -21,7 +21,7 @@ collector (도심 SUCCESS · PARTIAL 커밋)
 - 접속: `evflow_ml_reader` (`EVFLOW_ML_READONLY_DSN`) — 원천 `ml_read`, 체크포인트 `ml_checkpoint`
 - 원천 이름 `EVFLOW_SOURCE_ID`는 producer와 **같은 값**(서버 `evflow-prod`)이어야 한다 — 체크포인트에 묶여 있어 다르면 모든 체크포인트가 `checkpoint_incompatible_source_identity`로 거부되고 대기가 전부 빠짐 (2026-11-21 서버에서 확인)
 - 경로: `POST /internal/v1/predict` (본문 `{"run_id": 정수}`) · `GET /healthz`
-- 시점 15 · 30분 × 충전소. 혼잡 모델(`xgb_v2_20261121`, 2026-11-26 1차 `xgb_v1_20261108`에서 교체)과 대기 모델(`v3.4`)이 함께 돈다
+- 시점 15 · 30분 × 충전소. 혼잡 모델(`xgb_v2_20261121`, 2026-11-26 1차 `xgb_v1_20261108`에서 교체)과 대기 모델(`v3.6`, 2026-11-28 `v3.4`에서 교체)이 함께 돈다. v3.6은 `p55_minutes`도 주지만 collector는 지금처럼 `p50_minutes` · `p90_minutes`를 읽음
 - 응답 HTTP: 200 = `success`(전부 있음) · `partial`(일부 빠짐), 503 = 예측 전부 없음 · DB 장애 · 모델 로드 실패, 409 = 회차 근거 불일치, 404 = 모르는 회차
 
 ### 로컬 확인 (2026-11-20)
@@ -131,7 +131,9 @@ ml 호출 타임아웃은 30초 (AI 실측 512MiB · 체크포인트 있음 약 
    - 체크포인트 형식(payload 버전)까지 바뀐 패키지면 상태 폴더도 새로 쓴다 — 예전 폴더는 롤백용으로 남김. 2번 전에 producer를 먼저 멈추고(`docker compose stop producer`), 다음에 커밋되는 **아직 게시되지 않은 회차**로 구축한다. 이미 예전 형식으로 게시된 회차에 다시 쓰면 충돌로 거부됨
    - v3.1 → v3.4: 형식 `…_v1_20261116` → `…_v34_20261121`, 폴더 `/state/evflow` → `/state/evflow/v34` (compose `EVFLOW_CHECKPOINT_DIR` 기본값). 되돌릴 때는 패키지와 함께 `.env`에 `EVFLOW_CHECKPOINT_DIR=/state/evflow`를 넣고 producer · ml 재시작
    - v3.4 → v2.2 (2026-11-26): 형식은 같지만 `models/`가 바뀌어 재구축. 롤백용으로 v3.4 폴더를 남기려고 서버 `.env`에 `EVFLOW_CHECKPOINT_DIR=/state/evflow/v22`를 넣고 run 39751로 구축 → `up -d producer`(`.env`를 다시 읽게 `restart`가 아니라 `up -d`) → run 39760부터 대기 116칸. 되돌릴 때는 패키지와 함께 `.env`의 그 줄을 지우고 `up -d producer`
+   - v2.2 → v3.6 만차 확률 (2026-11-28): 형식 `…_v34_20261121` → `…_v36_20261127`이라 상태 폴더를 새로 씀 — `.env` `EVFLOW_CHECKPOINT_DIR=/state/evflow/v36`. producer를 13:58 UTC에 멈추고 그 뒤 첫 회차 run 41782로 구축(615초) → `up -d producer` → run 41800부터 대기 116칸. 멈추기 전 회차(41779)는 예전 형식으로 이미 게시돼 쓰지 않음. 되돌릴 때는 패키지 폴더를 바꾸고 `.env`를 `/state/evflow/v22`로, ml · api · producer 재생성
 7. 확인: `/healthz`의 `deployment.deployment_id` · collector 로그 `예측 저장 ... 모델 <배포 이름>` · API `modelVersion`
+   - 추천 점수식은 api 채점기 설정의 `ranking_signal`로 확인 (`congestion_prob` = 만차 확률, `selected_occupancy` = 예측 점유율). `deployment_id`는 점수식만 바뀐 패키지를 구분하지 못함 — 2026-11-28 v3.6 만차 확률 패키지도 11/27 인계본과 같은 값: `docker compose -f docker-compose.yml exec -T api python -c "from app.services.ai_ranking import get_scorer; print(get_scorer().config.get('ranking_signal'))"`
 8. 대기 표시를 켤 모델이면 api `.env`의 `SHOW_WAIT_PREDICTION=true` 후 api 재시작
 
 새 모델마다 512MiB 안에서 도는지 AI 실측을 받아 둔다.
@@ -194,10 +196,10 @@ producer가 실패해도 수집 · 예측은 그대로 진행한다. 자동 재�
 
 ```bash
 cd /home/ubuntu/ev-flow/backend && docker compose -f docker-compose.yml run --rm --no-deps -w /package producer \
-  python -B maintain_checkpoint.py --run-id "$RUN_ID" --initialize --publish-postgres --checkpoint-dir /state/evflow/v22
+  python -B maintain_checkpoint.py --run-id "$RUN_ID" --initialize --publish-postgres --checkpoint-dir /state/evflow/v36
 ```
 
-`--checkpoint-dir`는 producer의 `EVFLOW_CHECKPOINT_DIR`과 같아야 한다 — 다르면 producer가 `latest.json`을 못 찾아 503 `checkpoint_not_initialized`. 서버는 2026-11-26부터 `.env`로 `/state/evflow/v22`를 쓴다 (compose 기본값은 `/state/evflow/v34`)
+`--checkpoint-dir`는 producer의 `EVFLOW_CHECKPOINT_DIR`과 같아야 한다 — 다르면 producer가 `latest.json`을 못 찾아 503 `checkpoint_not_initialized`. 서버는 2026-11-28부터 `.env`로 `/state/evflow/v36`을 쓴다(2026-11-26 ~ 28은 `/state/evflow/v22`) (compose 기본값은 `/state/evflow/v34`)
 
 재구축(503 `rebuild_required`)도 같은 명령을 최신 도심 회차로 실행한다. 상태 볼륨(`evflow_checkpoint_state`)을 잃었을 때도 같다.
 
