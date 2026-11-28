@@ -34,7 +34,7 @@ export type UtilizationBucket = {
 
 export type UtilizationResponse = {
   region: AdminRegion
-  /** 서울 구 코드. 구를 골라 요청했을 때만 */
+  /** 서울 구 코드 · 휴게소 시도 코드. 구 · 시도를 골라 요청했을 때만 */
   district: string | null
   period: AdminPeriod
   from: string
@@ -48,7 +48,7 @@ export type AdminCharger = {
   stationId: string
   /** 도심 · 서울은 충전소명, 휴게소는 휴게소명 */
   stationName: string
-  /** 서울 구 코드 · 이름 (예: 11680 · 강남구). 휴게소 · 구를 모르는 충전소는 null */
+  /** 도심은 서울 구 코드 · 이름 (예: 11680 · 강남구), 휴게소는 시도 (예: 41 · 경기도). 모르는 충전소는 null */
   district: string | null
   districtName: string | null
   chargerId: string

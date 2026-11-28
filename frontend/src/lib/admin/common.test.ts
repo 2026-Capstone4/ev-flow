@@ -40,11 +40,12 @@ describe('formatStatUpdated', () => {
 })
 
 describe('toDistrictParam', () => {
-  it('도심(seoul)에서 구를 골랐을 때만 구 코드를 넘기고, 그 밖에는 빼서 지역 전체를 받음', () => {
+  it('도심에서 구를, 휴게소에서 시도를 골랐을 때만 넘기고, 그 밖에는 빼서 지역 전체를 받음', () => {
     expect(toDistrictParam('seoul', '11680')).toBe('11680')
     expect(toDistrictParam('seoul', 'all')).toBeUndefined()
-    // 휴게소 · 전체는 백엔드가 구를 받지 않아(422) 보내지 않음
-    expect(toDistrictParam('service_area', 'C0')).toBeUndefined()
+    expect(toDistrictParam('service_area', '41')).toBe('41')
+    expect(toDistrictParam('service_area', 'all')).toBeUndefined()
+    // 전체는 백엔드가 구 · 시도를 받지 않아(422) 보내지 않음
     expect(toDistrictParam('all', '11680')).toBeUndefined()
   })
 })
@@ -56,13 +57,33 @@ describe('DISTRICT_OPTIONS', () => {
     expect(labels).toHaveLength(26)
     expect(labels.slice(1, 4)).toEqual(['강남구', '강동구', '강북구'])
   })
+
+  it('휴게소는 전국 + 휴게소가 있는 시도 14곳 (세종 · 제주 없음)', () => {
+    const options = DISTRICT_OPTIONS.service_area
+    expect(options[0]).toEqual({ value: 'all', label: '전국' })
+    expect(options).toHaveLength(15)
+    expect(options.slice(1, 4).map((option) => option.label)).toEqual(['서울', '인천', '경기'])
+    expect(options.map((option) => option.label)).not.toContain('세종')
+    expect(options.map((option) => option.label)).not.toContain('제주')
+  })
 })
 
 describe('chargerRegionLabel', () => {
-  it('도심은 구 이름, 구를 모르면 도심, 휴게소는 휴게소', () => {
-    expect(chargerRegionLabel({ region: 'live', districtName: '강남구' })).toBe('강남구')
-    expect(chargerRegionLabel({ region: 'live', districtName: null })).toBe('도심')
-    expect(chargerRegionLabel({ region: 'service_area', districtName: null })).toBe('휴게소')
+  it('도심은 구 이름, 휴게소는 시도 짧은 이름, 모르면 도심 · 휴게소', () => {
+    expect(chargerRegionLabel({ region: 'live', district: '11680', districtName: '강남구' })).toBe(
+      '강남구',
+    )
+    expect(chargerRegionLabel({ region: 'live', district: null, districtName: null })).toBe('도심')
+    expect(
+      chargerRegionLabel({
+        region: 'service_area',
+        district: '12',
+        districtName: '전남광주통합특별시',
+      }),
+    ).toBe('전남광주')
+    expect(chargerRegionLabel({ region: 'service_area', district: null, districtName: null })).toBe(
+      '휴게소',
+    )
   })
 })
 

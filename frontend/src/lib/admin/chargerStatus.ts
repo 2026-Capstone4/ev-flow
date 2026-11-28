@@ -64,7 +64,8 @@ export type AdminStation = {
   region: AdminCharger['region']
   stationId: string
   stationName: string
-  /** 서울 구 이름 (표 '구분' 칸). 휴게소 · 구를 모르는 충전소는 null */
+  /** 구 · 시도 코드와 이름 (표 '구분' 칸). 도심은 서울 구, 휴게소는 시도. 모르는 충전소는 null */
+  district: string | null
   districtName: string | null
   chargerCount: number
   occupancy: StationOccupancy
@@ -87,6 +88,7 @@ export function groupChargersByStation(chargers: AdminCharger[]): AdminStation[]
       region: charger.region,
       stationId: charger.stationId,
       stationName: charger.stationName,
+      district: charger.district,
       districtName: charger.districtName,
       chargerCount: 0,
       occupancy: { charging: 0, usable: 0, rate: null },

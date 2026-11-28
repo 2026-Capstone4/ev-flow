@@ -40,6 +40,7 @@ from app.schemas.admin import (
     UtilizationResponse,
 )
 from app.schemas.base import KST
+from app.schemas.service_area import SIDO_NAMES
 from app.services.service_areas import without_duplicates
 from app.services.snapshot import latest_success_run, load_charger_states
 from app.services.stations import clean_station_name
@@ -60,10 +61,13 @@ REGION_TARGETS = {
     "city": ["city"],
     "service_area": ["service_area"],
 }
-# 구를 나눌 수 있는 대상 - 서울 구 코드(SEOUL_DISTRICTS) 중 마포구는 city, 나머지는 live에만 있음
-DISTRICT_TARGETS = ("city", "live")
+# 지역(district)을 나눌 수 있는 대상 - 도심은 서울 구 코드(SEOUL_DISTRICTS) 중 마포구는 city, 나머지는 live에만 있고
+# 휴게소는 시도 코드(SIDO_NAMES, 2026-11-28 추가)
+DISTRICT_TARGETS = ("city", "live", "service_area")
 CITY_DISTRICT = "11440"
 DISTRICT_CODES = {name: code for code, name in SEOUL_DISTRICTS.items()}
+# 구 코드(5자리) · 시도 코드(2자리)라 겹치지 않음
+DISTRICT_NAMES = {**SEOUL_DISTRICTS, **SIDO_NAMES}
 # 수집 기록이 하나도 없을 때만 씀 - collector JOBS와 같음
 DEFAULT_ZSCODES = {"city": "11440", "live": "11", "service_area": "C0"}
 
@@ -86,7 +90,7 @@ DAY_CACHE_KEY = "admin:occ:v1:{target}:{day}"
 DAY_CACHE_TTL_SEC = 40 * 24 * 3600
 DAY_CLOSED_AFTER = timedelta(minutes=10)  # 자정을 넘겨 커밋되는 회차를 기다린 뒤 저장
 
-# 끝난 날의 구별 이용률 집계 - 해시 필드는 구 코드 + 합계 HOUR_TOTAL_FIELD(저장 표시), 값은 "충전 중,분모"
+# 끝난 날의 지역별(구 · 시도) 이용률 집계 - 해시 필드는 지역 코드 + 합계 HOUR_TOTAL_FIELD(저장 표시), 값은 "충전 중,분모"
 DISTRICT_DAY_CACHE_KEY = "admin:occ-district:v1:{target}:{day}"
 
 # 오늘(안 끝난 날)은 시간대 단위로 저장 - 끝난 시간대는 한 번만 계산하고 DB에서는 진행 중인 시간대만 읽음.
@@ -111,19 +115,27 @@ _redis = redis.Redis.from_url(settings.redis_url, socket_timeout=1, socket_conne
 
 
 def targets_of(region: str, district: str | None = None) -> list[str]:
-    """집계 대상. 구를 고르면 그 구가 있는 대상 하나 (마포구는 city, 나머지는 live)"""
+    """집계 대상. 구를 고르면 그 구가 있는 대상 하나 (마포구는 city, 나머지는 live), 시도를 고르면 휴게소"""
     if district is None:
         return REGION_TARGETS[region]
+    # 시도는 휴게소 안에서만 고름
+    if district in SIDO_NAMES:
+        if region == "service_area":
+            return ["service_area"]
     # 구는 서울 안에서만 고름 - region=city면 마포구만 됨
-    if region == "seoul" or (region == "city" and district == CITY_DISTRICT):
+    elif region == "seoul" or (region == "city" and district == CITY_DISTRICT):
         return ["city" if district == CITY_DISTRICT else "live"]
     raise ApiError(422, "VALIDATION_ERROR", "요청 값이 올바르지 않습니다.")
 
 
 def station_districts(db: Session, target: str) -> dict[str, str]:
-    """충전소 → 구 코드 (city · live만). gugun은 주소 두 번째 단어라 표에 없으면 빠짐"""
+    """충전소 → 지역 코드. 도심(city · live)은 구 코드 - gugun은 주소 두 번째 단어라 표에 없으면 빠짐.
+    휴게소는 시도 코드(zcode) - 표에 없는 코드는 빠짐"""
     if target not in DISTRICT_TARGETS:
         return {}
+    if target == "service_area":
+        rows = db.execute(select(ServiceAreaStation.station_id, ServiceAreaStation.zcode))
+        return {station_id: zcode for station_id, zcode in rows if zcode in SIDO_NAMES}
     station = TARGETS[target][0]
     rows = db.execute(select(station.station_id, station.gugun))
     return {
@@ -500,7 +512,7 @@ def warm_cache(db: Session, now: datetime | None = None) -> None:
     today = kst_today(now)
     days = [today - timedelta(days=i) for i in range(UTILIZATION_DAYS - 1, -1, -1)]
     for target in TARGETS:
-        # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함. 서울은 구별 날짜 집계도 채움.
+        # 오늘은 안 끝난 날이라 hourly_log_counts로 시간대별 저장까지 함. 서울 · 휴게소는 지역별 날짜 집계도 채움.
         # 충전기 목록의 오늘 합은 시간대별 저장 뒤에 더함
         jobs = [daily_log_counts]
         if target in DISTRICT_TARGETS:
@@ -621,7 +633,7 @@ def get_chargers(
                         station_id=station_id,
                         station_name=names[station_id],
                         district=districts.get(station_id),
-                        district_name=SEOUL_DISTRICTS.get(districts.get(station_id)),
+                        district_name=DISTRICT_NAMES.get(districts.get(station_id)),
                         charger_id=c.charger_id,
                         status=c.status,
                         stat=c.stat,

@@ -23,7 +23,8 @@ import type { AdminRegion } from '@/types/admin'
  * 운영 현황 화면 데이터. 화면(JSX)과 분리해 RN 전환 시 그대로 재사용.
  * 이용률 차트는 분석서(ADM-001)대로 오늘 시간대별 · 최근 4주 요일별을 항상 함께 보여 줌
  * 요약 카드의 데이터 수집 상태 · 결측 건수 · 결측률은 오늘 기준 (자세한 내용은 데이터 수집 화면)
- * district(서울 구)는 이용률 · 충전기 목록에만 적용 — 수집 상태 · 결측은 서울을 한 번에 받아 구로 나뉘지 않음
+ * district(서울 구 · 휴게소 시도)는 이용률 · 충전기 목록에만 적용 — 수집 상태 · 결측은 서울 · 전국 휴게소를
+ * 한 번에 받아 구 · 시도로 나뉘지 않음
  */
 export function useAdminStatusData(
   region: AdminRegion,
