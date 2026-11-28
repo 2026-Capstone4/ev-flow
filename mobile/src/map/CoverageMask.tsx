@@ -13,13 +13,18 @@ const MAPO_STROKE_COLOR = `${COLORS['brand-primary']}cc`
 
 type Coord = { latitude: number; longitude: number }
 
-/** 줌을 많이 줄여도 바깥 채움이 끊기지 않게 서울 주변을 덮는 사각형. SDK 규칙대로 시계 방향, 처음 = 끝 */
+/**
+ * 지도를 대한민국 끝(제주도 남쪽 · 독도)까지 끌어도 바깥 채움이 끊기지 않게 넉넉히 덮는 사각형
+ * extent는 지도 가운데만 묶어서, 가장 멀리 본 줌(5.5)에선 화면 끝이 가운데보다 위아래 약 6° · 좌우 약 4° 더 나감
+ * 그만큼 대한민국 사각형(33.0~38.7, 124.5~132.0)보다 위아래 · 좌우로 10° 넘게 덮음
+ * SDK 규칙대로 시계 방향, 처음 = 끝
+ */
 const OUTER_BOUNDS: Coord[] = [
-  { latitude: 42, longitude: 120 },
-  { latitude: 42, longitude: 134 },
-  { latitude: 33, longitude: 134 },
-  { latitude: 33, longitude: 120 },
-  { latitude: 42, longitude: 120 },
+  { latitude: 50, longitude: 112 },
+  { latitude: 50, longitude: 144 },
+  { latitude: 22, longitude: 144 },
+  { latitude: 22, longitude: 112 },
+  { latitude: 50, longitude: 112 },
 ]
 
 /** GeoJSON 좌표 [경도, 위도]를 SDK 좌표로 바꿈 */

@@ -12,6 +12,8 @@ function charger(overrides: Partial<AdminCharger>): AdminCharger {
     region: 'city',
     stationId: 'S1',
     stationName: '가 충전소',
+    district: '11440',
+    districtName: '마포구',
     chargerId: '01',
     status: 'unknown',
     stat: '9',

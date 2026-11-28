@@ -3,6 +3,7 @@ import {
   AndroidConfig,
   CodeGenerator,
   withAndroidManifest,
+  withAndroidStyles,
   withAppBuildGradle,
   withStringsXml,
   type ConfigPlugin,
@@ -38,6 +39,23 @@ const withAndroidDisplayName: ConfigPlugin = (config) =>
       stringsConfig.modResults,
     )
     return stringsConfig
+  })
+
+/**
+ * Android 하단 버튼 · 제스처 바 뒤에 시스템이 깔던 반투명 흰 막을 끔 (android:enforceNavigationBarContrast)
+ * 켜져 있으면 안내 창처럼 화면을 어둡게 덮을 때 그 칸만 하얗게 남음. 막이 없어도 하단 탭이 흰 바탕이라 버튼은 잘 보임
+ * 이 값은 Android 10(API 29)부터 있어서 그 아래 기기에서는 무시되게 targetApi를 붙임
+ */
+const withAndroidNoNavBarScrim: ConfigPlugin = (config) =>
+  withAndroidStyles(config, (stylesConfig) => {
+    stylesConfig.modResults = AndroidConfig.Styles.assignStylesValue(stylesConfig.modResults, {
+      add: true,
+      parent: AndroidConfig.Styles.getAppThemeGroup(),
+      name: 'android:enforceNavigationBarContrast',
+      value: 'false',
+      targetApi: '29',
+    })
+    return stylesConfig
   })
 
 /** 길찾기 안내에 쓰는 지도 앱 URL Scheme (네이버 지도 · 카카오맵). src/lib/openMapApp.ts가 설치 여부를 확인함 */
@@ -116,7 +134,8 @@ const withAndroidReleaseSigning: ConfigPlugin = (config) =>
 const config: ExpoConfig = {
   name: 'EV-flow',
   slug: 'ev-flow',
-  version: '1.0.0',
+  // 스토어에 보이는 버전 (iOS CFBundleShortVersionString · Android versionName). 출시된 버전엔 새 빌드를 못 넣어서 출시 뒤 업데이트마다 올림
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon.png',
   // 딥링크로 우리 앱을 열 때 쓰는 주소 이름 (evflow://…)
@@ -126,7 +145,7 @@ const config: ExpoConfig = {
     // NCP 콘솔에 등록한 값과 글자 하나까지 같아야 지도 인증이 됨 (docs/app/README.md 7번)
     bundleIdentifier: 'app.evflowkr.evflow',
     // App Store Connect 빌드 번호 (CFBundleVersion). 같은 버전 안에서 올릴 때마다 1씩 올려야 업로드됨
-    buildNumber: '5',
+    buildNumber: '6',
     config: {
       // HTTPS 같은 기본 암호화만 써서 수출 규정 면제 대상. 적어 두면 빌드마다 암호화 질문을 안 받음
       usesNonExemptEncryption: false,
@@ -149,7 +168,7 @@ const config: ExpoConfig = {
     // iOS 번들 ID와 같은 값. NCP 콘솔에 등록한 패키지 이름과 같아야 지도 인증이 되고, Play에 올리면 못 바꿈
     package: 'app.evflowkr.evflow',
     // Play에 올리는 빌드 번호. iOS buildNumber처럼 올릴 때마다 1씩 올림
-    versionCode: 1,
+    versionCode: 2,
     // 런처마다 원 · 둥근 사각형으로 잘라 그리는 아이콘. 앞 그림 원본은 assets/adaptive-icon.svg, 바탕은 icon.svg와 같은 파랑
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
@@ -245,4 +264,6 @@ const config: ExpoConfig = {
   },
 }
 
-export default withAndroidReleaseSigning(withAndroidMapAppQueries(withAndroidDisplayName(config)))
+export default withAndroidNoNavBarScrim(
+  withAndroidReleaseSigning(withAndroidMapAppQueries(withAndroidDisplayName(config))),
+)

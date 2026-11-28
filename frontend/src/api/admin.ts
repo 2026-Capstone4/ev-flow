@@ -25,16 +25,21 @@ export async function fetchAuthMe() {
   return data
 }
 
-export async function fetchUtilization(region: AdminRegion, period: AdminPeriod) {
+/** district(서울 구 코드)가 undefined면 axios가 쿼리에서 빼서 지역 전체를 받음 */
+export async function fetchUtilization(
+  region: AdminRegion,
+  period: AdminPeriod,
+  district?: string,
+) {
   const { data } = await api.get<UtilizationResponse>('/admin/utilization', {
-    params: { region, period },
+    params: { region, period, district },
   })
   return data
 }
 
-export async function fetchAdminChargers(region: AdminRegion) {
+export async function fetchAdminChargers(region: AdminRegion, district?: string) {
   const { data } = await api.get<AdminChargersResponse>('/admin/chargers', {
-    params: { region },
+    params: { region, district },
   })
   return data
 }

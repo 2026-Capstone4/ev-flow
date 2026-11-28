@@ -1,29 +1,112 @@
-import type { AdminRegion } from '@/types/admin'
+import { getRegionLabel, REGIONS } from '@ev-flow/core/lib/serviceAreaRegion'
+import type { AdminCharger, AdminRegion, CollectionTargetName } from '@/types/admin'
 
 export const ADMIN_REGION_LABEL: Record<AdminRegion, string> = {
   all: '전체',
-  city: '도심',
+  seoul: '도심',
+  city: '마포구',
   service_area: '휴게소',
 }
 
-/** 도심 · 휴게소 안의 지역 선택지. value는 수집 대상 zscode ('all'은 전체). 아직 API에 지역 파라미터가 없어 화면에서만 씀 */
+/** 화면에서 고르는 지역 (전체 · 도심 · 휴게소). 도심은 서울 전체(seoul)로 요청 — 마포구(city)는 구 선택으로 고름 */
+export type AdminRegionChoice = Exclude<AdminRegion, 'city'>
+
+/** 운영자 화면이 처음 보여 주는 지역 — 미리 불러오기(prefetchAdminPage)도 이 값으로 요청 */
+export const DEFAULT_ADMIN_REGION: AdminRegionChoice = 'all'
+
+/**
+ * 서울 구 코드(충전기 API zscode) → 이름. 백엔드 SEOUL_DISTRICTS(backend/app/schemas/admin.py)와 같아야 함
+ * 마포구(11440)만 city 대상, 나머지는 live 대상
+ */
+export const SEOUL_DISTRICTS: Record<string, string> = {
+  '11110': '종로구',
+  '11140': '중구',
+  '11170': '용산구',
+  '11200': '성동구',
+  '11215': '광진구',
+  '11230': '동대문구',
+  '11260': '중랑구',
+  '11290': '성북구',
+  '11305': '강북구',
+  '11320': '도봉구',
+  '11350': '노원구',
+  '11380': '은평구',
+  '11410': '서대문구',
+  '11440': '마포구',
+  '11470': '양천구',
+  '11500': '강서구',
+  '11530': '구로구',
+  '11545': '금천구',
+  '11560': '영등포구',
+  '11590': '동작구',
+  '11620': '관악구',
+  '11650': '서초구',
+  '11680': '강남구',
+  '11710': '송파구',
+  '11740': '강동구',
+}
+
+/** 휴게소가 없는 시도 — 휴게소 지역 선택지에서 뺌 (2026-11-28 로컬 DB 기준 세종 · 제주) */
+const NO_SERVICE_AREA_REGIONS = ['36', '50']
+
+/**
+ * 도심 · 휴게소 안의 지역 선택지 ('all'은 전체). 도심은 서울 25개 구를 가나다순으로
+ * 휴게소는 시도 코드(충전기 API zcode)를 사용자 지역별 휴게소 화면과 같은 순서 · 짧은 이름으로
+ */
 export const DISTRICT_OPTIONS: Record<
-  Exclude<AdminRegion, 'all'>,
+  Exclude<AdminRegionChoice, 'all'>,
   { value: string; label: string }[]
 > = {
-  city: [
-    { value: 'all', label: '전체' },
-    { value: '11440', label: '마포구' },
+  seoul: [
+    { value: 'all', label: '서울 전체' },
+    ...Object.entries(SEOUL_DISTRICTS)
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'ko')),
   ],
   service_area: [
-    { value: 'all', label: '전체' },
-    { value: 'C0', label: '전국 고속도로' },
+    { value: 'all', label: '전국' },
+    ...REGIONS.filter((region) => !NO_SERVICE_AREA_REGIONS.includes(region.code)).map((region) => ({
+      value: region.code,
+      label: region.label,
+    })),
   ],
 }
 
-/** 표의 '구분' 칸 문구 */
-export const CHARGER_REGION_LABEL: Record<Exclude<AdminRegion, 'all'>, string> = {
+/**
+ * 이용률 · 충전기 목록 요청의 district. 도심에서 구를, 휴게소에서 시도를 골랐을 때만 넘기고
+ * 그 밖에는 빼서 지역 전체를 받음
+ */
+export function toDistrictParam(region: AdminRegion, district: string) {
+  // 백엔드가 구는 서울 안에서만, 시도는 휴게소 안에서만 받아서 그 밖이나 '전체'면 보내지 않음 (보내면 422)
+  if ((region !== 'seoul' && region !== 'service_area') || district === 'all') return undefined
+  return district
+}
+
+/** 표의 '구분' 칸 기본 문구 (마포구 · 서울 모두 도심) */
+export const CHARGER_REGION_LABEL: Record<CollectionTargetName, string> = {
   city: '도심',
+  live: '도심',
+  service_area: '휴게소',
+}
+
+/**
+ * 표의 '구분' 칸 문구. 도심은 구 이름(예: 강남구), 휴게소는 시도 짧은 이름(예: 경기)
+ * 구 · 시도를 모르면 '도심' · '휴게소'를 보여 줌
+ */
+export function chargerRegionLabel(
+  charger: Pick<AdminCharger, 'region' | 'district' | 'districtName'>,
+) {
+  // 휴게소의 districtName은 전체 이름(전남광주통합특별시 등)이라 길어서 짧은 이름을 씀
+  if (charger.region === 'service_area') {
+    return charger.district ? getRegionLabel(charger.district) : CHARGER_REGION_LABEL.service_area
+  }
+  return charger.districtName ?? CHARGER_REGION_LABEL[charger.region]
+}
+
+/** 데이터 수집 카드 제목 — 서울은 마포구(city)와 나머지 서울(live)을 따로 수집해서 둘을 나눠 부름 */
+export const COLLECTION_TARGET_LABEL: Record<CollectionTargetName, string> = {
+  city: '마포구',
+  live: '서울(마포구 외)',
   service_area: '휴게소',
 }
 
@@ -45,7 +128,7 @@ export function isStale(at: string | null, reference: Date) {
 }
 
 /** 운영자 화면 지역 전환 선택지 (전체 · 도심 · 휴게소) */
-export const ADMIN_REGION_OPTIONS = (['all', 'city', 'service_area'] as const).map((value) => ({
+export const ADMIN_REGION_OPTIONS = (['all', 'seoul', 'service_area'] as const).map((value) => ({
   value,
   label: ADMIN_REGION_LABEL[value],
 }))

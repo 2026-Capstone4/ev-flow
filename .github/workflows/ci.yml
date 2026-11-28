@@ -63,7 +63,8 @@ jobs:
           echo "$changed"
 
           # 웹(frontend/) · 앱(mobile/) · 공용 코드(packages/) · 워크스페이스 설정(루트 package.json · lock) · 이 워크플로 파일이 바뀌면 FE 검사를 돌림
-          if echo "$changed" | grep -qE '^(frontend/|mobile/|packages/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.prettierrc\.json$|\.github/workflows/ci\.yml$)'; then
+          # 백엔드 운영자 스키마(서울 구 코드표)도 넣음 - 웹 테스트(common.test.ts)가 읽어 프론트 코드표와 비교하므로
+          if echo "$changed" | grep -qE '^(frontend/|mobile/|packages/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.prettierrc\.json$|\.github/workflows/ci\.yml$|backend/app/schemas/admin\.py$)'; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend=false" >> "$GITHUB_OUTPUT"

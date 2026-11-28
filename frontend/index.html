@@ -24,6 +24,31 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- 검색 결과 위쪽에 도메인 대신 "EV Flow"가 보이게 하는 사이트 정보, iOS 앱 연결 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://evflowkr.app/#website",
+            "name": "EV Flow",
+            "alternateName": ["EVFlow", "EV Flow 전기차 충전소 추천"],
+            "url": "https://evflowkr.app/",
+            "inLanguage": "ko-KR"
+          },
+          {
+            "@type": "MobileApplication",
+            "name": "EV Flow",
+            "operatingSystem": "iOS",
+            "applicationCategory": "TravelApplication",
+            "description": "전기차 충전소의 실시간 현황과 혼잡도 예측을 확인하고, 지금 가기 좋은 충전소를 추천받는 앱",
+            "installUrl": "https://apps.apple.com/kr/app/id6838172836",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

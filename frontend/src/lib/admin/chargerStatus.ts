@@ -38,10 +38,11 @@ export function summarizeChargers(chargers: AdminCharger[]): ChargerSummary {
 
   return {
     total: chargers.length,
-    cityCount: count((c) => c.region === 'city'),
+    // 도심은 마포구(city)와 나머지 서울(live)을 합쳐 셈
+    cityCount: count((c) => c.region !== 'service_area'),
     serviceAreaCount: count((c) => c.region === 'service_area'),
     faultCount: count(isFault),
-    cityFaultCount: count((c) => c.region === 'city' && isFault(c)),
+    cityFaultCount: count((c) => c.region !== 'service_area' && isFault(c)),
     serviceAreaFaultCount: count((c) => c.region === 'service_area' && isFault(c)),
     unknownCount: count((c) => c.status === 'unknown'),
     currentOccupancyRate: usable > 0 ? charging / usable : null,
@@ -63,6 +64,9 @@ export type AdminStation = {
   region: AdminCharger['region']
   stationId: string
   stationName: string
+  /** 구 · 시도 코드와 이름 (표 '구분' 칸). 도심은 서울 구, 휴게소는 시도. 모르는 충전소는 null */
+  district: string | null
+  districtName: string | null
   chargerCount: number
   occupancy: StationOccupancy
   /** 운영 중지 + 점검 중 대수 */
@@ -84,6 +88,8 @@ export function groupChargersByStation(chargers: AdminCharger[]): AdminStation[]
       region: charger.region,
       stationId: charger.stationId,
       stationName: charger.stationName,
+      district: charger.district,
+      districtName: charger.districtName,
       chargerCount: 0,
       occupancy: { charging: 0, usable: 0, rate: null },
       faultCount: 0,

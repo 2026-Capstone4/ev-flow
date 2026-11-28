@@ -39,6 +39,15 @@ type StationMarkerProps = {
   onTap: (station: Station) => void
 }
 
+/** 숫자 마커 알약 그림의 크기(그림자 뺀 크기). 첫 방문 안내가 마커 칸을 정확히 짚을 때 씀 */
+export function getPillSize(station: Pick<Station, 'availableChargers' | 'totalChargers'>) {
+  const text = `${station.availableChargers}/${station.totalChargers}`
+  const length = Math.min(Math.max(text.length, MIN_TEXT_LENGTH), MAX_TEXT_LENGTH)
+  // 알약 폭 · 높이는 색과 상관없이 글자 수로만 정해져서 여유 색 그림 크기를 씀
+  const { width, height } = PILL_IMAGES.low[length]
+  return { width, height }
+}
+
 /**
  * 충전소 마커 하나. SDK 마커 + 미리 만든 그림이라 지도 엔진이 그림 (화면 요소를 겹치지 않음)
  * 숫자("사용 가능/전체")는 SDK 캡션으로 알약 가운데에 얹음

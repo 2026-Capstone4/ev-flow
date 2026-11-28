@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { hasSeenOnboarding, markOnboardingSeen } from './onboarding'
+import { APP_ONBOARDING_STORAGE_KEY, hasSeenOnboarding, markOnboardingSeen } from './onboarding'
 
 const brokenStorage = {
   getItem: () => {
@@ -17,6 +17,13 @@ describe('onboarding', () => {
     expect(hasSeenOnboarding()).toBe(false)
     markOnboardingSeen()
     expect(hasSeenOnboarding()).toBe(true)
+  })
+
+  it('앱 키는 웹 키와 따로 기록함', () => {
+    markOnboardingSeen()
+    expect(hasSeenOnboarding(undefined, APP_ONBOARDING_STORAGE_KEY)).toBe(false)
+    markOnboardingSeen(undefined, APP_ONBOARDING_STORAGE_KEY)
+    expect(hasSeenOnboarding(undefined, APP_ONBOARDING_STORAGE_KEY)).toBe(true)
   })
 
   it('저장소를 쓸 수 없으면 에러 없이 안 본 상태로 봄', () => {

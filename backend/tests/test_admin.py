@@ -112,8 +112,12 @@ def fake_hour_charger(start, end):
 
 @pytest.fixture(autouse=True)
 def districts(monkeypatch):
-    """충전소 → 구 대역 - S1은 마포구(city) · 강남구(live), S2는 송파구(live)"""
-    table = {"city": {"S1": "11440"}, "live": {"S1": "11680", "S2": "11710"}}
+    """충전소 → 지역 대역 - S1은 마포구(city) · 강남구(live) · 경기(service_area), S2는 송파구(live)"""
+    table = {
+        "city": {"S1": "11440"},
+        "live": {"S1": "11680", "S2": "11710"},
+        "service_area": {"S1": "41"},
+    }
     monkeypatch.setattr(admin, "station_districts", lambda db, target: table.get(target, {}))
     return table
 
@@ -304,12 +308,15 @@ def test_warm_cache_fills_closed_days_and_hours_for_every_target(fake_redis, db_
             b"S1|02": b"0,130",
             b"_": b"13,260",
         }
-    # 서울(city · live)은 구별 날짜 집계도 채움
+    # 서울(city · live)은 구별, 휴게소는 시도별 날짜 집계도 채움
     assert fake_redis.hashes["admin:occ-district:v1:live:2026-11-15"] == {
         b"_": b"15,10",
         b"11680": b"15,10",
     }
-    assert "admin:occ-district:v1:service_area:2026-11-15" not in fake_redis.hashes
+    assert fake_redis.hashes["admin:occ-district:v1:service_area:2026-11-15"] == {
+        b"_": b"15,10",
+        b"41": b"15,10",
+    }
     # 화면 요청은 끝난 날 · 시간대를 다시 세지 않고 진행 중인 13 · 14시만 DB에서 셈
     db_calls.clear()
     admin.get_utilization(None, "all", "week", NOW)
@@ -341,6 +348,7 @@ def test_warm_cache_continues_after_target_failure(fake_redis, monkeypatch):
         ("seoul", "11680", ["live"]),
         ("seoul", "11440", ["city"]),  # 마포구는 city에만 있음
         ("city", "11440", ["city"]),
+        ("service_area", "41", ["service_area"]),  # 휴게소는 시도 코드
     ],
 )
 def test_district_targets(region, district, targets):
@@ -349,7 +357,14 @@ def test_district_targets(region, district, targets):
 
 @pytest.mark.parametrize(
     "region, district",
-    [("city", "11680"), ("service_area", "11680"), ("all", "11680")],
+    [
+        ("city", "11680"),
+        ("service_area", "11680"),  # 휴게소에 서울 구 코드
+        ("all", "11680"),
+        ("seoul", "41"),  # 시도 코드는 휴게소에만
+        ("city", "41"),
+        ("all", "41"),
+    ],
 )
 def test_district_outside_seoul_is_422(region, district):
     with pytest.raises(ApiError) as e:
@@ -551,6 +566,28 @@ def test_chargers_filtered_by_district(monkeypatch, db_calls):
     }
 
 
+def test_service_area_chargers_filtered_by_sido(monkeypatch):
+    run = SimpleNamespace(started_at=NOW)
+    monkeypatch.setattr(admin, "latest_success_run", lambda db, target: run)
+    monkeypatch.setattr(admin, "log_counts", lambda *args: {})
+    states = {
+        sid: [ChargerState(sid, "01", "available", ["dc_combo"], 100, None)] for sid in ("S1", "S2")
+    }
+    monkeypatch.setattr(admin, "load_charger_states", lambda *args: states)
+    stations = [
+        SimpleNamespace(station_id=sid, name=f"{sid} 충전소", service_area_name=f"{sid} 휴게소")
+        for sid in ("S1", "S2")
+    ]
+    db = SimpleNamespace(scalars=lambda query: stations)
+    res = admin.get_chargers(db, "service_area", NOW, district="41")
+    assert [(c.station_id, c.district, c.district_name) for c in res.chargers] == [
+        ("S1", "41", "경기도")
+    ]
+    # 전체로 받으면 시도를 모르는 충전소(S2)도 null로 옴
+    every = admin.get_chargers(db, "service_area", NOW)
+    assert {(c.station_id, c.district) for c in every.chargers} == {("S1", "41"), ("S2", None)}
+
+
 def test_chargers_exclude_hy_duplicate_registrations(monkeypatch):
     run = SimpleNamespace(started_at=NOW)
     monkeypatch.setattr(admin, "latest_success_run", lambda db, target: run)
@@ -621,6 +658,12 @@ def test_dashboard_response_uses_camel_case_and_from(client, monkeypatch):
 def test_unknown_district_is_422(client):
     app.dependency_overrides[require_admin] = lambda: None
     res = client.get("/api/v1/admin/chargers?region=seoul&district=26110")  # 부산 중구
+    assert res.status_code == 422
+
+
+def test_unknown_sido_is_422(client):
+    app.dependency_overrides[require_admin] = lambda: None
+    res = client.get("/api/v1/admin/chargers?region=service_area&district=99")
     assert res.status_code == 422
 
 

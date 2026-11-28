@@ -1,7 +1,11 @@
 // 운영자 API 명세(docs/api/admin.md 7~14번) 기준. 응답 필드 이름을 바꾸지 않고 그대로 씀 (API-05)
 import type { ChargerStatus } from '@ev-flow/core/types/station'
 
-export type AdminRegion = 'all' | 'city' | 'service_area'
+/** 조회 지역. seoul = city(마포구) + live(마포구를 뺀 서울), all = city · live · service_area 모두 */
+export type AdminRegion = 'all' | 'seoul' | 'city' | 'service_area'
+
+/** 수집 대상 — 충전기 목록의 region · 수집 상태의 target. live = 마포구를 뺀 서울 */
+export type CollectionTargetName = 'city' | 'live' | 'service_area'
 
 /** 대시보드 집계 기간. day = 오늘, week = 이용률은 최근 4주 · 결측은 최근 7일 */
 export type AdminPeriod = 'day' | 'week'
@@ -30,6 +34,8 @@ export type UtilizationBucket = {
 
 export type UtilizationResponse = {
   region: AdminRegion
+  /** 서울 구 코드 · 휴게소 시도 코드. 구 · 시도를 골라 요청했을 때만 */
+  district: string | null
   period: AdminPeriod
   from: string
   to: string
@@ -38,10 +44,13 @@ export type UtilizationResponse = {
 }
 
 export type AdminCharger = {
-  region: Exclude<AdminRegion, 'all'>
+  region: CollectionTargetName
   stationId: string
-  /** 도심은 충전소명, 휴게소는 휴게소명 */
+  /** 도심 · 서울은 충전소명, 휴게소는 휴게소명 */
   stationName: string
+  /** 도심은 서울 구 코드 · 이름 (예: 11680 · 강남구), 휴게소는 시도 (예: 41 · 경기도). 모르는 충전소는 null */
+  district: string | null
+  districtName: string | null
   chargerId: string
   status: ChargerStatus
   /** API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 구분용. 마지막 성공 수집에 그 충전기가 없으면 null */
@@ -61,7 +70,7 @@ export type AdminChargersResponse = {
 export type CollectionRunStatus = 'running' | 'success' | 'partial' | 'failed'
 
 export type CollectionTarget = {
-  target: Exclude<AdminRegion, 'all'>
+  target: CollectionTargetName
   zscode: string
   lastRunAt: string | null
   lastStatus: CollectionRunStatus | null

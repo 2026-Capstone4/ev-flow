@@ -18,6 +18,7 @@ import {
   NATIONWIDE_SERVICE_AREAS,
 } from '@ev-flow/core/mocks/serviceAreas'
 import { findStationDetail, STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
+import { REGIONS } from '@ev-flow/core/lib/serviceAreaRegion'
 import {
   buildAdminChargers,
   buildCollectionTargets,
@@ -28,6 +29,7 @@ import {
   MOCK_MAX_LOGIN_FAILURES,
   MOCK_SESSION_MS,
 } from '@/mocks/data/admin'
+import { SEOUL_DISTRICTS } from '@/lib/admin/common'
 import type { AdminPeriod, AdminRegion, AuthSession, LoginRequest } from '@/types/admin'
 import type { ApiErrorBody } from '@ev-flow/core/types/api'
 import type {
@@ -189,16 +191,34 @@ function readMockSession(cookies: Record<string, string>): AuthSession | null {
   }
 }
 
-/** 쿼리스트링의 region · period. 명세에 없는 값이면 null */
-function readDashboardParams(request: Request) {
+type DashboardParams = { region: AdminRegion; period: AdminPeriod; district: string | null }
+
+/**
+ * 쿼리스트링의 region · period · district. 명세에 없는 값이면 null
+ * acceptsDistrict가 false면(12 · 13번) 실서버처럼 district를 읽지 않고 무시함 — FastAPI는 선언 안 한 쿼리를 버림
+ */
+function readDashboardParams(request: Request, acceptsDistrict: boolean): DashboardParams | null {
   const url = new URL(request.url)
   const region = url.searchParams.get('region') ?? 'all'
   const period = url.searchParams.get('period') ?? 'day'
-  // 명세의 값(all · city · service_area / day · week)이 아니면 FastAPI처럼 422로 응답하도록 null
-  if (!['all', 'city', 'service_area'].includes(region) || !['day', 'week'].includes(period)) {
+  const district = acceptsDistrict ? url.searchParams.get('district') : null
+  // 명세의 값(all · seoul · city · service_area / day · week)이 아니면 FastAPI처럼 422로 응답하도록 null
+  if (
+    !['all', 'seoul', 'city', 'service_area'].includes(region) ||
+    !['day', 'week'].includes(period)
+  ) {
     return null
   }
-  return { region: region as AdminRegion, period: period as AdminPeriod }
+  // 구는 표에 있는 서울 구 코드만, region=seoul(마포구는 city도)일 때만 받음
+  // 시도는 표에 있는 시도 코드만, region=service_area일 때만 받음 (백엔드 targets_of와 같은 기준)
+  if (district !== null) {
+    const isSeoulDistrict =
+      district in SEOUL_DISTRICTS &&
+      (region === 'seoul' || (region === 'city' && district === '11440'))
+    const isSido = REGIONS.some((item) => item.code === district) && region === 'service_area'
+    if (!isSeoulDistrict && !isSido) return null
+  }
+  return { region: region as AdminRegion, period: period as AdminPeriod, district }
 }
 
 /**
@@ -217,7 +237,9 @@ const checkMockSession: SessionCheck = async (cookies) => readMockSession(cookie
 function adminGet<T extends DefaultBodyType>(
   path: string,
   isLoggedIn: SessionCheck,
-  build: (params: { region: AdminRegion; period: AdminPeriod }, now: Date) => T,
+  build: (params: DashboardParams, now: Date) => T,
+  /** district(서울 구 · 휴게소 시도)를 받는 API인지 — 10 · 11번만 */
+  acceptsDistrict = false,
 ) {
   return http.get(`/api/v1${path}`, async ({ request, cookies }) => {
     await delay(300)
@@ -225,7 +247,7 @@ function adminGet<T extends DefaultBodyType>(
     if (!(await isLoggedIn(cookies))) {
       return HttpResponse.json<ApiErrorBody>(UNAUTHORIZED, { status: 401 })
     }
-    const params = readDashboardParams(request)
+    const params = readDashboardParams(request, acceptsDistrict)
     // 쿼리 값이 명세와 다르면 422
     if (!params) {
       return HttpResponse.json<ApiErrorBody>(
@@ -326,13 +348,21 @@ const authHandlers = [
  * 운영자 대시보드 10~13번 (이용률 · 충전기 목록 · 수집 상태 · 결측 현황) (실제 서버는 백엔드 #72)
  */
 const dashboardHandlers = [
-  adminGet('/admin/utilization', checkMockSession, ({ region, period }, now) =>
-    buildUtilization(region, period, now),
+  adminGet(
+    '/admin/utilization',
+    checkMockSession,
+    ({ region, period, district }, now) => buildUtilization(region, period, now, district),
+    true,
   ),
-  adminGet('/admin/chargers', checkMockSession, ({ region }, now) => ({
-    updatedAt: toKstIso(now),
-    chargers: buildAdminChargers(region, now),
-  })),
+  adminGet(
+    '/admin/chargers',
+    checkMockSession,
+    ({ region, district }, now) => ({
+      updatedAt: toKstIso(now),
+      chargers: buildAdminChargers(region, now, district),
+    }),
+    true,
+  ),
   adminGet('/admin/collection-status', checkMockSession, ({ region }, now) => ({
     targets: buildCollectionTargets(region, now),
   })),
