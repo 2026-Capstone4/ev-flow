@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.errors import ApiError
 from app.db.models import ServiceAreaCharger, ServiceAreaStation, ServiceAreaStatusLog
 from app.schemas.service_area import (
+    SIDO_NAMES,
     NationwideServiceArea,
     NationwideServiceAreaChargersResponse,
     NationwideServiceAreasResponse,
@@ -181,26 +182,6 @@ def area_id(s: ServiceAreaStation) -> str:
     """전국 휴게소 묶음 - 노선이 붙은 곳은 표준데이터 휴게소명(사업자마다 다른 statId를 묶음), 못 붙인 곳은 statId 하나씩"""
     return s.rest_area or s.station_id
 
-
-# 충전기 API 시도 코드(zcode) → 이름. 2026-11 기준 새 코드 - 전남 · 광주는 12 하나, 강원 51 · 전북 52
-SIDO_NAMES = {
-    "11": "서울특별시",
-    "12": "전남광주통합특별시",
-    "26": "부산광역시",
-    "27": "대구광역시",
-    "28": "인천광역시",
-    "30": "대전광역시",
-    "31": "울산광역시",
-    "36": "세종특별자치시",
-    "41": "경기도",
-    "43": "충청북도",
-    "44": "충청남도",
-    "47": "경상북도",
-    "48": "경상남도",
-    "50": "제주특별자치도",
-    "51": "강원특별자치도",
-    "52": "전북특별자치도",
-}
 
 # 충전소 이름 앞뒤의 사업자 표기 - 노선을 못 붙인 곳은 이것만 지우고 나머지(상행선 · 하행선 등)는 그대로 둠
 NAME_PREFIX = re.compile(r"^\s*(?:\(고속도로\)|워터|E1|HK하이웨이|SK엔크린)\s*")

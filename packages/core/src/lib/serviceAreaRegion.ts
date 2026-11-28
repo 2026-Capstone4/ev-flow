@@ -6,7 +6,7 @@ import { compareKorean } from './compareKorean'
  * 시도 코드(충전기 API zcode) → 목록 순서 · 짧은 이름. 수도권 → 강원 → 충청 → 전라 → 경상 → 제주 순
  * 2026-11 새 코드라 전남 · 광주는 12 하나, 강원 51 · 전북 52 (docs/api/user.md 15번)
  */
-const REGIONS: { code: string; label: string }[] = [
+export const REGIONS: { code: string; label: string }[] = [
   { code: '11', label: '서울' },
   { code: '28', label: '인천' },
   { code: '41', label: '경기' },

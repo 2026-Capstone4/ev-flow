@@ -4,6 +4,7 @@ from pydantic import Field
 
 from app.schemas.base import CamelModel, KstDatetime
 from app.schemas.common import ChargerStatus
+from app.schemas.service_area import SIDO_NAMES  # 사용자 휴게소 API와 같은 시도 표
 
 # 값 목록은 docs/api/admin.md - 프론트 src/types/admin.ts와 같아야 함
 # seoul = city(마포) + live(마포를 뺀 서울), all = 셋 모두 (2026-11-25 서울 추가)
@@ -39,7 +40,9 @@ SEOUL_DISTRICTS = {
     "11710": "송파구",
     "11740": "강동구",
 }
-SeoulDistrict = Literal[tuple(SEOUL_DISTRICTS)]
+# 휴게소 시도 코드(충전기 API zcode) - region=service_area 안의 지역 선택 (2026-11-28 추가)
+# district는 도심이면 서울 구 코드(5자리), 휴게소면 시도 코드(2자리)
+AdminDistrict = Literal[tuple(SEOUL_DISTRICTS) + tuple(SIDO_NAMES)]
 CollectionRunStatus = Literal["running", "success", "partial", "failed"]
 
 
@@ -59,7 +62,7 @@ class UtilizationBucket(CamelModel):
 
 class UtilizationResponse(PeriodRange):
     region: AdminRegion
-    district: SeoulDistrict | None  # 구를 골랐을 때만
+    district: AdminDistrict | None  # 구 · 시도를 골랐을 때만
     period: AdminPeriod
     average_occupancy_rate: float | None  # 기간 전체 관측을 합친 비율 (칸별 평균이 아님)
     series: list[UtilizationBucket]
@@ -70,7 +73,8 @@ class AdminCharger(CamelModel):
     region: CollectionTargetName
     station_id: str
     station_name: str  # 도심 · 서울은 충전소명, 휴게소는 휴게소명
-    district: SeoulDistrict | None  # 구 코드 - 휴게소 · 주소에서 구를 못 뽑은 충전소는 null
+    # 도심은 구 코드, 휴게소는 시도 코드 - 구 · 시도를 못 뽑은 충전소는 null
+    district: AdminDistrict | None
     district_name: str | None
     charger_id: str
     status: ChargerStatus

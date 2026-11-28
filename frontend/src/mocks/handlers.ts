@@ -18,6 +18,7 @@ import {
   NATIONWIDE_SERVICE_AREAS,
 } from '@ev-flow/core/mocks/serviceAreas'
 import { findStationDetail, STATIONS, toKstIso } from '@ev-flow/core/mocks/stations'
+import { REGIONS } from '@ev-flow/core/lib/serviceAreaRegion'
 import {
   buildAdminChargers,
   buildCollectionTargets,
@@ -208,13 +209,14 @@ function readDashboardParams(request: Request, acceptsDistrict: boolean): Dashbo
   ) {
     return null
   }
-  // 구는 표에 있는 서울 구 코드만, region=seoul(마포구는 city도)일 때만 받음 (백엔드 targets_of와 같은 기준)
-  if (
-    district !== null &&
-    (!(district in SEOUL_DISTRICTS) ||
-      !(region === 'seoul' || (region === 'city' && district === '11440')))
-  ) {
-    return null
+  // 구는 표에 있는 서울 구 코드만, region=seoul(마포구는 city도)일 때만 받음
+  // 시도는 표에 있는 시도 코드만, region=service_area일 때만 받음 (백엔드 targets_of와 같은 기준)
+  if (district !== null) {
+    const isSeoulDistrict =
+      district in SEOUL_DISTRICTS &&
+      (region === 'seoul' || (region === 'city' && district === '11440'))
+    const isSido = REGIONS.some((item) => item.code === district) && region === 'service_area'
+    if (!isSeoulDistrict && !isSido) return null
   }
   return { region: region as AdminRegion, period: period as AdminPeriod, district }
 }
@@ -236,7 +238,7 @@ function adminGet<T extends DefaultBodyType>(
   path: string,
   isLoggedIn: SessionCheck,
   build: (params: DashboardParams, now: Date) => T,
-  /** district(서울 구)를 받는 API인지 — 10 · 11번만 */
+  /** district(서울 구 · 휴게소 시도)를 받는 API인지 — 10 · 11번만 */
   acceptsDistrict = false,
 ) {
   return http.get(`/api/v1${path}`, async ({ request, cookies }) => {

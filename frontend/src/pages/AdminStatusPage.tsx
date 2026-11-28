@@ -259,8 +259,12 @@ export function AdminStatusPage() {
           }
         />
         <StatCard
-          // 수집 상태 · 결측은 구로 나뉘지 않아서, 구를 골랐으면 서울 전체 기준이라고 제목에 붙임
-          label={data.isDistrictSelected ? '데이터 수집 (서울 전체)' : '데이터 수집'}
+          // 수집 상태 · 결측은 구 · 시도로 나뉘지 않아서, 골랐으면 서울 전체 · 전국 기준이라고 제목에 붙임
+          label={
+            data.isDistrictSelected
+              ? `데이터 수집 (${region === 'service_area' ? '전국' : '서울 전체'})`
+              : '데이터 수집'
+          }
           value={data.collectionHealth && <CollectionHealthLabel health={data.collectionHealth} />}
           caption={
             data.missingToday

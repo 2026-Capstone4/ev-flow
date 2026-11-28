@@ -12,7 +12,7 @@ const ALL_DISTRICT_OPTIONS = [{ value: 'all', label: '전체' }]
 
 /**
  * 운영자 화면 지역 필터 — 전체 · 도심 · 휴게소 전환과 그 안의 지역 선택
- * 도심의 district는 서울 구 코드 (이용률 · 충전기 목록 API의 district). 휴게소는 아직 한 곳만 수집해서 화면에서만 씀
+ * district는 도심이면 서울 구 코드, 휴게소면 시도 코드 (이용률 · 충전기 목록 API의 district)
  * isDistrictLocked면 지역 선택을 막고 지역 전체로 둠 — 수집 상태 · 결측처럼 구로 나뉘지 않는 화면용
  */
 export function AdminRegionFilter({

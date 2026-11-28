@@ -11,7 +11,7 @@ import type { AdminPeriod, AdminRegion } from '@/types/admin'
 
 // 폴링 · 캐시 설정은 queryClient 기본값 사용
 // 지역 · 기간을 바꾸는 동안 이전 값을 그대로 보여 줘서 차트 · 표가 깜빡이지 않게 함 (keepPreviousData)
-// district는 서울 구 코드 — 구를 고르지 않았으면 undefined (toDistrictParam)
+// district는 서울 구 코드 · 휴게소 시도 코드 — 고르지 않았으면 undefined (toDistrictParam)
 // 쿼리 설정을 함수로 둬서 화면(useQuery)과 미리 불러오기(prefetchQuery)가 같은 키를 씀
 
 const utilizationOptions = (region: AdminRegion, period: AdminPeriod, district?: string) =>

@@ -66,10 +66,11 @@
 |---|---|---|
 | `region` | `all` · `seoul`(서울 전체) · `city`(도심, 현재 마포구) · `service_area`(휴게소) | `all` |
 | `period` | `day` · `week` | `day` |
-| `district` | 서울 구 코드(충전기 API zscode, 예: `11680` 강남구 · `11440` 마포구) — 10 · 11번만, `region=seoul`(마포구는 `city`도)일 때만 | 없음 |
+| `district` | 서울 구 코드(충전기 API zscode, 예: `11680` 강남구 · `11440` 마포구) — `region=seoul`(마포구는 `city`도)일 때만. 휴게소 시도 코드(충전기 API zcode, 예: `41` 경기도) — `region=service_area`일 때만. 10 · 11번만 | 없음 |
 
 - `seoul`은 `city`(마포구)와 수집 대상 `live`(마포구를 뺀 서울)를 합친 것 — 겹치는 충전기 없음. `all`은 `city` · `live` · `service_area` 셋 모두 (2026-11-25)
 - `district`는 충전소 주소의 구(`gugun`)로 거른다. 코드표는 `backend/app/schemas/admin.py` `SEOUL_DISTRICTS` (25개 구). 서울이 아닌 지역에 주거나 표에 없는 코드면 422. 12 · 13번은 받지 않는다 — 서울은 API 한 번으로 받아 수집 상태 · 결측이 구로 나뉘지 않음 (2026-11-25)
+- 휴게소 `district`는 충전소의 시도 코드(`service_area_stations.zcode`)로 거른다. 코드표는 사용자 API 15번과 같은 `backend/app/schemas/service_area.py` `SIDO_NAMES` (16개 시도, 휴게소가 있는 곳은 세종 · 제주를 뺀 14곳). 휴게소가 아닌 지역에 주거나 표에 없는 코드면 422. 12 · 13번은 역시 받지 않는다 — 전국 휴게소를 한 번에 받음 (2026-11-28)
 - 날짜 경계는 KST 0시. "오늘"은 KST 오늘 0시부터 지금까지. 시연 스냅샷에서는 "지금" = 스냅샷 시각 ([README 시연 기준 시각](README.md#기본))
 - 응답의 `from` · `to`는 실제 집계 기간 — `week`가 이용률(최근 4주)과 결측(최근 7일)에서 기간이 달라 화면에 함께 표시
 - 버스전용 충전기는 모든 집계에서 뺀다 — 결측(13번)은 `collection_runs`의 서비스 대상 기준 수(`eligible_expected_count` · `eligible_matched_count`)를 쓴다
@@ -103,7 +104,7 @@
 | `occupancyRate` | number \| null | 0~1. 관측이 없으면 `null` (아직 오지 않은 시간 포함) |
 | `observationCount` | number | 분모에 들어간 관측 수 — 표본이 적은 칸 구분용 |
 
-끝난 날 · 끝난 시간대는 Redis에 저장해 두고 쓴다. collector가 매시 12분(과 시작 2분 뒤)에 미리 채워 화면 요청은 진행 중인 시간대만 DB에서 센다. 서울 구별 날짜 집계도 같이 채운다
+끝난 날 · 끝난 시간대는 Redis에 저장해 두고 쓴다. collector가 매시 12분(과 시작 2분 뒤)에 미리 채워 화면 요청은 진행 중인 시간대만 DB에서 센다. 서울 구별 · 휴게소 시도별 날짜 집계도 같이 채운다
 
 `district`를 주면 응답 `district`에 그 코드가 오고, 아니면 `null`.
 
@@ -140,7 +141,7 @@
 |---|---|---|
 | `region` | string | 수집 대상 `city` · `live` · `service_area` — `region=seoul`이면 `city` · `live`가 섞여 온다 |
 | `stationName` | string | 도심 · 서울은 충전소명, 휴게소는 휴게소명. 밑줄은 사용자 API 1번 `name`과 같은 규칙으로 정리 |
-| `district` · `districtName` | string \| null | 구 코드 · 이름(`11680` · `강남구`). 휴게소 · 구를 모르는 충전소는 `null`. `district`로 요청하면 그 구 충전기만 온다 — 요약 카드(충전기 수 · 현재 이용률 · 운영 중지 · 점검)는 이 목록으로 계산 |
+| `district` · `districtName` | string \| null | 도심은 구 코드 · 이름(`11680` · `강남구`), 휴게소는 시도 코드 · 이름(`41` · `경기도`). 구 · 시도를 모르는 충전소는 `null`. `district`로 요청하면 그 구 · 시도 충전기만 온다 — 요약 카드(충전기 수 · 현재 이용률 · 운영 중지 · 점검)는 이 목록으로 계산 |
 | `status` | string | 화면 상태 (README) |
 | `updatedAt` | string | 대상별 마지막 성공 수집 시각 중 오래된 쪽 (`region=all`) |
 | `stat` | string \| null | API 원본 상태 코드 — 통신이상(1) · 상태미확인(9) 등 이상 충전기 구분용. 마지막 성공 회차에 그 충전기 행이 없으면 `null` |
