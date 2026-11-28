@@ -2,7 +2,8 @@
  * 빌드한 dist/index.html을 바탕으로 검색에 나올 화면마다 HTML 파일을 따로 만듦 (dist/service-areas.html 등)
  * 원래는 모든 주소가 본문이 빈 index.html 하나를 받아서, 검색엔진에는 제목 · 설명이 같은 빈 페이지로 보였음
  * 파일마다 그 화면의 제목 · 설명 · canonical과 화면 글을 미리 넣고, JS가 뜨면 React가 #root를 통째로 새로 그림
- * nginx는 /service-areas 요청에 service-areas.html을 먼저 찾음 (backend/nginx/default.conf)
+ * nginx는 /service-areas 요청에 service-areas.html을 먼저 찾고, / 요청에는 home.html을 줌 (backend/nginx/default.conf)
+ * index.html은 미리 만들지 않은 모든 주소(충전소 상세 · 운영자 · 없는 주소)가 받는 파일이라 건드리지 않고 본문을 비워 둠
  *
  * 실행: pnpm build 마지막에 자동으로 실행됨
  * 화면 글을 바꾸면 여기 글도 같이 고침 (화면과 다른 글을 검색엔진에만 보여 주면 안 됨)
@@ -222,15 +223,19 @@ for (const page of PAGES) {
   writeFileSync(outPath, renderPage(baseHtml, page))
 }
 
-// index.html은 홈이면서 미리 만들지 않은 모든 주소(충전소 상세 등)가 받는 파일이라 canonical은 넣지 않고 본문만 채움
-writeFileSync(
-  indexPath,
-  replaceOnce(
-    baseHtml,
-    '<div id="root"></div>',
-    wrapBody(`${SERVICE_NAME} - AI 전기차 충전소 추천`, HOME_BODY),
-    '#root',
-  ),
+// 홈은 제목 · 설명이 index.html 기본값 그대로라 canonical · 본문만 넣어 home.html로 따로 씀
+let homeHtml = replaceOnce(
+  baseHtml,
+  '</head>',
+  `<link rel="canonical" href="${SITE_URL}/" />\n    <meta property="og:url" content="${SITE_URL}/" />\n  </head>`,
+  '</head>',
 )
+homeHtml = replaceOnce(
+  homeHtml,
+  '<div id="root"></div>',
+  wrapBody(`${SERVICE_NAME} - AI 전기차 충전소 추천`, HOME_BODY),
+  '#root',
+)
+writeFileSync(join(DIST_DIR, 'home.html'), homeHtml)
 
 console.log(`prerender-pages: 홈 + ${PAGES.length}개 화면 HTML을 만들었어요`)
