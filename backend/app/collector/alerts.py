@@ -32,7 +32,7 @@ SUMMARY_HOURS = 24
 REASON_MAX = 200  # 실패 알림에 붙이는 원인 길이 상한
 KST = ZoneInfo("Asia/Seoul")
 # collection_runs.target → 알림에 쓰는 이름
-TARGET_NAMES = {"city": "마포 도심", "service_area": "천안 휴게소", "live": "서울 실시간"}
+TARGET_NAMES = {"city": "마포구(예측)", "service_area": "전국 휴게소", "live": "서울(마포 제외)"}
 # 수집 기록을 못 읽었을 때 - 지역과 같은 방식으로 한 번 알리고 복구 때 한 번 알림
 CHECK_KEY = "check"
 CHECK_NAME = "수집 상태 확인"

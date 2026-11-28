@@ -274,10 +274,10 @@ def test_find_problems_healthy_and_just_under_threshold():
 def test_plan_messages_alerts_once_then_recovers_once():
     problem = {"city": ["3회 연속 수집 실패"]}
     first = alerts.plan_messages(problem, set())
-    assert first == [("city", True, "🚨 [EV-flow] 마포 도심 이상 - 3회 연속 수집 실패")]
+    assert first == [("city", True, "🚨 [EV-flow] 마포구(예측) 이상 - 3회 연속 수집 실패")]
     # 같은 문제가 이어지면 다시 보내지 않음
     assert alerts.plan_messages(problem, {"city"}) == []
-    assert alerts.plan_messages({}, {"city"}) == [("city", False, "✅ [EV-flow] 마포 도심 복구")]
+    assert alerts.plan_messages({}, {"city"}) == [("city", False, "✅ [EV-flow] 마포구(예측) 복구")]
 
 
 @pytest.fixture
@@ -323,11 +323,11 @@ def test_check_retries_after_send_failure_and_recovers(alert_env):
     # 보내지 못했으면 다음 검사 때 다시 보냄
     alerts.check_collection_health()
     alerts.check_collection_health()
-    assert alert_env.sent == ["🚨 [EV-flow] 마포 도심 이상 - 3회 연속 수집 실패"] * 2
+    assert alert_env.sent == ["🚨 [EV-flow] 마포구(예측) 이상 - 3회 연속 수집 실패"] * 2
     set_runs(alert_env, HEALTHY_RECENT, HEALTHY_OK)
     alerts.check_collection_health()
     alerts.check_collection_health()
-    assert alert_env.sent[2:] == ["✅ [EV-flow] 마포 도심 복구"]
+    assert alert_env.sent[2:] == ["✅ [EV-flow] 마포구(예측) 복구"]
 
 
 def test_check_db_error_alerts_once_and_keeps_region_alerts(alert_env):
@@ -340,14 +340,14 @@ def test_check_db_error_alerts_once_and_keeps_region_alerts(alert_env):
     alert_env.monkeypatch.setattr(alerts, "load_runs", broken)
     alerts.check_collection_health()
     alerts.check_collection_health()
-    # DB 오류는 한 번만, 마포 도심 알림은 복구로 착각하지 않음
+    # DB 오류는 한 번만, 마포구(예측) 알림은 복구로 착각하지 않음
     assert alert_env.sent[1:] == [
         "🚨 [EV-flow] 수집 상태 확인 이상 - 수집 기록을 읽지 못함 (DB 오류)"
     ]
     set_runs(alert_env, HEALTHY_RECENT, HEALTHY_OK)
     alerts.check_collection_health()
     assert sorted(alert_env.sent[2:]) == [
-        "✅ [EV-flow] 마포 도심 복구",
+        "✅ [EV-flow] 마포구(예측) 복구",
         "✅ [EV-flow] 수집 상태 확인 복구",
     ]
 
@@ -396,7 +396,7 @@ def test_notify_failed_run_sends_short_reason(alert_env):
     )
     alerts.notify_failed_run(run, "x" * 500)
     assert alert_env.sent[0] == (
-        "⚠️ [EV-flow] 마포 도심 수집 실패 (run 42, 15:00) - "
+        "⚠️ [EV-flow] 마포구(예측) 수집 실패 (run 42, 15:00) - "
         "get_charger_status [11440] RuntimeError: getChargerStatus HTTP 504"
     )
     assert alert_env.sent[1].endswith("x" * alerts.REASON_MAX)
@@ -423,8 +423,8 @@ def test_format_summary_lists_regions_in_order_with_retries():
     text = alerts.format_summary(counts, retries, since, ALERT_NOW, since - timedelta(hours=1))
     assert text.splitlines() == [
         "📊 [EV-flow] 수집 하루 요약 (11/22 15:00 ~ 11/23 15:00)",
-        "- 마포 도심: 회차 288 · 성공 287 · 일부 0 · 실패 1 | 재시도 15 · 재시도로 성공 14",
-        "- 서울 실시간: 회차 288 · 성공 280 · 일부 5 · 실패 3 | 재시도 4 · 재시도로 성공 0",
+        "- 마포구(예측): 회차 288 · 성공 287 · 일부 0 · 실패 1 | 재시도 15 · 재시도로 성공 14",
+        "- 서울(마포 제외): 회차 288 · 성공 280 · 일부 5 · 실패 3 | 재시도 4 · 재시도로 성공 0",
     ]
     # 요약 기간 중에 재시작했으면 재시도 수가 그 뒤 것뿐이라고 적음
     restarted = alerts.format_summary(
